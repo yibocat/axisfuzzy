@@ -5,3 +5,5 @@ Icon
 ._*
 .idea
 __pycache__
+!/uv.lock
+/uv.lock

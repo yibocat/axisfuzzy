@@ -3,4 +3,7 @@ name = "fuzzlab"
 version = "0.0.1"
 description = "Add your description here"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "notebook>=7.4.4",
+    "numpy>=2.2.6",
+]
