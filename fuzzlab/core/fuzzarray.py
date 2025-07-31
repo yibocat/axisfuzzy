@@ -24,6 +24,39 @@ class Fuzzarray:
         self._mtype: str = self._validate_and_set_mtype(mtype)
         self._q: int = self._validate_and_set_q()
 
+        self._delegated_methods: set[str] = set()
+        self._delegated_attributes: set[str] = set()
+        self._initialize_delegation()
+
+    def _initialize_delegation(self) -> None:
+        """
+        By using a prototype Fuzznum instance to detect and register 
+            proxyable methods and properties.
+
+        This enables Fuzzarray to act as a facade for its 
+            internal Fuzznum elements.
+        """
+        if self.size == 0:
+            return
+
+        # Create a temporary "prototype" Fuzznum instance 
+        #   to discover available members
+        try:
+            prototype_fuzznum = Fuzznum(mtype=self.mtype, qrung=self.q)
+        except (ValueError, TypeError):
+            return
+        
+        # 从原型中获取策略和模板绑定的方法和属性
+        strategy_methods = object.__getattribute__(prototype_fuzznum, '_bound_strategy_methods').keys()
+        strategy_attrs = object.__getattribute__(prototype_fuzznum, '_bound_strategy_attributes')
+        template_methods = object.__getattribute__(prototype_fuzznum, '_bound_template_methods').keys()
+        template_attrs = object.__getattribute__(prototype_fuzznum, '_bound_template_attributes')
+
+        self._delegated_methods.update(strategy_methods)
+        self._delegated_methods.update(template_methods)
+        self._delegated_attributes.update(strategy_attrs)
+        self._delegated_attributes.update(template_attrs)
+
     def _process_input_data(self,
                             data: np.ndarray | list | tuple | Fuzznum,
                             shape: Optional[tuple[int, ...]],
@@ -140,6 +173,41 @@ class Fuzzarray:
     def q(self) -> int:
         """The qrung of all Fuzznum elements in the array"""
         return self._q
+
+    @property
+    def data(self) -> np.ndarray:
+        """The Fuzznum elements in the array"""
+        return self._data
+    
+    def __getattr__(self, name: str) -> Any:
+        """
+        Dynamically proxy Fuzznum's methods and properties to achieve vectorized operations.
+        """
+        if name in self._delegated_attributes:
+            getter = np.vectorize(lambda fuzznum: getattr(fuzznum, name) 
+                                  if isinstance(fuzznum, Fuzznum) else None)
+            return getter(self._data)
+
+        if name in self._delegated_methods:
+            # Return a wrapper function that executes vectorized operations when called.
+            def vectorized_method(*args, **kwargs):
+                # Define the action to be performed on each element
+                op = lambda fuzznum: getattr(fuzznum, name)(*args, **kwargs) \
+                    if isinstance(fuzznum, Fuzznum) else None
+                
+                # otypes=[object] ensures that the elements of the returned array are 
+                #   Python objects, preventing numpy from attempting to convert them.
+                vectorized_op = np.vectorize(op, otypes=[object])
+                results = vectorized_op(self._data)
+
+                if self.size > 0:
+                    first_result = results.flat[0]
+                    if isinstance(first_result, Fuzznum):
+                        return Fuzzarray(results, mtype=first_result.mtype, copy=False)
+                return results
+            return vectorized_method
+
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'.")
 
     def __len__(self) -> int:
         """Returns the length of the first dimension of the array"""
@@ -400,3 +468,21 @@ class Fuzzarray:
         array_str = array_str.replace("array(", "").replace(", dtype=object)", "")
         return f"{array_str}"
 
+
+def fuzzarray(data: np.ndarray | list | tuple | Fuzznum,
+              mtype: Optional[str] = None,
+              shape: Optional[tuple[int, ...]] = None,
+              copy: bool = True) -> Fuzzarray:
+    """
+    Convenient function to create Fuzzarray
+
+    Args:
+        data: Input data.
+        mtype: Fuzzy number type.
+        shape: Target shape.
+        copy: Whether to copy data.
+
+    Returns:
+        Fuzzarray: Created array of fuzzy numbers.
+    """
+    return Fuzzarray(data, mtype=mtype, shape=shape, copy=copy)

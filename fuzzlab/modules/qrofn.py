@@ -243,12 +243,18 @@ class QROFNTemplate(FuzznumTemplate):
 
     @property
     def score(self):
-        return self.instance.md ** self.instance.q - self.instance.nmd ** self.instance.q
+        config = get_config()
+        result = self.instance.md ** self.instance.q - self.instance.nmd ** self.instance.q
+        return round(result, config.DEFAULT_PRECISION)
 
     @property
     def accuracy(self):
-        return self.instance.md ** self.instance.q + self.instance.nmd ** self.instance.q
+        config = get_config()
+        result = self.instance.md ** self.instance.q + self.instance.nmd ** self.instance.q
+        return round(result, config.DEFAULT_PRECISION)
 
     @property
     def indeterminacy(self):
-        return (1 - self.accuracy) ** (1/self.instance.q)
+        config = get_config()
+        result = (1 - self.accuracy) ** (1/self.instance.q)
+        return round(result, config.DEFAULT_PRECISION)
