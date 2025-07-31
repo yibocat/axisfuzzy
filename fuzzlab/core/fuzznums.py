@@ -63,7 +63,7 @@ class Fuzznum:
         if self.mtype not in registry.strategies:
             available_mtypes = ', '.join(registry.strategies.keys())
             raise ValueError(
-                f"Unsupported strategy mtype: '{self.mtype}'."
+                f"Unsupported strategy mtype: '{self.mtype}'. "
                 f"Available mtypes: {available_mtypes}"
             )
 
