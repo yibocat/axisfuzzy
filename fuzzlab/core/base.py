@@ -7,9 +7,10 @@
 import collections
 import weakref
 from abc import ABC
-from typing import Optional, Set, Dict, Callable, Any, Union
+from typing import Optional, Set, Dict, Callable, Any, Union, List
 
 from fuzzlab.config import get_config
+from fuzzlab.core.operations import get_operation_registry, OperationMixin
 from fuzzlab.core.triangular import OperationTNorm
 
 
@@ -37,16 +38,29 @@ class FuzznumStrategy(ABC):
 
         object.__setattr__(self, 'q', qrung)
 
-        # object.__setattr__(self, '_lock', threading.Lock())
+        # 初始化运算缓存和注册表
+        object.__setattr__(self, '_operation_registry', get_operation_registry())
+        object.__setattr__(self, '_op_cache', {})   # Cache for operations
+
+        # 确保每个实例有独立的验证器和回调
+        if (not hasattr(self, '_attribute_validators')
+                or self._attribute_validators is FuzznumStrategy._attribute_validators):
+            object.__setattr__(self, '_attribute_validators', {})
+
+        if (not hasattr(self, '_change_callbacks')
+                or self._change_callbacks is FuzznumStrategy._change_callbacks):
+            object.__setattr__(self, '_change_callbacks', {})
 
         # 为 'q' 属性添加一个验证器。
-        self.add_attribute_validator('q',
-                                     lambda x: isinstance(x, int) and 1 <= x <= 100)
+        self.add_attribute_validator(
+            'q', lambda x: isinstance(x, int) and 1 <= x <= 100)
         # 'q' 是 FuzznumStrategy 的核心属性，它必须是大于等于1的正整数。
         # 将验证器添加到 _attribute_validators 字典中，确保每次通过 __setattr__ 设置 'q' 时都会进行验证。
         # 这比在 _validate() 中进行事后验证更及时、更有效。
         # 代码逻辑：调用 add_attribute_validator 方法，传入属性名 'q' 和一个 lambda 表达式作为验证函数。
         # 验证函数检查值是否为整数且大于等于 1。
+
+        self._validate()
 
     def __init_subclass__(cls, **kwargs):
         """
@@ -72,6 +86,14 @@ class FuzznumStrategy(ABC):
                 # 将符合条件的属性名添加到 _declared_attributes 集合中。
                 cls._declared_attributes.add(attr_name)
                 # 这个集合将用于后续的严格模式检查（__setattr__）和属性序列化（to_dict/from_dict）。
+
+        # TODO: 这是一个简洁写法，后续测试一下
+        # cls._declared_attributes = cls._declared_attributes.union(
+        #     getattr(
+        #         super(cls, cls),
+        #         '_declared_attributes',
+        #         set())
+        # )
 
     def __setattr__(self, name: str, value: Any) -> None:
         """属性设置方法"""
@@ -156,7 +178,9 @@ class FuzznumStrategy(ABC):
         """
         self._attribute_validators[attr_name] = validator
 
-    def add_change_callback(self, attr_name: str, callback: Callable[[str, Any, Any], None]) -> None:
+    def add_change_callback(self,
+                            attr_name: str,
+                            callback: Callable[[str, Any, Any], None]) -> None:
         """
         添加属性变更回调
 
@@ -274,119 +298,206 @@ class FuzznumStrategy(ABC):
         if hasattr(self, 'mtype') and (not isinstance(self.mtype, str) or not self.mtype.strip()):
             raise ValueError(f"mtype must be a non-empty string, got '{self.mtype}'")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def _execute_operation(self,
+                           op_name: str,
+                           *args,
+                           **kwargs) -> Union[Dict[str, Any], bool]:
         """
-        将策略实例转换为字典
+        General Computing Execution Method
 
-        此方法将所有声明的属性及其当前值转换为一个字典。
-
-        Returns:
-            Dict[str, Any]: 包含所有声明属性的字典。
+        Find and invoke the corresponding operation implementation through the registry.
         """
-        result = {}
-        for attr_name in self._declared_attributes:
-            if hasattr(self, attr_name):
-                result[attr_name] = getattr(self, attr_name)
+        # Attempt to obtain computing instance from cache
+        operation: Optional[OperationMixin] = self._op_cache.get(op_name)
+        if operation is None:
+            # If not in the cache, retrieve from the registry and cache it.
+            operation = self._operation_registry.get_operation(op_name, self.mtype)
+            if operation is None:
+                raise NotImplementedError(
+                    f"Operation '{op_name}' is not implemented for mtype '{self.mtype}'."
+                    f" Available operations for '{self.mtype}': {self.get_available_operations()}"
+                )
+            self._op_cache[op_name] = operation
 
-        return result
+        # Distribute to different execution methods of OperationMixin
+        #   based on the number and type of parameters
+        tnorm = kwargs.pop('tnorm', OperationTNorm())   # Default T-Norm
 
-    def from_dict(self, data: Dict[str, Any]) -> None:
+        if op_name in ['add', 'sub', 'mul', 'div',
+                       'intersection', 'union', 'implication',
+                       'equivalence', 'difference', 'symdiff']:
+            # Binary operations: strategy1, strategy2, tnorm
+            if len(args) != 1 or not isinstance(args[0], FuzznumStrategy):
+                raise TypeError(f"Binary operation '{op_name}' requires one FuzznumStrategy operand.")
+            return operation.execute_binary(self, args[0], tnorm, **kwargs)
+
+        elif op_name in ['pow', 'tim', 'exp', 'log']:
+            # Unary operations with operands: strategy, operand, tnorm
+            if len(args) != 1 or not isinstance(args[0], (int, float)):
+                raise TypeError(f"Unary operation '{op_name}' requires one int/float operand.")
+            return operation.execute_unary_with_operand(self, args[0], tnorm, **kwargs)
+
+        elif op_name in ['complement']:
+            # Pure unary operations: strategy, tnorm
+            if len(args) != 0:
+                raise TypeError(f"Pure unary operation '{op_name}' takes no additional operands.")
+            return operation.execute_unary(self, tnorm, **kwargs)
+
+        elif op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
+            # Comparison operations: strategy1, strategy2, tnorm
+            if len(args) != 1 or not isinstance(args[0], FuzznumStrategy):
+                raise TypeError(f"Comparison operation '{op_name}' requires one FuzznumStrategy operand.")
+            return operation.execute_comparison(self, args[0], tnorm, **kwargs)
+
+        else:
+            raise ValueError(f"Unknown operation type: {op_name}")
+
+    def __getattr__(self, name: str) -> Any:
         """
-        从字典设置属性值
+        Dynamically obtain the calculation method.
 
-        此方法根据传入的字典设置策略实例的属性。
-        只会设置那些在 `_declared_attributes` 中存在的属性。
-
-        Args:
-            data: 属性字典
+        If the accessed attribute is a predefined operation name,
+        return a function that calls `_execute_operation`.
         """
-        for attr_name, value in data.items():
-            if attr_name in self._declared_attributes:
-                setattr(self, attr_name, value)
+        operation_names = {
+            'add', 'sub', 'mul', 'div', 'pow', 'tim', 'exp', 'log',
+            'gt', 'lt', 'ge', 'le', 'eq', 'ne',
+            'intersection', 'union', 'complement', 'implication', 'equivalence',
+            'difference', 'symdiff'
+        }
 
-    def add(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+        if name in operation_names:
+            # Return a lambda function that passes the operation name to _execute_operation
+            return lambda *args, **kwargs: self._execute_operation(name, *args, **kwargs)
 
-    def sub(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+        # If it is not an arithmetic method, fall back to the default __getattr__ behavior.
+        # Note: object.__getattribute__ needs to be called here to avoid infinite recursion
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
-    def mul(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    def get_available_operations(self) -> List[str]:
+        """
+        Get the names of all operations supported by the current fuzzy number type.
+        """
+        return self._operation_registry.get_available_operations(self.mtype)
 
-    def div(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def pow(self, other_operand: Union[int, float], tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def tim(self, other_operand: Union[int, float], tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def exp(self, other_operand: Union[int, float], tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def log(self, other_operand: Union[int, float], tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def gt(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def lt(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def ge(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def le(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def eq(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def ne(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def intersection(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def union(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def complement(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def implication(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def equivalence(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def difference(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
-
-    def symdiff(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
-        raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
-                                  f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    # # TODO: 已在Fuzznum实现，此处可以删除，暂时保留
+    # def to_dict(self) -> Dict[str, Any]:
+    #     """
+    #     将策略实例转换为字典
+    #
+    #     此方法将所有声明的属性及其当前值转换为一个字典。
+    #
+    #     Returns:
+    #         Dict[str, Any]: 包含所有声明属性的字典。
+    #     """
+    #     result = {}
+    #     for attr_name in self._declared_attributes:
+    #         if hasattr(self, attr_name):
+    #             result[attr_name] = getattr(self, attr_name)
+    #
+    #     return result
+    #
+    # # TODO: 已在Fuzznum实现，此处可以删除，暂时保留
+    # def from_dict(self, data: Dict[str, Any]) -> None:
+    #     """
+    #     从字典设置属性值
+    #
+    #     此方法根据传入的字典设置策略实例的属性。
+    #     只会设置那些在 `_declared_attributes` 中存在的属性。
+    #
+    #     Args:
+    #         data: 属性字典
+    #     """
+    #     for attr_name, value in data.items():
+    #         if attr_name in self._declared_attributes:
+    #             setattr(self, attr_name, value)
+    #
+    # def add(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def sub(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def mul(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def div(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def pow(self, other_operand: Union[int, float], tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def tim(self, other_operand: Union[int, float], tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def exp(self, other_operand: Union[int, float], tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def log(self, other_operand: Union[int, float], tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def gt(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def lt(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def ge(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def le(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def eq(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def ne(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def intersection(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def union(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def complement(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def implication(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def equivalence(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def difference(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
+    #
+    # def symdiff(self, other_strategy: 'FuzznumStrategy', tnorm: OperationTNorm) -> Dict[str, Any]:
+    #     raise NotImplementedError(f"The operation of fuzzy numbers with '{self.mtype}' under the "
+    #                               f"t-norm '{tnorm.norm_type}' is not yet implemented.")
 
 
 class FuzznumTemplate(ABC):

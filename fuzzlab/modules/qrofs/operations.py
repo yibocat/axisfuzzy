@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
 #  Python: 3.10.9
-#  Date: 2025/7/31 22:32
+#  Date: 2025/8/1 00:07
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
@@ -11,7 +11,7 @@ from typing import Dict, Any, Union, Optional
 from fuzzlab.config import get_config
 from fuzzlab.core.fuzzarray import Fuzzarray
 from fuzzlab.core.fuzznums import Fuzznum
-from fuzzlab.core.operation import OperationMixin, get_operation_registry
+from fuzzlab.core.operations import OperationMixin, get_operation_registry
 from fuzzlab.core.triangular import OperationTNorm
 
 
@@ -37,12 +37,12 @@ class QROFNAddition(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray addition must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray addition must be a Fuzzarray or Fuzznum.")
 
         def add_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -57,9 +57,12 @@ class QROFNAddition(OperationMixin):
 
             return result_fuzznum
 
-        # 使用 np.vectorize 进行元素级运算
         vectorized_add = np.vectorize(add_op, otypes=[object])
-        result_data = vectorized_add(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_add(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_add(fuzzarray1.data, other)
+
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -85,12 +88,12 @@ class QROFNSubtraction(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray subtraction must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray subtraction must be a Fuzzarray or Fuzznum.")
 
         def sub_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -106,7 +109,10 @@ class QROFNSubtraction(OperationMixin):
             return result_fuzznum
 
         vectorized_sub = np.vectorize(sub_op, otypes=[object])
-        result_data = vectorized_sub(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_sub(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_sub(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -130,12 +136,12 @@ class QROFNMultiplication(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray multiplication must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray multiplication must be a Fuzzarray or Fuzznum.")
 
         def mul_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -151,7 +157,10 @@ class QROFNMultiplication(OperationMixin):
             return result_fuzznum
 
         vectorized_mul = np.vectorize(mul_op, otypes=[object])
-        result_data = vectorized_mul(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_mul(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_mul(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -181,12 +190,12 @@ class QROFNDivision(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray division must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray division must be a Fuzzarray or Fuzznum.")
 
         def div_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -202,7 +211,10 @@ class QROFNDivision(OperationMixin):
             return result_fuzznum
 
         vectorized_div = np.vectorize(div_op, otypes=[object])
-        result_data = vectorized_div(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_div(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_div(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -226,14 +238,17 @@ class QROFNPower(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          operand: Union[int, float],
+                          operand: Optional[Union[int, float, np.ndarray]],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        def pow_op(fuzznum: Fuzznum) -> Fuzznum:
+        if not isinstance(operand, (int, float, np.ndarray)):
+            raise TypeError(f"Unsupported operand type for power operation: {type(operand)}")
+
+        def pow_op(fuzznum: Fuzznum, op_val: Union[int, float]) -> Fuzznum:
             result_dict = self.execute_unary_with_operand(
                 fuzznum.get_strategy_instance(),
-                operand,
+                op_val,
                 tnorm,
                 **kwargs)
 
@@ -244,7 +259,8 @@ class QROFNPower(OperationMixin):
             return result_fuzznum
 
         vectorized_pow = np.vectorize(pow_op, otypes=[object])
-        result_data = vectorized_pow(fuzzarray1.data)
+        # np.vectorize 会自动处理 fuzzarray1.data 和 operand 之间的广播
+        result_data = vectorized_pow(fuzzarray1.data, operand)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -268,14 +284,17 @@ class QROFNTimes(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          operand: Union[int, float],
+                          operand: Optional[Union[int, float, np.ndarray]],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        def tim_op(fuzznum: Fuzznum) -> Fuzznum:
+        if not isinstance(operand, (int, float, np.ndarray)):
+            raise TypeError(f"Unsupported operand type for times operation: {type(operand)}")
+
+        def tim_op(fuzznum: Fuzznum, op_val: Union[int, float]) -> Fuzznum:
             result_dict = self.execute_unary_with_operand(
                 fuzznum.get_strategy_instance(),
-                operand,
+                op_val,
                 tnorm,
                 **kwargs)
 
@@ -286,7 +305,7 @@ class QROFNTimes(OperationMixin):
             return result_fuzznum
 
         vectorized_tim = np.vectorize(tim_op, otypes=[object])
-        result_data = vectorized_tim(fuzzarray1.data)
+        result_data = vectorized_tim(fuzzarray1.data, operand)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -310,13 +329,16 @@ class QROFNExponential(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          operand: Union[int, float],
+                          operand: Optional[Union[int, float, np.ndarray]],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
-        def exp_op(fuzznum: Fuzznum) -> Fuzznum:
+        if not isinstance(operand, (int, float, np.ndarray)):
+            raise TypeError(f"Unsupported operand type for exponential operation: {type(operand)}")
+
+        def exp_op(fuzznum: Fuzznum, op_val: Union[int, float]) -> Fuzznum:
             result_dict = self.execute_unary_with_operand(
                 fuzznum.get_strategy_instance(),
-                operand,
+                op_val,
                 tnorm,
                 **kwargs)
 
@@ -327,7 +349,7 @@ class QROFNExponential(OperationMixin):
             return result_fuzznum
 
         vectorized_exp = np.vectorize(exp_op, otypes=[object])
-        result_data = vectorized_exp(fuzzarray1.data)
+        result_data = vectorized_exp(fuzzarray1.data, operand)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -355,14 +377,17 @@ class QROFNLogarithmic(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          operand: Union[int, float],
+                          operand: Optional[Union[int, float, np.ndarray]],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        def log_op(fuzznum: Fuzznum) -> Fuzznum:
+        if not isinstance(operand, (int, float, np.ndarray)):
+            raise TypeError(f"Unsupported operand type for logarithmic operation: {type(operand)}")
+
+        def log_op(fuzznum: Fuzznum, op_val: Union[int, float]) -> Fuzznum:
             result_dict = self.execute_unary_with_operand(
                 fuzznum.get_strategy_instance(),
-                operand,
+                op_val,
                 tnorm,
                 **kwargs)
 
@@ -373,7 +398,7 @@ class QROFNLogarithmic(OperationMixin):
             return result_fuzznum
 
         vectorized_log = np.vectorize(log_op, otypes=[object])
-        result_data = vectorized_log(fuzzarray1.data)
+        result_data = vectorized_log(fuzzarray1.data, operand)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -396,13 +421,12 @@ class QROFNGreaterThan(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> np.ndarray:
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray or Fuzznum.")
 
         def gt_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> bool:
             return self.execute_comparison(
@@ -412,7 +436,10 @@ class QROFNGreaterThan(OperationMixin):
                 **kwargs)
 
         vectorized_gt = np.vectorize(gt_op, otypes=[bool])
-        result_data = vectorized_gt(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_gt(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_gt(fuzzarray1.data, other)
         return result_data
 
 
@@ -433,13 +460,12 @@ class QROFNLessThan(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> np.ndarray:
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray or Fuzznum.")
 
         def lt_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> bool:
             return self.execute_comparison(
@@ -449,7 +475,10 @@ class QROFNLessThan(OperationMixin):
                 **kwargs)
 
         vectorized_lt = np.vectorize(lt_op, otypes=[bool])
-        result_data = vectorized_lt(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_lt(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_lt(fuzzarray1.data, other)
         return result_data
 
 
@@ -472,13 +501,12 @@ class QROFNEqual(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> np.ndarray:
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray or Fuzznum.")
 
         def eq_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> bool:
             return self.execute_comparison(
@@ -488,7 +516,10 @@ class QROFNEqual(OperationMixin):
                 **kwargs)
 
         vectorized_eq = np.vectorize(eq_op, otypes=[bool])
-        result_data = vectorized_eq(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_eq(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_eq(fuzzarray1.data, other)
         return result_data
 
 
@@ -512,13 +543,12 @@ class QROFNGreaterEqual(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> np.ndarray:
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray or Fuzznum.")
 
         def ge_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> bool:
             return self.execute_comparison(
@@ -528,7 +558,10 @@ class QROFNGreaterEqual(OperationMixin):
                 **kwargs)
 
         vectorized_ge = np.vectorize(ge_op, otypes=[bool])
-        result_data = vectorized_ge(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_ge(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_ge(fuzzarray1.data, other)
         return result_data
 
 
@@ -552,12 +585,12 @@ class QROFNLessEqual(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
                           tnorm: OperationTNorm,
                           **kwargs) -> np.ndarray:
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray or Fuzznum.")
 
         def le_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> bool:
             return self.execute_comparison(
@@ -567,7 +600,10 @@ class QROFNLessEqual(OperationMixin):
                 **kwargs)
 
         vectorized_le = np.vectorize(le_op, otypes=[bool])
-        result_data = vectorized_le(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_le(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_le(fuzzarray1.data, other)
         return result_data
 
 
@@ -590,13 +626,12 @@ class QROFNNotEqual(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> np.ndarray:
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray comparison must be a Fuzzarray or Fuzznum.")
 
         def ne_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> bool:
             return self.execute_comparison(
@@ -606,7 +641,10 @@ class QROFNNotEqual(OperationMixin):
                 **kwargs)
 
         vectorized_ne = np.vectorize(ne_op, otypes=[bool])
-        result_data = vectorized_ne(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_ne(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_ne(fuzzarray1.data, other)
         return result_data
 
 
@@ -632,13 +670,12 @@ class QROFNIntersection(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray intersection must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray intersection must be a Fuzzarray or Fuzznum.")
 
         def intersection_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -654,7 +691,10 @@ class QROFNIntersection(OperationMixin):
             return result_fuzznum
 
         vectorized_intersection = np.vectorize(intersection_op, otypes=[object])
-        result_data = vectorized_intersection(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_intersection(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_intersection(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -678,13 +718,12 @@ class QROFNUnion(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray union must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray union must be a Fuzzarray or Fuzznum.")
 
         def union_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -700,7 +739,10 @@ class QROFNUnion(OperationMixin):
             return result_fuzznum
 
         vectorized_union = np.vectorize(union_op, otypes=[object])
-        result_data = vectorized_union(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_union(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_union(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -723,7 +765,7 @@ class QROFNComplement(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional[Any],
+                          other: Optional[Any],
                           tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
@@ -759,13 +801,12 @@ class QROFNImplication(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray implication must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray implication must be a Fuzzarray or Fuzznum.")
 
         def implication_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -781,7 +822,10 @@ class QROFNImplication(OperationMixin):
             return result_fuzznum
 
         vectorized_implication = np.vectorize(implication_op, otypes=[object])
-        result_data = vectorized_implication(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_implication(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_implication(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -810,13 +854,12 @@ class QROFNEquivalence(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray equivalence must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray equivalence must be a Fuzzarray or Fuzznum.")
 
         def equivalence_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -831,7 +874,10 @@ class QROFNEquivalence(OperationMixin):
             return result_fuzznum
 
         vectorized_equivalence = np.vectorize(equivalence_op, otypes=[object])
-        result_data = vectorized_equivalence(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_equivalence(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_equivalence(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -855,13 +901,12 @@ class QROFNDifference(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray difference must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray difference must be a Fuzzarray or Fuzznum.")
 
         def difference_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -876,7 +921,10 @@ class QROFNDifference(OperationMixin):
             return result_fuzznum
 
         vectorized_difference = np.vectorize(difference_op, otypes=[object])
-        result_data = vectorized_difference(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_difference(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_difference(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 
@@ -906,13 +954,12 @@ class QROFNSymmetricDifference(OperationMixin):
 
     def execute_fuzzarray(self,
                           fuzzarray1: 'Fuzzarray',
-                          fuzzarray2: Optional['Fuzzarray'],
-                          tnorm:
-                          OperationTNorm,
+                          other: Optional[Union['Fuzzarray', Fuzznum]],
+                          tnorm: OperationTNorm,
                           **kwargs) -> 'Fuzzarray':
 
-        if not isinstance(fuzzarray2, Fuzzarray):
-            raise TypeError("Second operand for Fuzzarray symmetric difference must be a Fuzzarray.")
+        if not isinstance(other, (Fuzzarray, Fuzznum)):
+            raise TypeError("Second operand for Fuzzarray symmetric difference must be a Fuzzarray or Fuzznum.")
 
         def symdiff_op(fuzznum1: Fuzznum, fuzznum2: Fuzznum) -> Fuzznum:
             result_dict = self.execute_binary(
@@ -928,7 +975,10 @@ class QROFNSymmetricDifference(OperationMixin):
             return result_fuzznum
 
         vectorized_symdiff = np.vectorize(symdiff_op, otypes=[object])
-        result_data = vectorized_symdiff(fuzzarray1.data, fuzzarray2.data)
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_symdiff(fuzzarray1.data, other.data)
+        else:
+            result_data = vectorized_symdiff(fuzzarray1.data, other)
         return Fuzzarray(result_data, mtype='qrofn', copy=False)
 
 

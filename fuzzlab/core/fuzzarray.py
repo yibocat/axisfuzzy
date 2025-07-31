@@ -4,12 +4,14 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-from typing import Optional, Iterator, Union, List, Any
+from typing import Optional, Iterator, Union, List, Any, Dict
 
 import numpy as np
 
 from fuzzlab.config import get_config
 from fuzzlab.core.fuzznums import Fuzznum
+from fuzzlab.core.operations import get_operation_registry, OperationMixin
+from fuzzlab.core.triangular import OperationTNorm
 
 
 class Fuzzarray:
@@ -23,6 +25,10 @@ class Fuzzarray:
         self._data: np.ndarray = self._process_input_data(data, shape, copy)
         self._mtype: str = self._validate_and_set_mtype(mtype)
         self._q: int = self._validate_and_set_q()
+
+        # Operation Registry and Cache
+        self._operation_registry = get_operation_registry()
+        self._op_cache: Dict[str, Optional[OperationMixin]] = {}
 
         self._delegated_methods: set[str] = set()
         self._delegated_attributes: set[str] = set()
@@ -45,7 +51,7 @@ class Fuzzarray:
             prototype_fuzznum = Fuzznum(mtype=self.mtype, qrung=self.q)
         except (ValueError, TypeError):
             return
-        
+
         # 从原型中获取策略和模板绑定的方法和属性
         strategy_methods = object.__getattribute__(prototype_fuzznum, '_bound_strategy_methods').keys()
         strategy_attrs = object.__getattribute__(prototype_fuzznum, '_bound_strategy_attributes')
@@ -178,14 +184,13 @@ class Fuzzarray:
     def data(self) -> np.ndarray:
         """The Fuzznum elements in the array"""
         return self._data
-    
+
     def __getattr__(self, name: str) -> Any:
         """
         Dynamically proxy Fuzznum's methods and properties to achieve vectorized operations.
         """
         if name in self._delegated_attributes:
-            getter = np.vectorize(lambda fuzznum: getattr(fuzznum, name) 
-                                  if isinstance(fuzznum, Fuzznum) else None)
+            getter = np.vectorize(lambda fuzznum: getattr(fuzznum, name) if isinstance(fuzznum, Fuzznum) else None)
             return getter(self._data)
 
         if name in self._delegated_methods:
@@ -194,7 +199,7 @@ class Fuzzarray:
                 # Define the action to be performed on each element
                 op = lambda fuzznum: getattr(fuzznum, name)(*args, **kwargs) \
                     if isinstance(fuzznum, Fuzznum) else None
-                
+
                 # otypes=[object] ensures that the elements of the returned array are 
                 #   Python objects, preventing numpy from attempting to convert them.
                 vectorized_op = np.vectorize(op, otypes=[object])
@@ -205,6 +210,7 @@ class Fuzzarray:
                     if isinstance(first_result, Fuzznum):
                         return Fuzzarray(results, mtype=first_result.mtype, copy=False)
                 return results
+
             return vectorized_method
 
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'.")
@@ -273,103 +279,138 @@ class Fuzzarray:
 
     # ======================== Core implementation of vectorized operations ========================
 
-    # def _execute_vectorized_op(self,
-    #                            op_method_name: str,
-    #                            fuzznum_or_scalar_operand: Optional[Union['Fuzzarray', Fuzznum, float, int]] = None,
-    #                            **kwargs) -> Union['Fuzzarray', np.ndarray]:
-    #     """
-    #     Internal method: The general logic for performing vectorized operations.
-    #
-    #     Args:
-    #         op_method_name: The method name corresponding to the operation in
-    #             the Executor (for example, 'addition', 'power').
-    #         fuzznum_or_scalar_operand: Another operand.
-    #             - For binary operations (e.g., add, mul, gt): Can be Fuzzarray, Fuzznum.
-    #             - For unary operations (e.g., power, times, exp, log): can be float, int.
-    #             - For pure unary operations (e.g., complement): Should be None.
-    #         **kwargs: Additional arguments passed to the Executor method.
-    #
-    #     Returns:
-    #         Union[Fuzzarray, np.ndarray]: Operation result. For comparison operations, returns np.ndarray (bool)
-    #             Other operations return Fuzzarray.
-    #     """
-    #
-    #     executor_method = getattr(self._executor, op_method_name)
-    #
-    #     result_is_bool = op_method_name in ['greater_than', 'less_than', 'equal',
-    #                                         'greater_equal', 'less_equal', 'not_equal']
-    #
-    #     # Determine the result dtype based on whether it's a boolean result
-    #     result_dtype = object if not result_is_bool else bool
-    #
-    #     if fuzznum_or_scalar_operand is None:  # Pure unary op (e.g., complement)
-    #         result_data = np.empty_like(self._data, dtype=result_dtype)
-    #         for index, fuzznum in np.ndenumerate(self._data):
-    #             result_data[index] = executor_method(fuzznum, **kwargs)
-    #
-    #     elif isinstance(fuzznum_or_scalar_operand,
-    #                     (float, int)):  # Unary op with scalar operand (e.g., power, times, exp, log)
-    #         result_data = np.empty_like(self._data, dtype=result_dtype)
-    #         for index, fuzznum in np.ndenumerate(self._data):
-    #             result_data[index] = executor_method(fuzznum, fuzznum_or_scalar_operand, **kwargs)
-    #
-    #     elif isinstance(fuzznum_or_scalar_operand, Fuzznum):  # Binary op with scalar Fuzznum operand
-    #         # Fuzzarray vs single Fuzznum (broadcasting)
-    #         result_data = np.empty_like(self._data, dtype=result_dtype)
-    #         for index, self_fuzznum in np.ndenumerate(self._data):
-    #             result_data[index] = executor_method(self_fuzznum, fuzznum_or_scalar_operand, **kwargs)
-    #
-    #     elif isinstance(fuzznum_or_scalar_operand, Fuzzarray):  # Binary op with Fuzzarray operand
-    #         # Fuzzarray vs Fuzzarray (element-wise with broadcasting)
-    #         other_fuzzarray = fuzznum_or_scalar_operand  # Rename for clarity
-    #
-    #         if self.mtype != other_fuzzarray.mtype:
-    #             raise ValueError(f"mtype mismatch for binary operation: "
-    #                              f"'{self.mtype}' vs '{other_fuzzarray.mtype}'.")
-    #
-    #         try:
-    #             result_shape = np.broadcast_shapes(self.shape, other_fuzzarray.shape)
-    #         except ValueError as e:
-    #             raise ValueError(f"Cannot broadcast shapes {self.shape} and {other_fuzzarray.shape} for operation "
-    #                              f"'{op_method_name}'.") from e
-    #
-    #         self_broadcasted = np.broadcast_to(self._data, result_shape)
-    #         other_broadcasted = np.broadcast_to(other_fuzzarray._data, result_shape)
-    #
-    #         result_data = np.empty(result_shape, dtype=result_dtype)
-    #
-    #         for index, (fuzz1, fuzz2) in np.ndenumerate(self_broadcasted):
-    #             result_data[index] = executor_method(fuzz1, fuzz2, **kwargs)
-    #
-    #     else:
-    #         raise TypeError(f"Unsupported operand type for '{op_method_name}': {type(fuzznum_or_scalar_operand)}.")
-    #
-    #     # Wrap result_data in Fuzzarray if it's not a boolean array
-    #     final_result = Fuzzarray(result_data, mtype=self.mtype, copy=False) if not result_is_bool else result_data
-    #
-    #     return final_result
+    def _execute_vectorized_op(self,
+                               op_name: str,
+                               other: Optional[Union['Fuzzarray', Fuzznum, np.ndarray, float, int]] = None,
+                               **kwargs) -> Union['Fuzzarray', np.ndarray]:
+        """
+        General logic for executing vectorized operations.
+
+        Find and invoke the corresponding operation implementation through OperationRegistry.
+        """
+        # Attempt to get the computing instance from cache
+        operation = self._op_cache.get(op_name)
+        if operation is None:
+            # If not in the cache, retrieve from the registry and cache it.
+            operation = self._operation_registry.get_operation(op_name, self.mtype)
+            if operation is None:
+                raise NotImplementedError(
+                    f"Operation '{op_name}' is not implemented for Fuzzarray of mtype '{self.mtype}'."
+                )
+            self._op_cache[op_name] = operation
+
+        tnorm = kwargs.pop('tnorm', OperationTNorm())
+
+        # Check whether OperationMixin implements an efficient Fuzzarray version.
+        if hasattr(operation, 'execute_fuzzarray'):
+            return operation.execute_fuzzarray(self, other, tnorm, **kwargs)
+        else:
+            # If not, use a generic fallback scheme based on np.vectorize
+            return self._fallback_vectorized_op(operation, other, tnorm, **kwargs)
+
+    def _fallback_vectorized_op(self,
+                                operation: OperationMixin,
+                                other: Optional[Union['Fuzzarray', Fuzznum, np.ndarray, float, int]],
+                                tnorm: OperationTNorm,
+                                **kwargs) -> Union['Fuzzarray', np.ndarray]:
+        """
+        Fallback vectorized implementation when OperationMixin does not implement execute_fuzzarray.
+        """
+        op_name = operation.get_operation_name()
+
+        # Define operation function
+        # op_func = None
+        if op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
+            op_func = lambda f1, f2: operation.execute_comparison(
+                f1.get_strategy_instance(), f2.get_strategy_instance(), tnorm, **kwargs)
+            vectorized_op = np.vectorize(op_func, otypes=[bool])
+
+        elif isinstance(other, (Fuzzarray, Fuzznum)):
+            op_func = lambda f1, f2: operation.execute_binary(
+                f1.get_strategy_instance(), f2.get_strategy_instance(), tnorm, **kwargs)
+            vectorized_op = np.vectorize(op_func, otypes=[object])
+
+        elif isinstance(other, (int, float, np.ndarray)):
+            op_func = lambda f1, op: operation.execute_unary_with_operand(
+                f1.get_strategy_instance(), op, tnorm, **kwargs)
+            vectorized_op = np.vectorize(op_func, otypes=[object])
+
+        elif other is None:  # Pure unary operations
+            op_func = lambda f1: operation.execute_unary(f1.get_strategy_instance(), tnorm, **kwargs)
+            vectorized_op = np.vectorize(op_func, otypes=[object])
+        else:
+            raise TypeError(f"Unsupported operand type for fallback operation '{op_name}': {type(other)}")
+
+        # Prepare operand
+        if isinstance(other, Fuzzarray):
+            result_data = vectorized_op(self._data, other._data)
+        elif isinstance(other, Fuzznum):
+            # Broadcast single Fuzznum
+            other_arr = np.full(self.shape, other, dtype=object)
+            result_data = vectorized_op(self._data, other_arr)
+        else:  # int, float, np.ndarray, or None
+            result_data = vectorized_op(self._data, other)
+
+        # Packaging result
+        if isinstance(result_data.flat[0], dict):  # If the returned value is a dictionary, convert it to Fuzznum.
+            converter = np.vectorize(lambda d: Fuzznum(mtype=self.mtype, qrung=self.q).from_dict(d), otypes=[object])
+            result_data = converter(result_data)
+            return Fuzzarray(result_data, mtype=self.mtype, copy=False)
+        elif isinstance(result_data.flat[0], bool):
+            return result_data
+        else:  # Already a Fuzznum object
+            return Fuzzarray(result_data, mtype=self.mtype, copy=False)
 
     # ======================== Specific calculation method (operator overloading) ========================
 
-    # def __add__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
-    #     """Fuzzarray 和 Fuzzarray/Fuzznum 的加法运算。"""
-    #     return self._execute_vectorized_op('addition', other)
-    #
-    # def __sub__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
-    #     """Fuzzarray 和 Fuzzarray/Fuzznum 的减法运算。"""
-    #     return self._execute_vectorized_op('subtract', other)
-    #
-    # def __mul__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
-    #     """Fuzzarray 和 Fuzzarray/Fuzznum 的乘法运算。"""
-    #     return self._execute_vectorized_op('multiply', other)
-    #
-    # def __truediv__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
-    #     """Fuzzarray 和 Fuzzarray/Fuzznum 的除法运算。"""
-    #     return self._execute_vectorized_op('divide', other)
-    #
-    # def __pow__(self, operand: Union[int, float]) -> 'Fuzzarray':
-    #     """Fuzzarray 的幂运算。"""
-    #     return self._execute_vectorized_op('power', operand)
+    def __add__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
+        return self._execute_vectorized_op('add', other)
+
+    def __sub__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
+        return self._execute_vectorized_op('sub', other)
+
+    def __mul__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
+        return self._execute_vectorized_op('mul', other)
+
+    def __truediv__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
+        return self._execute_vectorized_op('div', other)
+
+    def __pow__(self, operand: Union[int, float, np.ndarray]) -> 'Fuzzarray':
+        return self._execute_vectorized_op('pow', operand)
+
+    # ======================== 比较运算 (返回 np.ndarray[bool]) ========================
+
+    def __gt__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
+        return self._execute_vectorized_op('gt', other)
+
+    def __lt__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
+        return self._execute_vectorized_op('lt', other)
+
+    def __ge__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
+        return self._execute_vectorized_op('ge', other)
+
+    def __le__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
+        return self._execute_vectorized_op('le', other)
+
+    def __eq__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
+        return self._execute_vectorized_op('eq', other)
+
+    def __ne__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
+        return self._execute_vectorized_op('ne', other)
+
+    # ======================== 命名运算方法 ========================
+
+    def times(self, operand: Union[int, float, np.ndarray], **kwargs) -> 'Fuzzarray':
+        return self._execute_vectorized_op('tim', operand, **kwargs)
+
+    def intersection(self, other: 'Fuzzarray', **kwargs) -> 'Fuzzarray':
+        return self._execute_vectorized_op('intersection', other, **kwargs)
+
+    def union(self, other: 'Fuzzarray', **kwargs) -> 'Fuzzarray':
+        return self._execute_vectorized_op('union', other, **kwargs)
+
+    def complement(self, **kwargs) -> 'Fuzzarray':
+        return self._execute_vectorized_op('complement', None, **kwargs)
 
     def tolist(self) -> List[Any]:
         return self._data.tolist()

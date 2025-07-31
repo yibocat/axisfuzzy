@@ -122,7 +122,7 @@ class FuzznumRegistry:
         # 它返回一个列表，其中每个元素都是一个 (策略类, 模板类) 的元组。
         # 这些类通常是作为嵌套类（内部类）定义的，以保持封装性，并且它们直接继承自 FuzznumStrategy 和 FuzznumTemplate。
 
-        from fuzzlab.modules.qrofn import QROFNStrategy, QROFNTemplate
+        from fuzzlab.modules.qrofs.qrofn import QROFNStrategy, QROFNTemplate
 
         return [
             (QROFNStrategy, QROFNTemplate),
