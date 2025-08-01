@@ -79,33 +79,13 @@ class Config:
         }
     )
 
-    TEMPLATE_CACHE_SIZE: int = field(
-        default=256,
-        metadata={
-            'category': 'performance',
-            'description': 'Fuzznum Template 运算缓存的最大条目数，控制内存使用',
-            'validator': lambda x: isinstance(x, int) and x >= 0,
-            'error_msg': "必须是非负整数。。"
-        }
-    )
-
-    EXECUTOR_CACHE_SIZE: int = field(
+    CACHE_SIZE: int = field(
         default=256,
         metadata={
             'category': 'performance',
             'description': '运算缓存的最大条目数，控制内存使用',
             'validator': lambda x: isinstance(x, int) and x >= 0,
             'error_msg': "必须是非负整数。。"
-        }
-    )
-
-    ENABLE_EXECUTOR_CACHE: bool = field(
-        default=True,
-        metadata={
-            'category': 'performance',
-            'description': '是否启用执行器缓存，影响执行器计算和创建实例的缓存行为',
-            'validator': lambda x: isinstance(x, bool),
-            'error_msg': "必须是布尔值 (True/False)。"
         }
     )
 

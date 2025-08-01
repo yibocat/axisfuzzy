@@ -28,7 +28,7 @@ class Fuzzarray:
 
         # Operation Registry and Cache
         self._operation_registry = get_operation_registry()
-        self._op_cache: Dict[str, Optional[OperationMixin]] = {}
+        # self._op_cache: Dict[str, Optional[OperationMixin]] = {}
 
         self._delegated_methods: set[str] = set()
         self._delegated_attributes: set[str] = set()
@@ -288,24 +288,37 @@ class Fuzzarray:
 
         Find and invoke the corresponding operation implementation through OperationRegistry.
         """
-        # Attempt to get the computing instance from cache
-        operation = self._op_cache.get(op_name)
-        if operation is None:
-            # If not in the cache, retrieve from the registry and cache it.
-            operation = self._operation_registry.get_operation(op_name, self.mtype)
-            if operation is None:
-                raise NotImplementedError(
-                    f"Operation '{op_name}' is not implemented for Fuzzarray of mtype '{self.mtype}'."
-                )
-            self._op_cache[op_name] = operation
+        if self.size == 0:
+            return self.copy()
 
-        tnorm = kwargs.pop('tnorm', OperationTNorm())
+        prototype_fuzznum = self.flatten()[0]
+        strategy = prototype_fuzznum.get_strategy_instance()
+        operation = strategy.get_operation_instance(op_name)
+
+        if operation is None:
+            raise NotImplementedError(
+                f"Operation '{op_name}' is not supported for mtype '{self.mtype}'."
+            )
+
+        tnorm = OperationTNorm(
+            norm_type=kwargs.get('tnorm_type'),
+            q=self._q,
+            **kwargs.get('tnorm_params', {}))
+
+        # --- Dispatcher Logic ---
+        # Check if the 'execute_fuzzarray' method on the concrete operation class
+        # is different from the abstract base class's placeholder.
+        has_specialized_implementation = (
+                hasattr(operation, 'execute_fuzzarray') and
+                getattr(operation, 'execute_fuzzarray').__func__ is not OperationMixin.execute_fuzzarray
+        )
 
         # Check whether OperationMixin implements an efficient Fuzzarray version.
-        if hasattr(operation, 'execute_fuzzarray'):
+        if has_specialized_implementation:
+            # Path 1: Specialized high-performance vectorization (no cache)
             return operation.execute_fuzzarray(self, other, tnorm, **kwargs)
         else:
-            # If not, use a generic fallback scheme based on np.vectorize
+            # Path 2: Default element-wise operation (with cache)
             return self._fallback_vectorized_op(operation, other, tnorm, **kwargs)
 
     def _fallback_vectorized_op(self,

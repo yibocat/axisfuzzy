@@ -5,11 +5,13 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 import collections
+import json
 import weakref
 from abc import ABC
 from typing import Optional, Set, Dict, Callable, Any, Union, List
 
 from fuzzlab.config import get_config
+from fuzzlab.core.lru_cache import LruCache
 from fuzzlab.core.operations import get_operation_registry, OperationMixin
 from fuzzlab.core.triangular import OperationTNorm
 
@@ -40,7 +42,7 @@ class FuzznumStrategy(ABC):
 
         # 初始化运算缓存和注册表
         object.__setattr__(self, '_operation_registry', get_operation_registry())
-        object.__setattr__(self, '_op_cache', {})   # Cache for operations
+        object.__setattr__(self, '_op_cache', LruCache(maxsize=get_config().CACHE_SIZE))
 
         # 确保每个实例有独立的验证器和回调
         if (not hasattr(self, '_attribute_validators')
@@ -94,6 +96,31 @@ class FuzznumStrategy(ABC):
         #         '_declared_attributes',
         #         set())
         # )
+
+    def __getattr__(self, name: str) -> Any:
+        """
+        Dynamically obtain the calculation method.
+
+        If the accessed attribute is a predefined operation name,
+        return a function that calls `_execute_operation`.
+        """
+        operation_names = {
+            'add', 'sub', 'mul', 'div', 'pow', 'tim', 'exp', 'log',
+            'gt', 'lt', 'ge', 'le', 'eq', 'ne',
+            'intersection', 'union', 'complement', 'implication', 'equivalence',
+            'difference', 'symdiff'
+        }
+
+        if name in operation_names:
+            # Return a lambda function that passes the operation name to _execute_operation
+            return lambda *args, **kwargs: self._execute_operation(name, *args, **kwargs)
+
+        # If it is not an arithmetic method, fall back to the default __getattr__ behavior.
+        # Note: object.__getattribute__ needs to be called here to avoid infinite recursion
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def __setattr__(self, name: str, value: Any) -> None:
         """属性设置方法"""
@@ -162,6 +189,41 @@ class FuzznumStrategy(ABC):
                 raise RuntimeError(f"Callback for attribute '{name}' failed, "
                                    f"change has been rolled back.") from e
 
+    def _generate_cache_key(self,
+                            op_name: str,
+                            args: tuple,
+                            **kwargs) -> Optional[str]:
+        """
+        Generates a unique cache key for an operation.
+
+        The key is based on the operation name, operands, and t-norm parameters.
+        """
+        def get_state_dict(obj: 'FuzznumStrategy'):
+            attrs = obj.get_declared_attributes()
+            state = {attr: getattr(obj, attr, None) for attr in attrs}
+            state['q'] = obj.q
+            return state
+
+        try:
+            import hashlib
+            key_parts = [op_name, json.dumps(get_state_dict(self), sort_keys=True)]
+
+            for arg in args:
+                if isinstance(arg, FuzznumStrategy):
+                    key_parts.append(json.dumps(get_state_dict(arg), sort_keys=True))
+                else:
+                    key_parts.append(str(arg))
+
+            tnorm = kwargs.get('tnorm')
+            if isinstance(tnorm, OperationTNorm):
+                key_parts.append(json.dumps(tnorm.get_info(), sort_keys=True))
+
+            key_str = '_'.join(key_parts)
+            return hashlib.md5(key_str.encode()).hexdigest()
+
+        except (TypeError, AttributeError):
+            return None
+
     def add_attribute_validator(self,
                                 attr_name: str,
                                 validator: Callable[[Any], bool]) -> None:
@@ -198,6 +260,152 @@ class FuzznumStrategy(ABC):
         """
         self._change_callbacks[attr_name] = callback
 
+    def _validate(self) -> None:
+        """
+        子类 可重写的验证方法
+
+        此方法应包含特定于子类的验证逻辑。默认实现对 `mtype` 进行基本验证。
+
+        Returns:
+            None
+
+        Notes:
+            - 定制化：它允许每个具体的 FuzznumStrategy 子类定义其独特的、复杂的验证规则。这是实现策略模式中“不同策略有不同行为”的重要体现。
+            - 核心约束：它通常用于检查那些构成模糊数定义的核心数学或逻辑约束，这些约束可能涉及多个属性的联合判断。
+            - 快速失败：如果发现严重违反核心约束的情况，它会立即抛出异常，而不是仅仅收集错误信息。这表明对象当前的状态是不可接受的。
+            - 继承链：子类在重写此方法时，通常会先调用 super()._validate() 来确保父类的基本验证也得到执行，体现了继承的层次性。
+
+        Raises:
+            ValueError: 如果 `mtype` 不符合预期。
+        """
+        # 这是一个受保护的方法（以下划线开头），意味着它主要供类内部使用或由子类重写。
+        # 它的核心目的是提供一个“钩子”（hook），让具体的策略子类能够在此处实现
+        # 它们特有的、通常是多属性关联的、或涉及复杂计算的、或在设置时无法立即判断的验证逻辑。
+        # 例如，检查模糊数成员度和非成员度之和的约束。
+
+        # 在 `ExampleStrategy` 等子类中，这个方法会被重写，
+        # 并且通常会先调用 `super()._validate()` 来执行父类的默认验证，
+        # 然后再添加子类特有的验证逻辑。
+        if hasattr(self, 'mtype') and (not isinstance(self.mtype, str) or not self.mtype.strip()):
+            raise ValueError(f"mtype must be a non-empty string, got '{self.mtype}'")
+
+    def _execute_operation(self,
+                           op_name: str,
+                           *args,
+                           **kwargs) -> Union[Dict[str, Any], bool]:
+        """
+        General Computing Execution Method
+
+        Find and invoke the corresponding operation implementation through the registry.
+        """
+        cache_key = self._generate_cache_key(op_name, args, **kwargs)
+
+        # If a valid cache key can be generated and the result is in the cache, return it.
+        if cache_key:
+            cached_result = self._op_cache.get(cache_key)
+            if cached_result is not None:
+                return cached_result
+
+        operation = self.get_operation_instance(op_name)
+        if operation is None:
+            raise NotImplementedError(
+                f"Operation '{op_name}' is not supported for mtype '{self.mtype}'."
+                f" Available operations for '{self.mtype}': {self.get_available_operations()}"
+            )
+
+        # Determine the type of execution based on the operation's signature
+        # This part of logic seems to be handled by __getattr__ delegating to
+        # a callable that already knows what to do. Let's assume the call is correct.
+        # The key is to get the result and cache it.
+
+        # The actual execution is delegated via __getattr__, which calls this.
+        # We need to correctly dispatch to the operation method.
+        tnorm = kwargs.get('tnorm', OperationTNorm(q=self.q))
+
+        # This logic needs to be robust to handle different operation types
+        # (binary, unary, comparison etc.)
+        # For simplicity, let's assume the correct method is called on `operation`.
+        # A more robust implementation might inspect `operation` methods.
+
+        if op_name in ['add', 'sub', 'mul', 'div',
+                       'intersection', 'union', 'implication',
+                       'equivalence', 'difference', 'symdiff']:
+            # Binary operations: strategy1, strategy2, tnorm
+            if len(args) != 1 or not isinstance(args[0], FuzznumStrategy):
+                raise TypeError(f"Binary operation '{op_name}' requires one FuzznumStrategy operand.")
+            result = operation.execute_binary(self, args[0], tnorm, **kwargs)
+
+        elif op_name in ['pow', 'tim', 'exp', 'log']:
+            # Unary operations with operands: strategy, operand, tnorm
+            if len(args) != 1 or not isinstance(args[0], (int, float)):
+                raise TypeError(f"Unary operation '{op_name}' requires one int/float operand.")
+            result = operation.execute_unary_with_operand(self, args[0], tnorm, **kwargs)
+
+        elif op_name in ['complement']:
+            # Pure unary operations: strategy, tnorm
+            if len(args) != 0:
+                raise TypeError(f"Pure unary operation '{op_name}' takes no additional operands.")
+            result = operation.execute_unary(self, tnorm, **kwargs)
+
+        elif op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
+            # Comparison operations: strategy1, strategy2, tnorm
+            if len(args) != 1 or not isinstance(args[0], FuzznumStrategy):
+                raise TypeError(f"Comparison operation '{op_name}' requires one FuzznumStrategy operand.")
+            result = operation.execute_comparison(self, args[0], tnorm, **kwargs)
+
+        else:
+            raise ValueError(f"Unknown operation type: {op_name}")
+
+        if cache_key:
+            self._op_cache.put(cache_key, result)
+
+        return result
+
+        # # Attempt to obtain computing instance from cache
+        # operation: Optional[OperationMixin] = self._op_cache.get(op_name)
+        # if operation is None:
+        #     # If not in the cache, retrieve from the registry and cache it.
+        #     operation = self._operation_registry.get_operation(op_name, self.mtype)
+        #     if operation is None:
+        #         raise NotImplementedError(
+        #             f"Operation '{op_name}' is not implemented for mtype '{self.mtype}'."
+        #             f" Available operations for '{self.mtype}': {self.get_available_operations()}"
+        #         )
+        #     self._op_cache[op_name] = operation
+        #
+        # # Distribute to different execution methods of OperationMixin
+        # #   based on the number and type of parameters
+        # tnorm = kwargs.pop('tnorm', OperationTNorm())   # Default T-Norm
+        #
+        # if op_name in ['add', 'sub', 'mul', 'div',
+        #                'intersection', 'union', 'implication',
+        #                'equivalence', 'difference', 'symdiff']:
+        #     # Binary operations: strategy1, strategy2, tnorm
+        #     if len(args) != 1 or not isinstance(args[0], FuzznumStrategy):
+        #         raise TypeError(f"Binary operation '{op_name}' requires one FuzznumStrategy operand.")
+        #     return operation.execute_binary(self, args[0], tnorm, **kwargs)
+        #
+        # elif op_name in ['pow', 'tim', 'exp', 'log']:
+        #     # Unary operations with operands: strategy, operand, tnorm
+        #     if len(args) != 1 or not isinstance(args[0], (int, float)):
+        #         raise TypeError(f"Unary operation '{op_name}' requires one int/float operand.")
+        #     return operation.execute_unary_with_operand(self, args[0], tnorm, **kwargs)
+        #
+        # elif op_name in ['complement']:
+        #     # Pure unary operations: strategy, tnorm
+        #     if len(args) != 0:
+        #         raise TypeError(f"Pure unary operation '{op_name}' takes no additional operands.")
+        #     return operation.execute_unary(self, tnorm, **kwargs)
+        #
+        # elif op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
+        #     # Comparison operations: strategy1, strategy2, tnorm
+        #     if len(args) != 1 or not isinstance(args[0], FuzznumStrategy):
+        #         raise TypeError(f"Comparison operation '{op_name}' requires one FuzznumStrategy operand.")
+        #     return operation.execute_comparison(self, args[0], tnorm, **kwargs)
+        #
+        # else:
+        #     raise ValueError(f"Unknown operation type: {op_name}")
+
     def get_declared_attributes(self) -> Set[str]:
         """
         获取声明的属性列表
@@ -209,6 +417,25 @@ class FuzznumStrategy(ABC):
             - 提供内省能力：它的核心意义是允许外部代码查询一个 FuzznumStrategy 实例（或其子类）有哪些被明确声明为数据属性的成员。
         """
         return self._declared_attributes.copy()
+
+    def get_operation_instance(self, op_name: str) -> Optional[OperationMixin]:
+        """
+        Get operation instance with `op_name`. Used by Fuzzarray.
+
+        Args:
+            op_name: Operation name
+
+        Returns:
+            (OperationMixin)Operation instance, or None
+        """
+        operation = self._operation_registry.get_operation(op_name, self.mtype)
+        return operation
+
+    def get_available_operations(self) -> List[str]:
+        """
+        Get the names of all operations supported by the current fuzzy number type.
+        """
+        return self._operation_registry.get_available_operations(self.mtype)
 
     def validate_all_attributes(self) -> Dict[str, Any]:
         """
@@ -268,120 +495,6 @@ class FuzznumStrategy(ABC):
             # 将整体验证状态标记为 `False`。
 
         return validation_result
-
-    def _validate(self) -> None:
-        """
-        子类 可重写的验证方法
-
-        此方法应包含特定于子类的验证逻辑。默认实现对 `mtype` 进行基本验证。
-
-        Returns:
-            None
-
-        Notes:
-            - 定制化：它允许每个具体的 FuzznumStrategy 子类定义其独特的、复杂的验证规则。这是实现策略模式中“不同策略有不同行为”的重要体现。
-            - 核心约束：它通常用于检查那些构成模糊数定义的核心数学或逻辑约束，这些约束可能涉及多个属性的联合判断。
-            - 快速失败：如果发现严重违反核心约束的情况，它会立即抛出异常，而不是仅仅收集错误信息。这表明对象当前的状态是不可接受的。
-            - 继承链：子类在重写此方法时，通常会先调用 super()._validate() 来确保父类的基本验证也得到执行，体现了继承的层次性。
-
-        Raises:
-            ValueError: 如果 `mtype` 不符合预期。
-        """
-        # 这是一个受保护的方法（以下划线开头），意味着它主要供类内部使用或由子类重写。
-        # 它的核心目的是提供一个“钩子”（hook），让具体的策略子类能够在此处实现
-        # 它们特有的、通常是多属性关联的、或涉及复杂计算的、或在设置时无法立即判断的验证逻辑。
-        # 例如，检查模糊数成员度和非成员度之和的约束。
-
-        # 在 `ExampleStrategy` 等子类中，这个方法会被重写，
-        # 并且通常会先调用 `super()._validate()` 来执行父类的默认验证，
-        # 然后再添加子类特有的验证逻辑。
-        if hasattr(self, 'mtype') and (not isinstance(self.mtype, str) or not self.mtype.strip()):
-            raise ValueError(f"mtype must be a non-empty string, got '{self.mtype}'")
-
-    def _execute_operation(self,
-                           op_name: str,
-                           *args,
-                           **kwargs) -> Union[Dict[str, Any], bool]:
-        """
-        General Computing Execution Method
-
-        Find and invoke the corresponding operation implementation through the registry.
-        """
-        # Attempt to obtain computing instance from cache
-        operation: Optional[OperationMixin] = self._op_cache.get(op_name)
-        if operation is None:
-            # If not in the cache, retrieve from the registry and cache it.
-            operation = self._operation_registry.get_operation(op_name, self.mtype)
-            if operation is None:
-                raise NotImplementedError(
-                    f"Operation '{op_name}' is not implemented for mtype '{self.mtype}'."
-                    f" Available operations for '{self.mtype}': {self.get_available_operations()}"
-                )
-            self._op_cache[op_name] = operation
-
-        # Distribute to different execution methods of OperationMixin
-        #   based on the number and type of parameters
-        tnorm = kwargs.pop('tnorm', OperationTNorm())   # Default T-Norm
-
-        if op_name in ['add', 'sub', 'mul', 'div',
-                       'intersection', 'union', 'implication',
-                       'equivalence', 'difference', 'symdiff']:
-            # Binary operations: strategy1, strategy2, tnorm
-            if len(args) != 1 or not isinstance(args[0], FuzznumStrategy):
-                raise TypeError(f"Binary operation '{op_name}' requires one FuzznumStrategy operand.")
-            return operation.execute_binary(self, args[0], tnorm, **kwargs)
-
-        elif op_name in ['pow', 'tim', 'exp', 'log']:
-            # Unary operations with operands: strategy, operand, tnorm
-            if len(args) != 1 or not isinstance(args[0], (int, float)):
-                raise TypeError(f"Unary operation '{op_name}' requires one int/float operand.")
-            return operation.execute_unary_with_operand(self, args[0], tnorm, **kwargs)
-
-        elif op_name in ['complement']:
-            # Pure unary operations: strategy, tnorm
-            if len(args) != 0:
-                raise TypeError(f"Pure unary operation '{op_name}' takes no additional operands.")
-            return operation.execute_unary(self, tnorm, **kwargs)
-
-        elif op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
-            # Comparison operations: strategy1, strategy2, tnorm
-            if len(args) != 1 or not isinstance(args[0], FuzznumStrategy):
-                raise TypeError(f"Comparison operation '{op_name}' requires one FuzznumStrategy operand.")
-            return operation.execute_comparison(self, args[0], tnorm, **kwargs)
-
-        else:
-            raise ValueError(f"Unknown operation type: {op_name}")
-
-    def __getattr__(self, name: str) -> Any:
-        """
-        Dynamically obtain the calculation method.
-
-        If the accessed attribute is a predefined operation name,
-        return a function that calls `_execute_operation`.
-        """
-        operation_names = {
-            'add', 'sub', 'mul', 'div', 'pow', 'tim', 'exp', 'log',
-            'gt', 'lt', 'ge', 'le', 'eq', 'ne',
-            'intersection', 'union', 'complement', 'implication', 'equivalence',
-            'difference', 'symdiff'
-        }
-
-        if name in operation_names:
-            # Return a lambda function that passes the operation name to _execute_operation
-            return lambda *args, **kwargs: self._execute_operation(name, *args, **kwargs)
-
-        # If it is not an arithmetic method, fall back to the default __getattr__ behavior.
-        # Note: object.__getattribute__ needs to be called here to avoid infinite recursion
-        try:
-            return object.__getattribute__(self, name)
-        except AttributeError:
-            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
-
-    def get_available_operations(self) -> List[str]:
-        """
-        Get the names of all operations supported by the current fuzzy number type.
-        """
-        return self._operation_registry.get_available_operations(self.mtype)
 
 
 class FuzznumTemplate(ABC):
