@@ -624,7 +624,7 @@ class Fuzznum:
         """
         instance = Fuzznum(self.mtype, self.q)
 
-        # 批量设置属性
+        # Batch Set Properties
         # If `kwargs` is not empty, iterate through each key-value pair and attempt to set
         #   it on the newly created instance. This leverages Fuzznum's `__setattr__`
         #   mechanism, which is responsible for delegating the attribute to the underlying
@@ -1046,3 +1046,24 @@ class Fuzznum:
                 pass
 
         return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
+
+    def __add__(self, other):
+        result_dict = self.get_strategy_instance().add(other.get_strategy_instance())
+        return self.create(**result_dict)
+
+    def __sub__(self, other):
+        result_dict = self.get_strategy_instance().subtract(other.get_strategy_instance())
+        return self.create(**result_dict)
+
+    def __mul__(self, other):
+        result_dict = self.get_strategy_instance().multiply(other.get_strategy_instance())
+        return self.create(**result_dict)
+
+    def __truediv__(self, other):
+        result_dict = self.get_strategy_instance().divide(other.get_strategy_instance())
+        return self.create(**result_dict)
+
+    # TODO：这里有报错，比价符号对不上
+    def __gt__(self, other):
+        result_dict = self.get_strategy_instance().greater(other.get_strategy_instance())
+        return result_dict['value']

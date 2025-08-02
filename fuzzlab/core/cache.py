@@ -5,14 +5,16 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 from collections import OrderedDict
-from typing import Any
+from typing import Any, Optional
+
+from fuzzlab.config import get_config
 
 
 class LruCache:
 
-    def __init__(self, maxsize: int = 256):
+    def __init__(self, maxsize: Optional[int] = None):
         self._cache = OrderedDict()
-        self.maxsize = maxsize
+        self.maxsize = get_config().CACHE_SIZE if maxsize is None else maxsize
 
     def get(self, key: str) -> Any:
         """Get an item from the cache, mark it as recently used."""

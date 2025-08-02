@@ -10,8 +10,7 @@ import numpy as np
 
 from fuzzlab.config import get_config
 from fuzzlab.core.fuzznums import Fuzznum
-from fuzzlab.core.operations import get_operation_registry, OperationMixin
-from fuzzlab.core.triangular import OperationTNorm
+from fuzzlab.core.ops import get_operation_registry, OperationMixin
 
 
 class Fuzzarray:
@@ -281,8 +280,11 @@ class Fuzzarray:
 
     def _execute_vectorized_op(self,
                                op_name: str,
-                               other: Optional[Union['Fuzzarray', Fuzznum, np.ndarray, float, int]] = None,
-                               **kwargs) -> Union['Fuzzarray', np.ndarray]:
+                               other: Optional[
+                                   Union[
+                                       'Fuzzarray', Fuzznum, np.ndarray,
+                                       float, int
+                                   ]] = None) -> Union['Fuzzarray', np.ndarray]:
         """
         General logic for executing vectorized operations.
 
@@ -300,11 +302,6 @@ class Fuzzarray:
                 f"Operation '{op_name}' is not supported for mtype '{self.mtype}'."
             )
 
-        tnorm = OperationTNorm(
-            norm_type=kwargs.get('tnorm_type'),
-            q=self._q,
-            **kwargs.get('tnorm_params', {}))
-
         # --- Dispatcher Logic ---
         # Check if the 'execute_fuzzarray' method on the concrete operation class
         # is different from the abstract base class's placeholder.
@@ -316,16 +313,20 @@ class Fuzzarray:
         # Check whether OperationMixin implements an efficient Fuzzarray version.
         if has_specialized_implementation:
             # Path 1: Specialized high-performance vectorization (no cache)
-            return operation.execute_fuzzarray(self, other, tnorm, **kwargs)
+            return operation.execute_fuzzarray_op(self, other)
         else:
             # Path 2: Default element-wise operation (with cache)
-            return self._fallback_vectorized_op(operation, other, tnorm, **kwargs)
+            return self._fallback_vectorized_op(operation, other)
 
     def _fallback_vectorized_op(self,
                                 operation: OperationMixin,
-                                other: Optional[Union['Fuzzarray', Fuzznum, np.ndarray, float, int]],
-                                tnorm: OperationTNorm,
-                                **kwargs) -> Union['Fuzzarray', np.ndarray]:
+                                other: Optional[
+                                    Union[
+                                        'Fuzzarray',
+                                        Fuzznum,
+                                        np.ndarray,
+                                        float, int
+                                    ]]) -> Union['Fuzzarray', np.ndarray]:
         """
         Fallback vectorized implementation when OperationMixin does not implement execute_fuzzarray.
         """
@@ -334,22 +335,22 @@ class Fuzzarray:
         # Define operation function
         # op_func = None
         if op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
-            op_func = lambda f1, f2: operation.execute_comparison(
-                f1.get_strategy_instance(), f2.get_strategy_instance(), tnorm, **kwargs)
+            op_func = lambda f1, f2: operation.execute_comparison_op(
+                f1.get_strategy_instance(), f2.get_strategy_instance())
             vectorized_op = np.vectorize(op_func, otypes=[bool])
 
         elif isinstance(other, (Fuzzarray, Fuzznum)):
-            op_func = lambda f1, f2: operation.execute_binary(
-                f1.get_strategy_instance(), f2.get_strategy_instance(), tnorm, **kwargs)
+            op_func = lambda f1, f2: operation.execute_binary_op(
+                f1.get_strategy_instance(), f2.get_strategy_instance())
             vectorized_op = np.vectorize(op_func, otypes=[object])
 
         elif isinstance(other, (int, float, np.ndarray)):
-            op_func = lambda f1, op: operation.execute_unary_with_operand(
-                f1.get_strategy_instance(), op, tnorm, **kwargs)
+            op_func = lambda f1, op: operation.execute_unary_op_operand(
+                f1.get_strategy_instance(), op)
             vectorized_op = np.vectorize(op_func, otypes=[object])
 
         elif other is None:  # Pure unary operations
-            op_func = lambda f1: operation.execute_unary(f1.get_strategy_instance(), tnorm, **kwargs)
+            op_func = lambda f1: operation.execute_unary_op_pure(f1.get_strategy_instance())
             vectorized_op = np.vectorize(op_func, otypes=[object])
         else:
             raise TypeError(f"Unsupported operand type for fallback operation '{op_name}': {type(other)}")
@@ -365,12 +366,20 @@ class Fuzzarray:
             result_data = vectorized_op(self._data, other)
 
         # Packaging result
-        if isinstance(result_data.flat[0], dict):  # If the returned value is a dictionary, convert it to Fuzznum.
-            converter = np.vectorize(lambda d: Fuzznum(mtype=self.mtype, qrung=self.q).from_dict(d), otypes=[object])
-            result_data = converter(result_data)
-            return Fuzzarray(result_data, mtype=self.mtype, copy=False)
-        elif isinstance(result_data.flat[0], bool):
+        if isinstance(result_data.flat[0].get('value'), bool):
+            convert_func = np.vectorize(
+                lambda d: d['value'],
+                otypes=[np.bool]
+            )
+            result_data = convert_func(result_data)
             return result_data
+
+        if isinstance(result_data.flat[0], dict):  # If the returned value is a dictionary, convert it to Fuzznum.
+            convert_func = np.vectorize(
+                lambda d: Fuzznum(mtype=self.mtype, qrung=self.q).create(**d),
+                otypes=[object])
+            result_data = convert_func(result_data)
+            return Fuzzarray(result_data, mtype=self.mtype, copy=False)
         else:  # Already a Fuzznum object
             return Fuzzarray(result_data, mtype=self.mtype, copy=False)
 

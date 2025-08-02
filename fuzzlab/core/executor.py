@@ -1220,7 +1220,7 @@
 #         """
 #         # 委托给内部的 _execute_binary_op 方法，指定运算类型为 'ne'。
 #         return self._execute_binary_op('ne', fuzznum_1, fuzznum_2, **params)
-#
+# 
 #     # ----------------------------- 逻辑运算接口 -----------------------------
 #
 #     def intersection(self, fuzznum_1: Fuzznum, fuzznum_2: Fuzznum, **params: Any) -> Union[Fuzznum, Dict[str, Any]]:
