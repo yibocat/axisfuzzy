@@ -55,6 +55,8 @@ from typing import Optional, Callable
 import numpy as np
 from matplotlib import pyplot as plt
 
+from fuzzlab.config import get_config
+
 
 class OperationTNorm:
     """
@@ -130,8 +132,8 @@ class OperationTNorm:
         - Frank 需要 s > 0 且 s != 1。
         - Schweizer-Sklar 需要 p != 0。
         - Dombi 和 Aczel-Alsina 需要 p > 0。
-        - 浮点精度: 内部使用 self._epsilon (默认为 1e-12) 来处理浮点数比较，以避免精度问题。
-        - 边界值处理: 许多 t-范数和生成元函数在输入接近 0 或 1 时可能涉及 log(0) 或除以 0 的情况。代码中已尽可能通过 self._epsilon 和条件判断来处理这些边界情况，以避免运行时错误和 NaN 值。
+        - 浮点精度: 内部使用 get_config().DEFAULT_EPSILON (默认为 1e-12) 来处理浮点数比较，以避免精度问题。
+        - 边界值处理: 许多 t-范数和生成元函数在输入接近 0 或 1 时可能涉及 log(0) 或除以 0 的情况。代码中已尽可能通过 get_config().DEFAULT_EPSILON 和条件判断来处理这些边界情况，以避免运行时错误和 NaN 值。
         - 非阿基米德范数: Minimum, Drastic, Nilpotent 等是非阿基米德 t-范数。它们没有生成元，也不支持 q 阶推广 (supports_q = False)。
         - 警告信息: 类的内部验证方法 (_verify_properties) 会在发现公理不满足或生成元性质不一致时发出 warnings.UserWarning 或 warnings.RuntimeWarning。这些警告旨在提醒用户潜在的数学不一致性或数值问题，但不会中断程序执行。
         - 绘图性能: plot_t_norm_surface 方法在 resolution 较高时可能需要较长的计算和渲染时间。
@@ -188,13 +190,6 @@ class OperationTNorm:
         self.q = q  # q-rung 参数
         self.params: dict = params  # 存储特定范数的额外参数
 
-        # 浮点数比较精度，用于避免浮点误差
-        # 在进行浮点数比较时，直接使用 `==` 可能因精度问题导致错误。
-        # 通常会检查 `abs(a - b) < _epsilon` 来判断两个浮点数是否“相等”。
-        # 精度设置为 6
-        self._epsilon: float = 1e-12
-        self._precision: int = 6
-
         # 原始的 q=1 时的生成元和伪逆函数（用于生成元性质验证和初始q=1级运算，推导 t范数和 t余范数）
         # 这些是内部使用的基生成元函数，由 _init_xxx 方法设置。
         self._base_g_func_raw: Optional[Callable[[float], float]] = None
@@ -227,7 +222,8 @@ class OperationTNorm:
 
         # 验证范数属性
         # 在初始化完成后，立即对所选 t-范数的数学性质进行验证，以确保其符合预期。
-        self._verify_properties()
+        if get_config().TNORM_VERIFY:
+            self._verify_properties()
 
     def _initialize_operation(self):
         """
@@ -414,7 +410,7 @@ class OperationTNorm:
             check = self._check_t_norm(*test_data)
             t_norm = self.t_norm(*test_data)
 
-            if abs(check - t_norm) > self._epsilon:
+            if abs(check - t_norm) > get_config().DEFAULT_EPSILON:
                 warnings.warn(f"Test failed, t-norm {self.norm_type} has a large deviation "
                               f"({abs(check - t_norm)})"
                               f"in the q-rung operation values obtained through the generator and "
@@ -441,10 +437,10 @@ class OperationTNorm:
         self._base_t_conorm_raw = lambda a, b: a + b - a * b
         """数学表达式：S(a,b) = a + b - ab"""
 
-        self._base_g_func_raw = lambda a: -np.log(a) if a > self._epsilon else np.inf
+        self._base_g_func_raw = lambda a: -np.log(a) if a > get_config().DEFAULT_EPSILON else np.inf
         """数学表达式：g(a) = -ln(a)
         生成元 g(a) 在 a 趋近于 0 时趋近于无穷大，在 a 趋近于 1 时趋近于 0。
-        这里使用 self._epsilon 来处理 log(0) 的情况，避免运行时错误。
+        这里使用 get_config().DEFAULT_EPSILON 来处理 log(0) 的情况，避免运行时错误。
         """
 
         self._base_g_inv_func_raw = lambda u: np.exp(-u) if u < 100 else 0.0
@@ -499,7 +495,7 @@ class OperationTNorm:
         self._base_t_conorm_raw = lambda a, b: (a + b) / (1 + a * b)
         """数学表达式：S(a,b) = (a + b)/(1 + a * b)"""
 
-        self._base_g_func_raw = lambda a: np.log((2 - a) / a) if a > self._epsilon else np.inf
+        self._base_g_func_raw = lambda a: np.log((2 - a) / a) if a > get_config().DEFAULT_EPSILON else np.inf
         """数学表达式：g(a) = ln((2-a)/a)"""
 
         self._base_g_inv_func_raw = lambda u: 2 / (1 + np.exp(u)) if u < 100 else 0.0
@@ -531,7 +527,7 @@ class OperationTNorm:
         self._base_t_conorm_raw = lambda a, b: (a + b - (2 - gamma) * a * b) / (1 - (1 - gamma) * a * b)
         """数学表达式：S(a,b) = (a+b-(2-gamma)*ab)/(1-(1-gamma)*ab)"""
 
-        self._base_g_func_raw = lambda a: np.log((gamma + (1 - gamma) * a) / a) if a > self._epsilon else np.inf
+        self._base_g_func_raw = lambda a: np.log((gamma + (1 - gamma) * a) / a) if a > get_config().DEFAULT_EPSILON else np.inf
         """数学表达式：g(a) = ln((gamma + (1-gamma)*a)/a)"""
 
         self._base_g_inv_func_raw = lambda u: gamma / (np.exp(u) - (1 - gamma)) if np.exp(u) > (1 - gamma) else 0.0
@@ -603,19 +599,19 @@ class OperationTNorm:
 
         if p > 0:
             self._base_t_norm_raw = lambda a, b: (max(0, a ** (-p) + b ** (-p) - 1)) ** (
-                    -1 / p) if a > self._epsilon and b > self._epsilon else 0.0
+                    -1 / p) if a > get_config().DEFAULT_EPSILON and b > get_config().DEFAULT_EPSILON else 0.0
             """数学表达式：T(a,b) = (max(0, a^{-p} + b^{-p} - 1))^{-1/p}
             处理 a 或 b 接近 0 的情况，避免除以 0 或负指数问题。
             """
 
             self._base_t_conorm_raw = \
                 lambda a, b: (1 - (max(0, (1 - a) ** (-p) + (1 - b) ** (-p) - 1))
-                              ** (-1 / p)) if (1 - a) > self._epsilon and (1 - b) > self._epsilon else max(a, b)
+                              ** (-1 / p)) if (1 - a) > get_config().DEFAULT_EPSILON and (1 - b) > get_config().DEFAULT_EPSILON else max(a, b)
             """数学表达式：S(a,b) = 1 - (max(0, (1-a)^{-p} + (1-b)^{-p} - 1))^{-1/p}
             处理 1-a 或 1-b 接近 0 的情况。
             """
 
-            self._base_g_func_raw = lambda a: a ** (-p) - 1 if a > self._epsilon else np.inf
+            self._base_g_func_raw = lambda a: a ** (-p) - 1 if a > get_config().DEFAULT_EPSILON else np.inf
             """数学表达式：g(a) = a^{-p} - 1"""
 
             self._base_g_inv_func_raw = lambda u: (u + 1) ** (-1 / p) if u > -1 else 0.0
@@ -624,21 +620,21 @@ class OperationTNorm:
         else:  # p < 0
             # 当 p < 0 时，公式形式略有不同，以确保函数行为的正确性。
             self._base_t_norm_raw = lambda a, b: (a ** (-p) + b ** (-p) - 1) ** (
-                    -1 / p) if a < 1.0 - self._epsilon and b < 1.0 - self._epsilon else min(a, b)
+                    -1 / p) if a < 1.0 - get_config().DEFAULT_EPSILON and b < 1.0 - get_config().DEFAULT_EPSILON else min(a, b)
             """数学表达式：T(a,b) = (a^{-p} + b^{-p} - 1)^{-1/p}
             处理 a 或 b 接近 1 的情况。
             """
 
             self._base_t_conorm_raw = lambda a, b: 1 - ((1 - a) **
                                                         (-p) + (1 - b) ** (-p) - 1) ** (-1 / p) if ((1 - a)
-                                                                                                    < 1.0 - self._epsilon and (
-                                                                                                            1 - b) < 1.0 - self._epsilon) else max(
+                                                                                                    < 1.0 - get_config().DEFAULT_EPSILON and (
+                                                                                                            1 - b) < 1.0 - get_config().DEFAULT_EPSILON) else max(
                 a, b)
             """数学表达式：S(a,b) = 1 - ((1-a)^{-p} + (1-b)^{-p} - 1)^{-1/p}
             处理 1-a 或 1-b 接近 1 的情况。
             """
 
-            self._base_g_func_raw = lambda a: (1 - a) ** (-p) - 1 if a < 1.0 - self._epsilon else np.inf
+            self._base_g_func_raw = lambda a: (1 - a) ** (-p) - 1 if a < 1.0 - get_config().DEFAULT_EPSILON else np.inf
             """数学表达式：g(a) = (1 - a)^{-p} - 1"""
 
             self._base_g_inv_func_raw = lambda u: 1 - (u + 1) ** (-1 / p) if u > -1 else 0.0
@@ -667,12 +663,12 @@ class OperationTNorm:
         # Dombi t-范数原始公式
         def dombi_tnorm(a, b):
             # 边界条件处理：T(a,0)=0, T(0,b)=0
-            if a <= self._epsilon or b <= self._epsilon:
+            if a <= get_config().DEFAULT_EPSILON or b <= get_config().DEFAULT_EPSILON:
                 return 0.0
             # 边界条件处理：T(a,1)=a, T(1,b)=b
-            if abs(a - 1.0) < self._epsilon:
+            if abs(a - 1.0) < get_config().DEFAULT_EPSILON:
                 return b
-            if abs(b - 1.0) < self._epsilon:
+            if abs(b - 1.0) < get_config().DEFAULT_EPSILON:
                 return a
 
             # 避免 (1-x)/x 或 x/(1-x) 趋近于无穷大或0时，p次幂导致浮点错误
@@ -682,7 +678,7 @@ class OperationTNorm:
 
             # 确保分母不为零，尽管在处理了 a,b 接近 0 或 1 的情况后，通常不会出现
             denominator_term = np.power(term_a + term_b, 1 / p)
-            if denominator_term < self._epsilon:  # 避免除以0
+            if denominator_term < get_config().DEFAULT_EPSILON:  # 避免除以0
                 return 1.0  # 此时 (1+denominator_term) 趋近于 1，结果趋近于 1
 
             return 1 / (1 + denominator_term)
@@ -690,10 +686,12 @@ class OperationTNorm:
         # Dombi t-余范数原始公式
         def dombi_tconorm(a, b):
             # 边界条件处理：S(a,0)=a, S(0,b)=b
-            if abs(a - 0.0) < self._epsilon: return b
-            if abs(b - 0.0) < self._epsilon: return a
+            if abs(a - 0.0) < get_config().DEFAULT_EPSILON:
+                return b
+            if abs(b - 0.0) < get_config().DEFAULT_EPSILON:
+                return a
             # 边界条件处理：S(a,1)=1, S(1,b)=1
-            if abs(a - 1.0) < self._epsilon or abs(b - 1.0) < self._epsilon:
+            if abs(a - 1.0) < get_config().DEFAULT_EPSILON or abs(b - 1.0) < get_config().DEFAULT_EPSILON:
                 return 1.0
 
             # 避免 (1-x)/x 或 x/(1-x) 趋近于无穷大或0时，p次幂导致浮点错误
@@ -703,7 +701,7 @@ class OperationTNorm:
 
             # 确保分母不为零
             denominator_term = np.power(term_a + term_b, -1 / p)
-            if denominator_term < self._epsilon:  # 避免除以0
+            if denominator_term < get_config().DEFAULT_EPSILON:  # 避免除以0
                 return 1.0  # 此时 (1+denominator_term) 趋近于 1，结果趋近于 1
 
             return 1 / (1 + denominator_term)
@@ -711,15 +709,15 @@ class OperationTNorm:
         # 修正生成元和伪逆的定义，使其在边界处符合数学定义
         # 生成元 g(a) = ((1-a)/a)^p
         def dombi_g_func(a):
-            if abs(a - 0.0) < self._epsilon:  # a 趋近于 0
+            if abs(a - 0.0) < get_config().DEFAULT_EPSILON:  # a 趋近于 0
                 return np.inf
-            if abs(a - 1.0) < self._epsilon:  # a 趋近于 1
+            if abs(a - 1.0) < get_config().DEFAULT_EPSILON:  # a 趋近于 1
                 return 0.0
             return np.power((1.0 - a) / a, p)
 
         # 伪逆 g_inv(u) = 1 / (1 + u^(1/p))
         def dombi_g_inv_func(u):
-            if abs(u - 0.0) < self._epsilon:  # u 趋近于 0
+            if abs(u - 0.0) < get_config().DEFAULT_EPSILON:  # u 趋近于 0
                 return 1.0
             # 当 u 趋近于无穷大时，u^(1/p) 趋近于无穷大，1 + u^(1/p) 趋近于无穷大，结果趋近于 0
             if np.isinf(u):
@@ -762,19 +760,19 @@ class OperationTNorm:
             raise ValueError("Aczel-Alsina参数p必须大于0")
 
         self._base_t_norm_raw = lambda a, b: np.exp(
-            -(((-np.log(a)) ** p + (-np.log(b)) ** p) ** (1 / p))) if a > self._epsilon and b > self._epsilon else 0.0
+            -(((-np.log(a)) ** p + (-np.log(b)) ** p) ** (1 / p))) if a > get_config().DEFAULT_EPSILON and b > get_config().DEFAULT_EPSILON else 0.0
         """数学表达式：T(a,b) = exp(-(((-ln a)^p + (-ln b)^p)^{1/p}))
         处理 a 或 b 接近 0 的情况，避免 log(0) 或负数次幂。
         """
 
         self._base_t_conorm_raw = lambda a, b: 1 - np.exp(
-            -(((-np.log(1 - a)) ** p + (-np.log(1 - b)) ** p) ** (1 / p))) if (1 - a) > self._epsilon and (
-                1 - b) > self._epsilon else max(a, b)
+            -(((-np.log(1 - a)) ** p + (-np.log(1 - b)) ** p) ** (1 / p))) if (1 - a) > get_config().DEFAULT_EPSILON and (
+                1 - b) > get_config().DEFAULT_EPSILON else max(a, b)
         """数学表达式：S(a,b) = 1 - exp(-(((-ln(1-a))^p + (-ln(1-b))^p)^{1/p}))
         处理 1-a 或 1-b 接近 0 的情况。
         """
 
-        self._base_g_func_raw = lambda a: (-np.log(a)) ** p if a > self._epsilon else np.inf
+        self._base_g_func_raw = lambda a: (-np.log(a)) ** p if a > get_config().DEFAULT_EPSILON else np.inf
         """数学表达式：g(a) = (-ln a)^p"""
 
         self._base_g_inv_func_raw = lambda u: np.exp(-(u ** (1 / p))) if u >= 0 else 1.0
@@ -807,27 +805,33 @@ class OperationTNorm:
             if s == np.inf:  # s 趋于无穷时，Frank 积退化为 Minimum 积
                 return min(a, b)
             # 避免 log(0) 或除以 0
-            if abs(s - 1) < self._epsilon: return min(a, b)  # s=1时退化为Minimum
+            if abs(s - 1) < get_config().DEFAULT_EPSILON:
+                return min(a, b)  # s=1时退化为Minimum
             val_a = s ** a - 1
             val_b = s ** b - 1
             denominator = s - 1
-            if denominator == 0: return min(a, b)  # 理论上 s!=1，但以防万一
+            if denominator == 0:
+                return min(a, b)  # 理论上 s!=1，但以防万一
             # 计算 log 的参数，确保其大于 0
             arg_log = 1 + (val_a * val_b) / denominator
-            if arg_log <= 0: return 0.0  # 避免 log(负数)
+            if arg_log <= 0:
+                return 0.0  # 避免 log(负数)
             return np.log(arg_log) / np.log(s)
 
         def frank_tconorm(a, b):
             if s == np.inf:  # s 趋于无穷时，Frank 余范数退化为 Maximum 余范数
                 return max(a, b)
-            if abs(s - 1) < self._epsilon: return max(a, b)  # s=1时退化为Maximum
+            if abs(s - 1) < get_config().DEFAULT_EPSILON:
+                return max(a, b)  # s=1时退化为Maximum
             val_1_a = s ** (1 - a) - 1
             val_1_b = s ** (1 - b) - 1
             denominator = s - 1
-            if denominator == 0: return max(a, b)
+            if denominator == 0:
+                return max(a, b)
             # 计算 log 的参数，确保其大于 0
             arg_log = 1 + (val_1_a * val_1_b) / denominator
-            if arg_log <= 0: return 1.0  # 避免 log(负数)
+            if arg_log <= 0:
+                return 1.0  # 避免 log(负数)
             return 1 - np.log(arg_log) / np.log(s)
 
         self._base_t_norm_raw = frank_tnorm
@@ -836,7 +840,7 @@ class OperationTNorm:
         self._base_t_conorm_raw = frank_tconorm
         """数学表达式：S(a,b) = 1 - log_s(1 + ((s^{1-a} - 1)(s^{1-b} - 1))/(s - 1))"""
 
-        self._base_g_func_raw = lambda a: -np.log((s ** a - 1) / (s - 1)) if a > self._epsilon else np.inf
+        self._base_g_func_raw = lambda a: -np.log((s ** a - 1) / (s - 1)) if a > get_config().DEFAULT_EPSILON else np.inf
         """数学表达式：g(a) = -log_s((s^a - 1)/(s - 1))"""
 
         self._base_g_inv_func_raw = lambda u: np.log(1 + (s - 1) * np.exp(-u)) / np.log(s) if u < 100 else 0.0
@@ -917,17 +921,17 @@ class OperationTNorm:
         """
 
         def drastic_tnorm(a, b):
-            if abs(b - 1.0) < self._epsilon:  # b=1
+            if abs(b - 1.0) < get_config().DEFAULT_EPSILON:  # b=1
                 return a
-            elif abs(a - 1.0) < self._epsilon:  # a=1
+            elif abs(a - 1.0) < get_config().DEFAULT_EPSILON:  # a=1
                 return b
             else:
                 return 0.0
 
         def drastic_tconorm(a, b):
-            if abs(b - 0.0) < self._epsilon:  # b=0
+            if abs(b - 0.0) < get_config().DEFAULT_EPSILON:  # b=0
                 return a
-            elif abs(a - 0.0) < self._epsilon:  # a=0
+            elif abs(a - 0.0) < get_config().DEFAULT_EPSILON:  # a=0
                 return b
             else:
                 return 1.0
@@ -976,7 +980,7 @@ class OperationTNorm:
     def _verify_t_norm_axioms(self):
         """
         验证 t-范数公理：交换律、结合律、单调性、边界条件。
-        使用一组测试值进行验证，并根据 `self._epsilon` 容差进行浮点数比较。
+        使用一组测试值进行验证，并根据 `get_config().DEFAULT_EPSILON` 容差进行浮点数比较。
         如果任何公理不满足，将发出 `UserWarning`。
         """
         test_values = [0.2, 0.5, 0.8]  # 用于测试的模糊数值
@@ -986,7 +990,7 @@ class OperationTNorm:
                 for c in test_values:
                     # 1. 交换律 (Commutativity): T(a,b) = T(b,a)
                     # 检查 abs(T(a,b) - T(b,a)) 是否大于容差
-                    if abs(self.t_norm(a, b) - self.t_norm(b, a)) >= self._epsilon:
+                    if abs(self.t_norm(a, b) - self.t_norm(b, a)) >= get_config().DEFAULT_EPSILON:
                         warnings.warn(
                             f"({self.norm_type}, q={self.q}).交换律失败: T({a},{b}) ≠ T({b},{a}) "
                             f"(T({a},{b})={self.t_norm(a, b):.6f}, T({b},{a})={self.t_norm(b, a):.6f}).",
@@ -997,7 +1001,7 @@ class OperationTNorm:
                     left_assoc = self.t_norm(self.t_norm(a, b), c)
                     right_assoc = self.t_norm(a, self.t_norm(b, c))
                     # 检查 abs(left_assoc - right_assoc) 是否大于容差
-                    if abs(left_assoc - right_assoc) >= self._epsilon:
+                    if abs(left_assoc - right_assoc) >= get_config().DEFAULT_EPSILON:
                         warnings.warn(
                             f"({self.norm_type}, q={self.q}).结合律失败: T(T({a},{b}),{c}) ≠ T({a},T({b},{c})) "
                             f"(left={left_assoc:.6f}, right={right_assoc:.6f}).",
@@ -1007,7 +1011,7 @@ class OperationTNorm:
                     # 3. 单调性 (Monotonicity): 如果 a <= b，则 T(a,c) <= T(b,c)
                     if a <= b:
                         # 检查 T(a,c) 是否严格大于 T(b,c) + _epsilon
-                        if self.t_norm(a, c) > self.t_norm(b, c) + self._epsilon:
+                        if self.t_norm(a, c) > self.t_norm(b, c) + get_config().DEFAULT_EPSILON:
                             warnings.warn(
                                 f"({self.norm_type}, q={self.q}).单调性失败: a≤b但T(a,c)>T(b,c) "
                                 f"(T({a},{c})={self.t_norm(a, c):.6f}, T({b},{c})={self.t_norm(b, c):.6f}).",
@@ -1016,7 +1020,7 @@ class OperationTNorm:
 
                     # 4. 边界条件 (Boundary Condition): T(a,1) = a
                     # 检查 abs(T(a,1) - a) 是否大于容差
-                    if abs(self.t_norm(a, 1.0) - a) >= self._epsilon:
+                    if abs(self.t_norm(a, 1.0) - a) >= get_config().DEFAULT_EPSILON:
                         warnings.warn(
                             f"({self.norm_type}, q={self.q}).边界条件失败: T({a},1) ≠ {a} "
                             f"(T({a},1)={self.t_norm(a, 1.0):.6f}).",
@@ -1047,7 +1051,7 @@ class OperationTNorm:
             if self.is_strict_archimedean:
                 # 严格阿基米德性要求 T(a,a) < a
                 # 检查 t_aa 是否大于等于 a - _epsilon
-                if t_aa >= a - self._epsilon:  # 使用 _epsilon 进行浮点数比较
+                if t_aa >= a - get_config().DEFAULT_EPSILON:  # 使用 _epsilon 进行浮点数比较
                     warnings.warn(
                         f"({self.norm_type}, q={self.q}).严格阿基米德性失败: T({a},{a}) = {t_aa:.6f} ≥ {a}.",
                         UserWarning
@@ -1055,7 +1059,7 @@ class OperationTNorm:
             else:
                 # 阿基米德性要求 T(a,a) <= a
                 # 检查 t_aa 是否严格大于 a + _epsilon
-                if t_aa > a + self._epsilon:
+                if t_aa > a + get_config().DEFAULT_EPSILON:
                     warnings.warn(
                         f"({self.norm_type}, q={self.q}).阿基米德性失败: T({a},{a}) = {t_aa:.6f} > {a}.",
                         UserWarning
@@ -1073,7 +1077,7 @@ class OperationTNorm:
         -   对于每对 `(a,b)`，计算 `g(a)` 和 `g(b)`。
         -   通过生成元公式 `g_inv(g(a) + g(b))` 计算 t-范数结果 (`via_generator`)。
         -   直接通过 `self.t_norm(a,b)` 计算 t-范数结果 (`direct`)。
-        -   比较 `via_generator` 和 `direct`，如果差异超出 `self._epsilon`，则发出警告。
+        -   比较 `via_generator` 和 `direct`，如果差异超出 `get_config().DEFAULT_EPSILON`，则发出警告。
         -   包含错误处理，以防生成元计算过程中出现数值问题。
         """
         if self.g_func is None or self.g_inv_func is None:
@@ -1103,7 +1107,7 @@ class OperationTNorm:
                     direct = self.t_norm(a, b)
 
                     # 比较两种计算结果，允许 _epsilon 容差
-                    if abs(direct - via_generator) >= self._epsilon:
+                    if abs(direct - via_generator) >= get_config().DEFAULT_EPSILON:
                         warnings.warn(
                             f"({self.norm_type}, q={self.q}).生成元验证失败: T({a},{b})={direct:.6f} ≠ g^(-1)(g(a)+g(b))={via_generator:.6f}. "
                             f"g(a)={g_a:.6f}, g(b)={g_b:.6f}.",
@@ -1142,13 +1146,13 @@ class OperationTNorm:
         # s_direct = self.t_conorm(a, b)
         # s_via_demorgan = 1 - self.t_norm(1 - a, 1 - b)
         # # 使用 _epsilon 进行浮点数比较
-        # results['de_morgan_1'] = abs(s_direct - s_via_demorgan) < self._epsilon
+        # results['de_morgan_1'] = abs(s_direct - s_via_demorgan) < get_config().DEFAULT_EPSILON
         #
         # # 验证: T(a,b) = 1 - S(1-a, 1-b)
         # t_direct = self.t_norm(a, b)
         # t_via_demorgan = 1 - self.t_conorm(1 - a, 1 - b)
         # # 使用 _epsilon 进行浮点数比较
-        # results['de_morgan_2'] = abs(t_direct - t_via_demorgan) < self._epsilon
+        # results['de_morgan_2'] = abs(t_direct - t_via_demorgan) < get_config().DEFAULT_EPSILON
         #
         # return results
 
@@ -1165,12 +1169,12 @@ class OperationTNorm:
         n_a = q_rung_complement(a)
         n_b = q_rung_complement(b)
         s_via_demorgan = q_rung_complement(self.t_norm(n_a, n_b))
-        results['de_morgan_1'] = abs(s_direct - s_via_demorgan) < self._epsilon
+        results['de_morgan_1'] = abs(s_direct - s_via_demorgan) < get_config().DEFAULT_EPSILON
 
         # 验证: T(a,b) = N(S(N(a), N(b)))
         t_direct = self.t_norm(a, b)
         t_via_demorgan = q_rung_complement(self.t_conorm(n_a, n_b))
-        results['de_morgan_2'] = abs(t_direct - t_via_demorgan) < self._epsilon
+        results['de_morgan_2'] = abs(t_direct - t_via_demorgan) < get_config().DEFAULT_EPSILON
 
         return results
 
@@ -1203,8 +1207,8 @@ class OperationTNorm:
                               分辨率越高，曲面越平滑，但计算时间越长。
         """
         # 生成 a 和 b 的取值范围，避免边界值可能导致的计算问题（如 log(0) 或除以 0）
-        x = np.linspace(self._epsilon, 1.0 - self._epsilon, resolution)
-        y = np.linspace(self._epsilon, 1.0 - self._epsilon, resolution)
+        x = np.linspace(get_config().DEFAULT_EPSILON, 1.0 - get_config().DEFAULT_EPSILON, resolution)
+        y = np.linspace(get_config().DEFAULT_EPSILON, 1.0 - get_config().DEFAULT_EPSILON, resolution)
         X, Y = np.meshgrid(x, y)  # 创建网格点
 
         # 初始化 Z 坐标矩阵，用于存储 t-范数和 t-余范数的结果
@@ -1342,9 +1346,12 @@ class OperationTNorm:
                     # 如果 g(a) 或 g(b) 是无穷大，通常意味着 a 或 b 在边界上 (0或1)
                     # 此时 T(a,b) 的结果通常是 0 (例如 T(0,b)=0)。
                     # 这是一个简化的处理，更严谨需要根据范数特性判断
-                    if val_g_a == np.inf and val_g_b == np.inf: return 0.0  # g(0)+g(0) -> g_inv(inf) -> 0
-                    if val_g_a == np.inf: return 0.0  # g(0)+g(b) -> g_inv(inf) -> 0
-                    if val_g_b == np.inf: return 0.0  # g(a)+g(0) -> g_inv(inf) -> 0
+                    if val_g_a == np.inf and val_g_b == np.inf:
+                        return 0.0  # g(0)+g(0) -> g_inv(inf) -> 0
+                    if val_g_a == np.inf:
+                        return 0.0  # g(0)+g(b) -> g_inv(inf) -> 0
+                    if val_g_b == np.inf:
+                        return 0.0  # g(a)+g(0) -> g_inv(inf) -> 0
 
                 return g_inv_func(val_g_a + val_g_b)
             except Exception as e:
@@ -1400,12 +1407,16 @@ class OperationTNorm:
             # 这有助于处理生成元在边界处趋于无穷大的情况。
             if is_decreasing:
                 # 如果目标值 u 接近 g(domain_start) (通常是 inf)，则 x 趋近于 domain_start
-                if u >= g_func(domain_start + epsilon) - epsilon: return domain_start
+                if u >= g_func(domain_start + epsilon) - epsilon:
+                    return domain_start
                 # 如果目标值 u 接近 g(domain_end) (通常是 0)，则 x 趋近于 domain_end
-                if u <= g_func(domain_end - epsilon) + epsilon: return domain_end
+                if u <= g_func(domain_end - epsilon) + epsilon:
+                    return domain_end
             else:  # g(x) 递增
-                if u <= g_func(domain_start + epsilon) + epsilon: return domain_start
-                if u >= g_func(domain_end - epsilon) - epsilon: return domain_end
+                if u <= g_func(domain_start + epsilon) + epsilon:
+                    return domain_start
+                if u >= g_func(domain_end - epsilon) - epsilon:
+                    return domain_end
 
             # 二分法搜索
             for _ in range(max_iterations):
@@ -1413,8 +1424,10 @@ class OperationTNorm:
 
                 # 避免 mid 过于接近边界导致 g_func(mid) 溢出或错误
                 # 强制 mid 保持在 (domain_start, domain_end) 范围内，并与边界保持一定距离。
-                if mid <= domain_start + epsilon: mid = domain_start + epsilon
-                if mid >= domain_end - epsilon: mid = domain_end - epsilon
+                if mid <= domain_start + epsilon:
+                    mid = domain_start + epsilon
+                if mid >= domain_end - epsilon:
+                    mid = domain_end - epsilon
 
                 try:
                     g_mid = g_func(mid)

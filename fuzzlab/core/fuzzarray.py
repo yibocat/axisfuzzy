@@ -287,7 +287,7 @@ class Fuzzarray:
         """
         General logic for executing vectorized operations.
 
-        Find and invoke the corresponding operation implementation through OperationRegistry.
+        Find and invoke the corresponding operation implementation through OperationScheduler.
         """
         if self.size == 0:
             return self.copy()

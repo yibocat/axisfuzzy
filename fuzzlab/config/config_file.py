@@ -128,3 +128,14 @@ class Config:
             'error_msg': "必须是布尔值 (True/False)。"
         }
     )
+
+    TNORM_VERIFY: bool = field(
+        default=False,
+        metadata={
+            'category': 'debug',
+            'description': 'T-范数验证开关，用来对T-范数初始化完成后的数学性质验证。一般为默认为关闭(False)以提高模糊数计算效率。',
+            'validator': lambda x: isinstance(x, bool),
+            'error_msg': "必须是布尔值 (True/False)。"
+        }
+    )
+
