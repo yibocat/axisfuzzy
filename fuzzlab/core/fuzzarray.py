@@ -4,7 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-from typing import Optional, Iterator, Union, List, Any, Dict
+from typing import Optional, Iterator, Union, List, Any
 
 import numpy as np
 
@@ -354,7 +354,6 @@ class Fuzzarray:
             raise TypeError(f"Unsupported operand type for fallback operation '{op_name}': {type(other)}")
 
         # Prepare operand
-        other_data = None
         if isinstance(other, Fuzzarray):
             other_data = other._data
         elif isinstance(other, Fuzznum):
@@ -436,6 +435,8 @@ class Fuzzarray:
 
     def complement(self) -> 'Fuzzarray':
         return self._execute_vectorized_op('complement')
+
+    # ======================== 数组操作 ==========================
 
     def tolist(self) -> List[Any]:
         return self._data.tolist()

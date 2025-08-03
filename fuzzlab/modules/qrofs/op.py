@@ -4,7 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-from typing import List, Any, Dict, Optional, Union
+from typing import List, Any, Dict, Union
 
 from fuzzlab.config import get_config
 from fuzzlab.core.ops import OperationMixin, get_operation_registry
@@ -20,11 +20,10 @@ class QROFNAddition(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_conorm(strategy_1.md, strategy_2.md)
         nmd = tnorm.t_norm(strategy_1.nmd, strategy_2.nmd)
 
@@ -38,11 +37,10 @@ class QROFNSubtraction(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_norm(
             strategy_1.md,
             tnorm.f_inv_func(tnorm.f_func(strategy_1.md) - tnorm.f_func(strategy_2.md)))
@@ -60,11 +58,10 @@ class QROFNMultiplication(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_norm(strategy_1.md, strategy_2.md)
         nmd = tnorm.t_conorm(strategy_1.nmd, strategy_2.nmd)
 
@@ -78,11 +75,10 @@ class QROFNDivision(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_norm(
             strategy_1.md, tnorm.f_inv_func(tnorm.f_func(strategy_1.md) / tnorm.f_func(strategy_2.md)))
         nmd = tnorm.t_conorm(
@@ -98,11 +94,10 @@ class QROFNPower(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_unary_op_operand(self,
-                                 strategy: Any,
-                                 operand: Union[int, float],
-                                 tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_unary_op_operand_impl(self,
+                                       strategy: Any,
+                                       operand: Union[int, float],
+                                       tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.f_inv_func(operand * tnorm.f_func(strategy.md))
         nmd = tnorm.g_inv_func(operand * tnorm.g_func(strategy.nmd))
 
@@ -116,11 +111,10 @@ class QROFNTimes(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_unary_op_operand(self,
-                                 strategy: Any,
-                                 operand: Union[int, float],
-                                 tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_unary_op_operand_impl(self,
+                                       strategy: Any,
+                                       operand: Union[int, float],
+                                       tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.f_inv_func(operand * tnorm.f_func(strategy.md))
         nmd = tnorm.g_inv_func(operand * tnorm.g_func(strategy.nmd))
 
@@ -134,11 +128,10 @@ class QROFNExponential(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_unary_op_operand(self,
-                                 strategy: Any,
-                                 operand: Union[int, float],
-                                 tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_unary_op_operand_impl(self,
+                                       strategy: Any,
+                                       operand: Union[int, float],
+                                       tnorm: OperationTNorm) -> Dict[str, Any]:
         # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
         md = tnorm.f_inv_func(operand * tnorm.f_func(strategy.md))
         nmd = tnorm.g_inv_func(operand * tnorm.g_func(strategy.nmd))
@@ -153,11 +146,10 @@ class QROFNLogarithmic(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_unary_op_operand(self,
-                                 strategy: Any,
-                                 operand: Union[int, float],
-                                 tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_unary_op_operand_impl(self,
+                                       strategy: Any,
+                                       operand: Union[int, float],
+                                       tnorm: OperationTNorm) -> Dict[str, Any]:
         # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
         md = tnorm.f_inv_func(tnorm.f_func(strategy.md) / operand)
         nmd = tnorm.g_inv_func(tnorm.g_func(strategy.nmd) / operand)
@@ -174,10 +166,10 @@ class QROFNGreaterThan(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_comparison_op(self,
-                              strategy_1: Any,
-                              strategy_2: Any,
-                              tnorm: OperationTNorm) -> Dict[str, bool]:
+    def _execute_comparison_op_impl(self,
+                                    strategy_1: Any,
+                                    strategy_2: Any,
+                                    tnorm: OperationTNorm) -> Dict[str, bool]:
         return {'value': strategy_1.md > strategy_2.md and strategy_1.nmd < strategy_2.nmd}
 
 
@@ -188,10 +180,10 @@ class QROFNLessThan(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_comparison_op(self,
-                              strategy_1: Any,
-                              strategy_2: Any,
-                              tnorm: OperationTNorm) -> Dict[str, bool]:
+    def _execute_comparison_op_impl(self,
+                                    strategy_1: Any,
+                                    strategy_2: Any,
+                                    tnorm: OperationTNorm) -> Dict[str, bool]:
         return {'value': strategy_1.md < strategy_2.md and strategy_1.nmd > strategy_2.nmd}
 
 
@@ -202,13 +194,13 @@ class QROFNEquals(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_comparison_op(self,
-                              strategy_1: Any,
-                              strategy_2: Any,
-                              tnorm: OperationTNorm) -> Dict[str, bool]:
+    def _execute_comparison_op_impl(self,
+                                    strategy_1: Any,
+                                    strategy_2: Any,
+                                    tnorm: OperationTNorm) -> Dict[str, bool]:
         config = get_config()
-        value = abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and \
-            abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON
+        value = (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON
+                 and abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
 
         return {'value': value}
 
@@ -220,14 +212,14 @@ class QROFNGreaterEquals(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_comparison_op(self,
-                              strategy_1: Any,
-                              strategy_2: Any,
-                              tnorm: OperationTNorm) -> Dict[str, bool]:
+    def _execute_comparison_op_impl(self,
+                                    strategy_1: Any,
+                                    strategy_2: Any,
+                                    tnorm: OperationTNorm) -> Dict[str, bool]:
         config = get_config()
         value = (strategy_1.md > strategy_2.md and strategy_1.nmd < strategy_2.nmd) or \
-            (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and
-             abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
+                (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and
+                 abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
 
         return {'value': value}
 
@@ -239,14 +231,14 @@ class QROFNLessEquals(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_comparison_op(self,
-                              strategy_1: Any,
-                              strategy_2: Any,
-                              tnorm: OperationTNorm) -> Dict[str, bool]:
+    def _execute_comparison_op_impl(self,
+                                    strategy_1: Any,
+                                    strategy_2: Any,
+                                    tnorm: OperationTNorm) -> Dict[str, bool]:
         config = get_config()
         value = (strategy_1.md < strategy_2.md and strategy_1.nmd > strategy_2.nmd) or \
-            (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and
-             abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
+                (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and
+                 abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
 
         return {'value': value}
 
@@ -258,10 +250,10 @@ class QROFNNotEquals(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_comparison_op(self,
-                              strategy_1: Any,
-                              strategy_2: Any,
-                              tnorm: OperationTNorm) -> Dict[str, bool]:
+    def _execute_comparison_op_impl(self,
+                                    strategy_1: Any,
+                                    strategy_2: Any,
+                                    tnorm: OperationTNorm) -> Dict[str, bool]:
         config = get_config()
         value = not (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and
                      abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
@@ -278,11 +270,10 @@ class QROFNIntersection(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_norm(strategy_1.md, strategy_2.md)
         nmd = tnorm.t_conorm(strategy_1.nmd, strategy_2.nmd)
 
@@ -296,11 +287,10 @@ class QROFNUnion(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_conorm(strategy_1.md, strategy_2.md)
         nmd = tnorm.t_norm(strategy_1.nmd, strategy_2.nmd)
 
@@ -314,9 +304,9 @@ class QROFNComplement(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_unary_op_pure(self,
-                              strategy: Any,
-                              tnorm: OperationTNorm) -> Dict[str, Any]:
+    def _execute_unary_op_pure_impl(self,
+                                    strategy: Any,
+                                    tnorm: OperationTNorm) -> Dict[str, Any]:
         md = strategy.md
         nmd = strategy.nmd
 
@@ -330,11 +320,10 @@ class QROFNImplication(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_conorm(tnorm.f_inv_func(1 - tnorm.f_func(strategy_1.md)), strategy_2.md)
         nmd = tnorm.t_norm(strategy_1.nmd, tnorm.g_inv_func(1 - tnorm.g_func(strategy_2.nmd)))
 
@@ -348,11 +337,10 @@ class QROFNEquivalence(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_norm(
             tnorm.t_conorm(tnorm.f_inv_func(1 - tnorm.f_func(strategy_1.md)), strategy_2.md),
             tnorm.t_conorm(tnorm.f_inv_func(1 - tnorm.f_func(strategy_2.md)), strategy_1.md)
@@ -371,11 +359,10 @@ class QROFNDifference(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_norm(strategy_1.md, tnorm.f_inv_func(1 - tnorm.f_func(strategy_2.md)))
         nmd = tnorm.t_conorm(strategy_1.nmd, strategy_2.md)
 
@@ -389,11 +376,10 @@ class QROFNSymmetricDifference(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrofn']
 
-    def execute_binary_op(self,
-                          strategy_1: Any,
-                          strategy_2: Any,
-                          tnorm: OperationTNorm) -> Dict[str, Any]:
-
+    def _execute_binary_op_impl(self,
+                                strategy_1: Any,
+                                strategy_2: Any,
+                                tnorm: OperationTNorm) -> Dict[str, Any]:
         md = tnorm.t_conorm(
             tnorm.t_norm(strategy_1.md, tnorm.f_inv_func(1 - tnorm.f_func(strategy_2.md))),
             tnorm.t_norm(strategy_2.md, tnorm.f_inv_func(1 - tnorm.f_func(strategy_1.md)))

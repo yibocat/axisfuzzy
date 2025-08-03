@@ -12,7 +12,7 @@ from contextlib import contextmanager
 import collections  # 用于 OrderedDict
 
 from fuzzlab.config import get_config
-from fuzzlab.core.executor import Executor
+from fuzzlab.core._executor import Executor
 from fuzzlab.core.fuzznums import Fuzznum
 
 
