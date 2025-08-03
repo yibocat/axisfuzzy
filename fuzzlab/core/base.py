@@ -13,6 +13,7 @@ from typing import Optional, Set, Dict, Callable, Any, Union, List
 from fuzzlab.config import get_config
 from fuzzlab.core.cache import LruCache
 from fuzzlab.core.ops import get_operation_registry, OperationMixin
+from fuzzlab.core.triangular import OperationTNorm
 
 
 class FuzznumStrategy(ABC):
@@ -40,7 +41,7 @@ class FuzznumStrategy(ABC):
         object.__setattr__(self, 'q', qrung)
 
         # 初始化运算缓存和注册表
-        object.__setattr__(self, '_operation_registry', get_operation_registry())
+        # object.__setattr__(self, '_operation_registry', get_operation_registry())
         object.__setattr__(self, '_op_cache', LruCache(maxsize=get_config().CACHE_SIZE))
 
         # 确保每个实例有独立的验证器和回调
@@ -177,39 +178,6 @@ class FuzznumStrategy(ABC):
                 raise RuntimeError(f"Callback for attribute '{name}' failed, "
                                    f"change has been rolled back.") from e
 
-    def _generate_cache_key(self,
-                            op_name: str,
-                            operands: Union['FuzznumStrategy', int, float]) -> Optional[str]:
-        """
-        Generates a unique cache key for an operation.
-
-        The key is based on the operation name, operands, and t-norm parameters.
-        """
-        def get_state_dict(obj: 'FuzznumStrategy'):
-            attrs = obj.get_declared_attributes()
-            state = {attr: getattr(obj, attr, None) for attr in attrs}
-            state['q'] = obj.q
-            return state
-
-        try:
-            import hashlib
-            operand_1 = json.dumps(get_state_dict(self), sort_keys=True)
-
-            if isinstance(operands, FuzznumStrategy):
-                operand_2 = json.dumps(get_state_dict(operands), sort_keys=True)
-            else:
-                operand_2 = str(operands)
-
-            operation_instance = self.get_operation_instance(op_name)
-            t_norm = json.dumps(operation_instance.t_norm.get_info(), sort_keys=True)
-
-            key_parts = [op_name, operand_1, operand_2, t_norm]
-
-            key_str = '_'.join(key_parts)
-            return hashlib.md5(key_str.encode()).hexdigest()
-        except (TypeError, AttributeError):
-            return None
-
     def add_attribute_validator(self,
                                 attr_name: str,
                                 validator: Callable[[Any], bool]) -> None:
@@ -275,46 +243,85 @@ class FuzznumStrategy(ABC):
         if hasattr(self, 'mtype') and (not isinstance(self.mtype, str) or not self.mtype.strip()):
             raise ValueError(f"mtype must be a non-empty string, got '{self.mtype}'")
 
+    def _generate_cache_key(self,
+                            op_name: str,
+                            operands: Union['FuzznumStrategy', int, float],
+                            tnorm: OperationTNorm) -> Optional[str]:
+        """
+        Generates a unique cache key for an operation.
+
+        The key is based on the operation name, operands, and t-norm parameters.
+        """
+        def get_state_dict(obj: 'FuzznumStrategy'):
+            attrs = obj.get_declared_attributes()
+            state = {attr: getattr(obj, attr, None) for attr in attrs}
+            state['q'] = obj.q
+            return state
+
+        try:
+            import hashlib
+            operand_1 = json.dumps(get_state_dict(self), sort_keys=True)
+
+            if isinstance(operands, FuzznumStrategy):
+                operand_2 = json.dumps(get_state_dict(operands), sort_keys=True)
+            else:
+                operand_2 = str(operands)
+
+            # Information about dynamically created tnorm objects
+            t_norm_info = json.dumps(tnorm.get_info(), sort_keys=True)
+
+            key_parts = [op_name, operand_1, operand_2, t_norm_info]
+
+            key_str = '_'.join(key_parts)
+            return hashlib.md5(key_str.encode()).hexdigest()
+        except (TypeError, AttributeError):
+            return None
+
     def _execute_operation(self,
                            op_name: str,
                            operand: Optional[Union['FuzznumStrategy', int, float]]) -> Dict[str, Any]:
 
-        cache_key = self._generate_cache_key(op_name, operand)
-
-        if cache_key:
-            cached_result = self._op_cache.get(cache_key)
-            if cached_result is not None:
-                return cached_result
-
-        operation = self.get_operation_instance(op_name)
+        registry = get_operation_registry()
+        operation = registry.get_operation(op_name, self.mtype)
         if operation is None:
             raise NotImplementedError(
                 f"Operation '{op_name}' is not supported for mtype '{self.mtype}'."
                 f" Available operations for '{self.mtype}': {self.get_available_operations()}"
             )
 
+        norm_type, norm_params = registry.get_default_t_norm_config()
+        tnorm = OperationTNorm(norm_type=norm_type, q=self.q, norm_params=norm_params)
+
+        # Generate cache key
+        cache_key = self._generate_cache_key(op_name, operand, tnorm)
+
+        if cache_key:
+            cached_result = self._op_cache.get(cache_key)
+            if cached_result is not None:
+                return cached_result
+
         if op_name in ['add', 'sub', 'mul', 'div',
                        'intersection', 'union', 'implication',
                        'equivalence', 'difference', 'symdiff']:
             if not isinstance(operand, FuzznumStrategy):
                 raise TypeError(f"Operands must be a fuzznum strategy, got '{type(operand)}'")
-            result = operation.execute_binary_op(self, operand)
+            result = operation.execute_binary_op(self, operand, tnorm)
 
-        elif op_name in ['pow', 'sub', 'exp', 'log']:
+        elif op_name in ['pow', 'tim', 'exp', 'log']:
             if not isinstance(operand, (int, float)):
                 raise TypeError(f"Operands must be a number of 'int' or 'float', got '{type(operand)}'")
-            result = operation.execute_unary_op_operand(self, operand)
+            result = operation.execute_unary_op_operand(self, operand, tnorm)
 
         elif op_name in ['complement']:
             if operand is not None:
                 raise TypeError(f"Pure unary operation '{op_name}' takes no additional operands.")
-            result = operation.execute_unary_op_pure(self)
+            result = operation.execute_unary_op_pure(self, tnorm)
 
         elif op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
             if not isinstance(operand, FuzznumStrategy):
                 raise TypeError(f"Comparison operation '{op_name}' requires one FuzznumStrategy operand, "
                                 f"got '{type(operand)}'")
-            result = operation.execute_comparison_op(self, operand)
+            result = operation.execute_comparison_op(self, operand, tnorm)
         else:
             raise ValueError(f"Unknown operation type: {op_name}")
 
@@ -335,24 +342,13 @@ class FuzznumStrategy(ABC):
         """
         return self._declared_attributes.copy()
 
-    def get_operation_instance(self, op_name: str) -> Optional[OperationMixin]:
-        """
-        Get operation instance with `op_name`. Used by Fuzzarray.
-
-        Args:
-            op_name: Operation name
-
-        Returns:
-            (OperationMixin)Operation instance, or None
-        """
-        operation = self._operation_registry.get_operation(op_name, self.mtype)
-        return operation
-
     def get_available_operations(self) -> List[str]:
         """
         Get the names of all operations supported by the current fuzzy number type.
         """
-        return self._operation_registry.get_available_ops(self.mtype)
+        operation = get_operation_registry()
+
+        return operation.get_available_ops(self.mtype)
 
     def validate_all_attributes(self) -> Dict[str, Any]:
         """

@@ -4,6 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
+import warnings
 from abc import ABC, abstractmethod
 from typing import List, Any, Dict, Union, Optional
 
@@ -11,23 +12,6 @@ from fuzzlab.core.triangular import OperationTNorm
 
 
 class OperationMixin(ABC):
-
-    _t_norm: OperationTNorm = OperationTNorm()
-
-    @property
-    def t_norm(self):
-        return self._t_norm
-
-    def set_t_norm(self, norm: Union[str, OperationTNorm], **t_norm_params):
-        if isinstance(norm, str):
-            self._t_norm = OperationTNorm(norm, **t_norm_params)
-        elif isinstance(norm, OperationTNorm):
-            self._t_norm = norm
-        else:
-            raise TypeError("t-norm must be 'str' or 'OperationTNorm'.")
-
-    def get_t_norm(self) -> OperationTNorm:
-        return self._t_norm
 
     @abstractmethod
     def get_operation_name(self) -> str:
@@ -40,42 +24,89 @@ class OperationMixin(ABC):
     def supports(self, mtype: str) -> bool:
         return mtype in self.get_supported_mtypes()
 
-    def execute_binary_op(self, strategy_1: Any, strategy_2: Any) -> Dict[str, Any]:
+    def execute_binary_op(self,
+                          strategy_1: Any,
+                          strategy_2: Any,
+                          tnorm: OperationTNorm) -> Dict[str, Any]:
         raise NotImplementedError(f"Binary operation '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
 
-    def execute_unary_op_operand(self, strategy: Any, operand: Union[int, float]) -> Dict[str, Any]:
+    def execute_unary_op_operand(self,
+                                 strategy: Any,
+                                 operand: Union[int, float],
+                                 tnorm: OperationTNorm) -> Dict[str, Any]:
         raise NotImplementedError(f"Unary operation with operand '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
 
-    def execute_unary_op_pure(self, strategy: Any) -> Dict[str, Any]:
+    def execute_unary_op_pure(self,
+                              strategy: Any,
+                              tnorm: OperationTNorm) -> Dict[str, Any]:
         raise NotImplementedError(f"Pure unary operation '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
 
-    def execute_comparison_op(self, strategy_1: Any, strategy_2: Any) -> Dict[str, bool]:
+    def execute_comparison_op(self,
+                              strategy_1: Any,
+                              strategy_2: Any,
+                              tnorm: OperationTNorm) -> Dict[str, bool]:
         raise NotImplementedError(f"Comparison operation '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
 
-    def execute_fuzzarray_op(self, fuzzarray_1: Any, other: Optional[Any]) -> Any:
+    def execute_fuzzarray_op(self,
+                             fuzzarray_1: Any,
+                             other: Optional[Any],
+                             tnorm: OperationTNorm) -> Any:
         raise NotImplementedError(f"Fuzzarray operation '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
+
+    def _validate_operands(self, *operands: Any): ...
+
+    def _postprocess_operands(self, operands: Any): ...
 
 
 class OperationRegistry:
 
     def __init__(self):
         self._operations: Dict[str, Dict[str, OperationMixin]] = {}
-        self._default_t_norm: Optional[OperationTNorm] = None
+        self._default_t_norm_type: str = 'algebraic'
+        self._default_t_norm_params: Dict[str, Any] = {}
 
-    def set_default_t_norm(self, t_norm: Union[OperationTNorm, str], **params) -> None:
-        self._default_t_norm = t_norm if isinstance(t_norm, OperationTNorm) \
-            else OperationTNorm(t_norm, **params)
+    def switch_t_norm(self, t_norm_type: str, **params: Any):
+        self._default_t_norm_type = t_norm_type
+        self._default_t_norm_params = params
 
-        # Update all existing operations
-        for mtype_ops in self._operations.values():
-            for op in mtype_ops.values():
-                if op.t_norm is None:
-                    op.set_t_norm(t_norm, **params)
+    def get_default_t_norm_config(self) -> tuple[str, Dict[str, Any]]:
+        return self._default_t_norm_type, self._default_t_norm_params
+
+    # def __init__(self):
+    #     self._operations: Dict[str, Dict[str, OperationMixin]] = {}
+    #     self._default_t_norm: Optional[OperationTNorm] = OperationTNorm()
+    #
+    # def switch_t_norm(self, t_norm: str):
+    #     self._default_t_norm = OperationTNorm(t_norm)
+    #     self.update_all_operations()
+    #
+    # def set_t_norm_q_value(self, q_value: int):
+    #     self._default_t_norm.q = q_value
+    #     self.update_all_operations()
+    #
+    # def set_t_norm_params(self, params: Dict[str, Any]):
+    #     self._default_t_norm.params = params
+    #     self.update_all_operations()
+    #
+    # def set_t_norm(self,
+    #                t_norm: Union[OperationTNorm, str],
+    #                q_value: int,
+    #                **params) -> None:
+    #
+    #     self._default_t_norm = t_norm if isinstance(t_norm, OperationTNorm) \
+    #         else OperationTNorm(t_norm, q_value, **params)
+    #     self.update_all_operations()
+    #
+    # def update_all_operations(self):
+    #     for mtype_ops in self._operations.values():
+    #         for op in mtype_ops.values():
+    #             if op.t_norm is None:
+    #                 op.set_t_norm(self._default_t_norm)
 
     def register(self, operation: OperationMixin) -> None:
 
@@ -85,7 +116,7 @@ class OperationRegistry:
 
         for mtype in operation.get_supported_mtypes():
             if mtype in self._operations[op_name]:
-                raise ValueError(f"Operation '{op_name}' for mtype '{mtype}' already registered.")
+                warnings.warn(f"Operation '{op_name}' for mtype '{mtype}' already registered.")
             self._operations[op_name][mtype] = operation
 
     def get_operation(self, op_name: str, mtype: str) -> Optional[OperationMixin]:

@@ -1190,8 +1190,6 @@ class OperationTNorm:
             'supports_q': self.supports_q,  # 是否支持 q 阶推广
             'q_value': self.q,  # 当前 q 值
             'parameter': self.params,  # 特定范数的额外参数
-            'epsilon': self._epsilon,  # 浮点数比较精度
-            'precision': self._precision  # 浮点数小数点精度
         }
         return info
 

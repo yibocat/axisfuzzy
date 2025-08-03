@@ -6,5 +6,5 @@ requires-python = ">=3.10"
 dependencies = [
     "notebook>=7.4.4",
     "numpy>=2.2.6",
-    "matplotlib==3.10.5",
+    "matplotlib>=3.10.5",
 ]

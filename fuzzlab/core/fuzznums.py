@@ -1063,7 +1063,65 @@ class Fuzznum:
         result_dict = self.get_strategy_instance().divide(other.get_strategy_instance())
         return self.create(**result_dict)
 
-    # TODO：这里有报错，比价符号对不上
+    def __pow__(self, power):
+        result_dict = self.get_strategy_instance().pow(power)
+        return self.create(**result_dict)
+
     def __gt__(self, other):
-        result_dict = self.get_strategy_instance().greater(other.get_strategy_instance())
+        result_dict = self.get_strategy_instance().gt(other.get_strategy_instance())
         return result_dict['value']
+
+    def __lt__(self, other):
+        result_dict = self.get_strategy_instance().lt(other.get_strategy_instance())
+        return result_dict['value']
+
+    def __eq__(self, other):
+        result_dict = self.get_strategy_instance().eq(other.get_strategy_instance())
+        return result_dict['value']
+
+    def __ge__(self, other):
+        result_dict = self.get_strategy_instance().ge(other.get_strategy_instance())
+        return result_dict['value']
+
+    def __le__(self, other):
+        result_dict = self.get_strategy_instance().le(other.get_strategy_instance())
+        return result_dict['value']
+
+    def __ne__(self, other):
+        result_dict = self.get_strategy_instance().ne(other.get_strategy_instance())
+        return result_dict['value']
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
