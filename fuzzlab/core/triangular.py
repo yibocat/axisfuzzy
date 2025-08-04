@@ -6,46 +6,49 @@
 #  Software: FuzzLab
 
 """
-模糊 t-范数框架模块 (FuzzFramework)
-该模块实现了一个完整的模糊 t-范数和 t-余范数计算框架，支持多种经典的模糊逻辑运算符。
+Fuzzy t-norm Framework Module (FuzzFramework)
 
-主要功能包括：
+This module implements a comprehensive framework for calculating fuzzy t-norms and t-conorms,
+supporting various classical fuzzy logic operators.
+
+Key Features:
 ----------
-1. 支持 12 种不同类型的 t-范数和对应的 t-余范数
-2. 支持 q-rung 广义模糊数的运算（通过 q 阶同构映射）
-3. 提供阿基米德 t-范数的生成元和伪逆函数
-4. 自动验证 t-范数的数学性质（公理、阿基米德性、生成元一致性）
-5. 可视化功能（3D 表面图）
-6. 德摩根定律验证
+1. Supports 12 different types of t-norms and their corresponding t-conorms.
+2. Supports operations for q-rung generalized fuzzy numbers (via q-rung isomorphic mapping).
+3. Provides generator functions and pseudo-inverse functions for Archimedean t-norms.
+4. Automatically verifies mathematical properties of t-norms (axioms, Archimedean property,
+   consistency of generators).
+5. Visualization capabilities (3D surface plots).
+6. De Morgan's Law verification.
 
-支持的 t-范数类型：
+Supported t-norm Types:
 --------------
-- algebraic: 代数积 t-范数
-- lukasiewicz: Łukasiewicz t-范数
-- einstein: Einstein t-范数
-- hamacher: Hamacher t-范数族
-- yager: Yager t-范数族
-- schweizer_sklar: Schweizer-Sklar t-范数族
-- dombi: Dombi t-范数族
-- aczel_alsina: Aczel-Alsina t-范数族
-- frank: Frank t-范数族
-- minimum: 最小值 t-范数（非阿基米德）
-- drastic: 剧烈积 t-范数（非阿基米德）
-- nilpotent: Nilpotent t-范数（非阿基米德）
+- algebraic: Algebraic product t-norm
+- lukasiewicz: Łukasiewicz t-norm
+- einstein: Einstein t-norm
+- hamacher: Hamacher t-norm family
+- yager: Yager t-norm family
+- schweizer_sklar: Schweizer-Sklar t-norm family
+- dombi: Dombi t-norm family
+- aczel_alsina: Aczel-Alsina t-norm family
+- frank: Frank t-norm family
+- minimum: Minimum t-norm (non-Archimedean)
+- drastic: Drastic product t-norm (non-Archimedean)
+- nilpotent: Nilpotent t-norm (non-Archimedean)
 
-使用示例：
+Usage Example:
 -------
->>> # 创建代数积 t-范数实例，q=2
+>>> # Create an algebraic product t-norm instance with q=2
 >>> fuzzy_framework = OperationTNorm(norm_type='algebraic', q=2)
 
->>> # 计算 t-范数和 t-余范数
+>>> # Calculate t-norm and t-conorm
 >>> result_t = fuzzy_framework.t_norm(0.6, 0.7)
 >>> result_s = fuzzy_framework.t_conorm(0.6, 0.7)
 
->>> # 验证德摩根定律
+>>> # Verify De Morgan's Laws
 >>> demorgan_results = fuzzy_framework.verify_de_morgan_laws()
 
->>> # 绘制 3D 表面图
+>>> # Plot 3D surface
 >>> fuzzy_framework.plot_t_norm_surface()
 """
 
@@ -60,87 +63,114 @@ from fuzzlab.config import get_config
 
 class OperationTNorm:
     """
-    FuzzFramework 类用于计算和分析各种模糊 t-范数和 t-余范数。
-    支持 q-rung 广义模糊数的运算，通过生成元扩展 q 阶实现 q 阶推广运算。
-    类内部包含多种常见 t-范数的定义、其生成元（如果存在）、以及相关属性和验证方法。
+    The OperationTNorm class is used to compute and analyze various fuzzy t-norms and t-conorms.
+    It supports operations for q-rung generalized fuzzy numbers by extending q-rung
+    through generator functions. The class internally defines various common t-norms,
+    their generators (if they exist), and related properties and verification methods.
 
-    属性:
-        - t_norm_list (list): 支持的 t-范数类型列表
-        - norm_type (str): 当前使用的 t-范数类型
-        - q (int): q 阶参数，用于广义模糊数运算
-        - params (dict): 范数参数字典
-        - is_archimedean (bool): 是否为阿基米德范数
-        - is_strict_archimedean (bool): 是否为严格阿基米德范数
-        - supports_q (bool): 是否支持 q 阶运算
-        - g_func: 生成元函数
-        - g_func_inv: 生成元伪逆函数
-        - f_func: 对偶生成元函数
-        - f_func_inv: 对偶生成元伪逆函数
-        - t_norm: t-范数函数
-        - t_conorm: t-余范数函数
+    Attributes:
+        t_norm_list (list): A list of supported t-norm types.
+        norm_type (str): The currently used t-norm type.
+        q (int): The q-rung parameter, used for generalized fuzzy number operations.
+        params (dict): A dictionary of parameters specific to certain t-norms.
+        is_archimedean (bool): True if the t-norm is Archimedean, False otherwise.
+        is_strict_archimedean (bool): True if the t-norm is strictly Archimedean, False otherwise.
+        supports_q (bool): True if the t-norm supports q-rung operations, False otherwise.
+        g_func (Optional[Callable[[float], float]]): The generator function g(a) for the t-norm,
+                                                     potentially q-transformed.
+        g_inv_func (Optional[Callable[[float], float]]): The pseudo-inverse function g_inv(u) for the generator,
+                                                          potentially q-transformed.
+        f_func (Optional[Callable[[float], float]]): The dual generator function f(a) for the t-conorm.
+        f_inv_func (Optional[Callable[[float], float]]): The pseudo-inverse function f_inv(u) for the dual generator.
+        t_norm (Optional[Callable[[float, float], float]]): The computed t-norm function,
+                                                             adapted for the current q value.
+        t_conorm (Optional[Callable[[float, float], float]]): The computed t-conorm function,
+                                                               adapted for the current q value.
 
-    核心功能:
-        1.  **多种 t-范数和 t-余范数实现**: 涵盖代数积、Łukasiewicz、Einstein、Hamacher、Yager、Schweizer-Sklar、Dombi、Aczel-Alsina、Frank、Minimum、Drastic、Nilpotent 等。
-        2.  **q-rung 广义模糊数支持**: 通过生成元的q阶扩展实现对 q-rung 模糊数的运算推广。
-            - 对于 t-范数 T_base 和 t-余范数 S_base，其生成元的 q 阶推广定义为:
-                - **生成元 q 阶扩展**： `g_q(a) = g_base(a^q)`
-                - **生成元 q 阶伪逆**： `g_q_inv(u) = (g_base_inv(u))^(1/q)`
-                - **对偶生成元**: `f(a) = g(1-a^q)^(1/q)`
-                - **对偶伪逆**: `f_inv(u) = (1-g_inv(u)^q)^(1/q)`
-        3.  **生成元 (Generator) 和伪逆 (Pseudo-inverse) 支持**: 对于阿基米德 t-范数，提供了其生成元和伪逆的定义，并支持其 q 阶变换。
-        4.  **属性验证**: 提供了对 t-范数公理（交换律、结合律、单调性、边界条件）、阿基米德性、严格阿基米德性以及生成元性质的验证。
-        5.  **德摩根定律验证**: 验证 q 阶同构映射下 t-范数和 t-余范数是否满足德摩根定律。
-        6.  **可视化**: 提供 t-范数和 t-余范数的三维表面图绘制功能。
-        7.  **工具方法**: 包含从生成元构造 t-范数、从 t-范数推导生成元（数值方法）、以及通过数值方法求解生成元伪逆的静态工具方法。
+    Core Functionality:
+        1.  **Multiple t-norm and t-conorm implementations**: Covers algebraic product, Łukasiewicz,
+            Einstein, Hamacher, Yager, Schweizer-Sklar, Dombi, Aczel-Alsina, Frank, Minimum,
+            Drastic, and Nilpotent t-norms.
+        2.  **q-rung generalized fuzzy number support**: Extends operations to q-rung fuzzy numbers
+            via q-rung extension of generator functions. For a base t-norm T_base and t-conorm S_base,
+            their q-rung extension is defined as:
+            - **Generator q-rung extension**: `g_q(a) = g_base(a^q)`
+            - **Generator q-rung pseudo-inverse**: `g_q_inv(u) = (g_base_inv(u))^(1/q)`
+            - **Dual generator**: `f(a) = g(1-a^q)^(1/q)`
+            - **Dual pseudo-inverse**: `f_inv(u) = (1-g_inv(u)^q)^(1/q)`
+        3.  **Generator and Pseudo-inverse Support**: For Archimedean t-norms, provides definitions
+            for their generators and pseudo-inverses, and supports their q-rung transformations.
+        4.  **Property Verification**: Provides verification for t-norm axioms (commutativity,
+            associativity, monotonicity, boundary conditions), Archimedean property, strict
+            Archimedean property, and consistency of generator properties.
+        5.  **De Morgan's Law Verification**: Verifies if t-norms and t-conorms satisfy De Morgan's
+            laws under q-rung isomorphic mapping.
+        6.  **Visualization**: Provides functionality to plot 3D surface graphs for t-norms and t-conorms.
+        7.  **Utility Methods**: Includes static utility methods for constructing t-norms from generators,
+            deriving generators from t-norms (numerical method), and numerically solving for
+            generator pseudo-inverses.
 
-    示例代码：
-        >>> # 1. 初始化一个代数积 t-范数，使用默认 q=1
+    Examples:
+        >>> # 1. Initialize an algebraic product t-norm with default q=1
         >>> alg_norm = OperationTNorm(norm_type='algebraic')
-        >>> print(f"代数积 T(0.5, 0.8) = {alg_norm.t_norm(0.5, 0.8):.4f}") # 0.5 * 0.8 = 0.4000
-        >>> print(f"代数积 S(0.5, 0.8) = {alg_norm.t_conorm(0.5, 0.8):.4f}") # 0.5 + 0.8 - 0.5*0.8 = 0.9000
+        >>> print(f"Algebraic T(0.5, 0.8) = {alg_norm.t_norm(0.5, 0.8):.4f}") # 0.5 * 0.8 = 0.4000
+        >>> print(f"Algebraic S(0.5, 0.8) = {alg_norm.t_conorm(0.5, 0.8):.4f}") # 0.5 + 0.8 - 0.5*0.8 = 0.9000
 
-        >>> # 2. 初始化一个 Łukasiewicz t-范数，并使用 q=2 进行 q-rung 推广
+        >>> # 2. Initialize a Łukasiewicz t-norm and use q=2 for q-rung generalization
         >>> luk_norm_q2 = OperationTNorm(norm_type='lukasiewicz', q=2)
-        >>> # 对于 Łukasiewicz，T_base(a,b) = max(0, a+b-1)
+        >>> # For Łukasiewicz, T_base(a,b) = max(0, a+b-1)
         >>> # T_q(a,b) = (max(0, a^q + b^q - 1))^(1/q)
         >>> # T_2(0.6, 0.7) = (max(0, 0.6^2 + 0.7^2 - 1))^(1/2) = (max(0, 0.36 + 0.49 - 1))^(1/2) = (max(0, -0.15))^(1/2) = 0
         >>> print(f"Łukasiewicz (q=2) T(0.6, 0.7) = {luk_norm_q2.t_norm(0.6, 0.7):.4f}") # 0.0000
-        >>> # S_2(0.6, 0.7) = (min(1, 0.6^2 + 0.7^2))^(1/2) = (min(1, 0.36 + 0.49))^(1/2) = (min(1, 0.85))^(1/2) = sqrt(0.85)约0.9220
+        >>> # S_2(0.6, 0.7) = (min(1, 0.6^2 + 0.7^2))^(1/2) = (min(1, 0.36 + 0.49))^(1/2) = (min(1, 0.85))^(1/2) = sqrt(0.85) approx 0.9220
         >>> print(f"Łukasiewicz (q=2) S(0.6, 0.7) = {luk_norm_q2.t_conorm(0.6, 0.7):.4f}") # 0.9220
 
-        >>> # 3. 初始化一个 Hamacher t-范数，并设置参数 gamma
-        >>> hamacher_norm = OperationTNorm(norm_type='hamacher', gamma=0.5)
+        >>> # 3. Initialize a Hamacher t-norm and set parameter gamma
+        >>> hamacher_norm = OperationTNorm(norm_type='hamacher', hamacher_gamma=0.5)
         >>> print(f"Hamacher (gamma=0.5) T(0.3, 0.9) = {hamacher_norm.t_norm(0.3, 0.9):.4f}")
 
-        >>> # 4. 获取范数信息
+        >>> # 4. Get norm information
         >>> info = alg_norm.get_info()
         >>> for key, value in info.items():
-            ... print(f"  {key}: {value}")
+        ...     print(f"  {key}: {value}")
 
-        >>> # 5. 验证德摩根定律
+        >>> # 5. Verify De Morgan's Laws
         >>> de_morgan_results = luk_norm_q2.verify_de_morgan_laws(0.6, 0.7)
 
-        >>> # 6. 绘制 t-范数和 t-余范数表面图
-        >>> # hamacher_norm.plot_t_norm_surface(resolution=30) # 可以调整分辨率
+        >>> # 6. Plot t-norm and t-conorm surface
+        >>> # hamacher_norm.plot_t_norm_surface(resolution=30) # Can adjust resolution
 
-    注意事项:
-        - 参数 q: q 必须是大于 0 的整数。当 q=1 时，运算退化为经典的模糊运算。
-        - 特定范数参数: 某些 t-范数（如 Hamacher, Yager, Frank 等）需要额外的参数。这些参数通过 **params 传递给构造函数。请查阅每个 _init_xxx 方法的注释以了解所需参数及其有效范围。
-
-        - 例如，Hamacher 需要 gamma > 0。
-        - Yager 需要 p > 0。
-        - Frank 需要 s > 0 且 s != 1。
-        - Schweizer-Sklar 需要 p != 0。
-        - Dombi 和 Aczel-Alsina 需要 p > 0。
-        - 浮点精度: 内部使用 get_config().DEFAULT_EPSILON (默认为 1e-12) 来处理浮点数比较，以避免精度问题。
-        - 边界值处理: 许多 t-范数和生成元函数在输入接近 0 或 1 时可能涉及 log(0) 或除以 0 的情况。代码中已尽可能通过 get_config().DEFAULT_EPSILON 和条件判断来处理这些边界情况，以避免运行时错误和 NaN 值。
-        - 非阿基米德范数: Minimum, Drastic, Nilpotent 等是非阿基米德 t-范数。它们没有生成元，也不支持 q 阶推广 (supports_q = False)。
-        - 警告信息: 类的内部验证方法 (_verify_properties) 会在发现公理不满足或生成元性质不一致时发出 warnings.UserWarning 或 warnings.RuntimeWarning。这些警告旨在提醒用户潜在的数学不一致性或数值问题，但不会中断程序执行。
-        - 绘图性能: plot_t_norm_surface 方法在 resolution 较高时可能需要较长的计算和渲染时间。
+    Notes:
+        - Parameter `q`: `q` must be a positive integer. When `q=1`, operations
+          degenerate to classical fuzzy operations.
+        - Specific Norm Parameters: Some t-norms (e.g., Hamacher, Yager, Frank) require
+          additional parameters. These parameters are passed via `**params` to the
+          constructor. Please refer to the comments of each `_init_xxx` method for
+          required parameters and their valid ranges.
+            - For example, Hamacher requires `gamma > 0`.
+            - Yager requires `p > 0`.
+            - Frank requires `s > 0` and `s != 1`.
+            - Schweizer-Sklar requires `p != 0`.
+            - Dombi and Aczel-Alsina require `p > 0`.
+        - Floating Point Precision: Internal calculations use `get_config().DEFAULT_EPSILON`
+          (defaulting to 1e-12) for floating-point comparisons to avoid precision issues.
+        - Boundary Value Handling: Many t-norm and generator functions may involve `log(0)`
+          or division by zero when inputs are close to 0 or 1. The code attempts to handle
+          these boundary cases using `get_config().DEFAULT_EPSILON` and conditional checks
+          to prevent runtime errors and NaN values.
+        - Non-Archimedean Norms: Minimum, Drastic, and Nilpotent are non-Archimedean t-norms.
+          They do not have generators and do not support q-rung generalization (`supports_q = False`).
+        - Warning Messages: The class's internal verification methods (`_verify_properties`)
+          will issue `warnings.UserWarning` or `warnings.RuntimeWarning` if axioms are not
+          satisfied or generator properties are inconsistent. These warnings are intended
+          to alert the user to potential mathematical inconsistencies or numerical issues
+          but do not interrupt program execution.
+        - Plotting Performance: The `plot_t_norm_surface` method may require longer
+          computation and rendering times at higher `resolution` values.
     """
 
-    # 定义支持的 t-范数类型列表
-    # 这是一个类属性，列出了 OperationTNorm 实例可以初始化的所有预定义 t-范数类型。
+    # Defines the list of supported t-norm types.
+    # This is a class attribute listing all predefined t-norm types that an OperationTNorm instance can be initialized with.
     t_norm_list = [
         'algebraic', 'lukasiewicz', 'einstein', 'hamacher', 'yager',
         'schweizer_sklar', 'dombi', 'aczel_alsina', 'frank',
@@ -149,107 +179,114 @@ class OperationTNorm:
 
     def __init__(self,
                  norm_type: str = None,
-                 q: int = 1,  # q 阶参数，通常为正整数
+                 q: int = 1,  # q-rung parameter, typically a positive integer
                  **params):
         """
-        初始化模糊运算框架。
+        Initializes the fuzzy operation framework.
 
         Args:
-            norm_type (str, optional): t-范数类型. 默认为 'algebraic'.
-                                       必须是 OperationTNorm.t_norm_list 中的一个。
-            q (int, optional): q-rung 序对参数，用于广义模糊数. 默认为 1.
-                                q 必须是大于 0 的整数。当 q=1 时，运算退化为经典模糊运算。
-            **params: 其他参数，用于某些特定 t-范数。
-                      例如：
-                      - Hamacher 范数: `gamma` (float, 必须 > 0)
-                      - Yager 范数: `p` (float, 必须 > 0)
-                      - Schweizer-Sklar 范数: `p` (float, 必须 != 0)
-                      - Dombi 范数: `p` (float, 必须 > 0)
-                      - Aczel-Alsina 范数: `p` (float, 必须 > 0)
-                      - Frank 范数: `s` (float, 必须 > 0 且 != 1)
+            norm_type (str, optional): The type of t-norm. Defaults to 'algebraic'.
+                                       Must be one of the types listed in `OperationTNorm.t_norm_list`.
+            q (int, optional): The q-rung pair parameter, used for generalized fuzzy numbers.
+                               Defaults to 1. `q` must be a positive integer. When `q=1`,
+                               operations degenerate to classical fuzzy operations.
+            **params: Additional parameters for specific t-norms.
+                      For example:
+                      - Hamacher norm: `hamacher_gamma` (float, must be > 0)
+                      - Yager norm: `yager_p` (float, must be > 0)
+                      - Schweizer-Sklar norm: `sklar_p` (float, must be != 0)
+                      - Dombi norm: `dombi_p` (float, must be > 0)
+                      - Aczel-Alsina norm: `aa_p` (float, must be > 0)
+                      - Frank norm: `frank_s` (float, must be > 0 and != 1)
 
         Raises:
-            ValueError: 如果 `norm_type` 未知或 `q` 不符合要求。
+            ValueError: If `norm_type` is unknown or `q` does not meet the requirements.
         """
 
-        # 如果未指定 norm_type，则默认使用 'algebraic'
+        # If norm_type is not specified, default to 'algebraic'
         if norm_type is None:
             norm_type = 'algebraic'
 
-        # 检查 norm_type 是否在支持的列表中
+        # Check if norm_type is in the supported list
         if norm_type not in self.t_norm_list:
             raise ValueError(f"Unknown t-norm type: {norm_type}. Available types: "
                              f"{', '.join(self.t_norm_list)}")
 
-        # 检查 q 是否为大于 0 的整数
+        # Check if q is a positive integer
         if not isinstance(q, int) or q <= 0:
             raise ValueError(f"q must be a positive integer, "
                              f"but received q={q} (type: {type(q)}).")
-        # 存储实例属性
-        self.norm_type = norm_type  # 当前 t-范数类型
-        self.q = q  # q-rung 参数
-        self.params: dict = params  # 存储特定范数的额外参数
+        # Store instance attributes
+        self.norm_type = norm_type  # Current t-norm type
+        self.q = q  # q-rung parameter
+        self.params: dict = params  # Stores additional parameters for specific norms
 
-        # 原始的 q=1 时的生成元和伪逆函数（用于生成元性质验证和初始q=1级运算，推导 t范数和 t余范数）
-        # 这些是内部使用的基生成元函数，由 _init_xxx 方法设置。
+        # Raw generator and pseudo-inverse functions for q=1 (used for generator property verification
+        # and initial q=1 level operations, deriving t-norm and t-conorm).
+        # These are internal base generator functions set by _init_xxx methods.
         self._base_g_func_raw: Optional[Callable[[float], float]] = None
         self._base_g_inv_func_raw: Optional[Callable[[float], float]] = None
 
-        # 最终的生成元和伪逆函数（可能经过 q 阶变换，用于生成元性质验证）
-        # 这些是经过 q 阶变换后的生成元函数，用于内部验证。
+        # Final generator and pseudo-inverse functions (potentially q-transformed, used for generator property verification).
+        # These are q-transformed generator functions used for internal verification.
         self.g_func: Optional[Callable[[float], float]] = None
         self.g_inv_func: Optional[Callable[[float], float]] = None
 
-        # 对偶生成元及其伪逆，用于验证 t-余范数的生成元性质。
+        # Dual generator and its pseudo-inverse, used for verifying t-conorm generator properties.
         self.f_func: Optional[Callable[[float], float]] = None
         self.f_inv_func: Optional[Callable[[float], float]] = None
 
-        # 最终的 t-范数和 t-余范数计算函数
-        # 这些是外部调用的主要接口，直接适配 q 值。
-        # 事实上，t 范数和 t 余范数是由生成元和对偶生成元及其伪逆推导而来
+        # Final t-norm and t-conorm calculation functions.
+        # These are the main interfaces called externally, directly adapting to the q value.
+        # In fact, t-norms and t-conorms are derived from generators and dual generators and their pseudo-inverses.
         self.t_norm: Optional[Callable[[float, float], float]] = None
         self.t_conorm: Optional[Callable[[float, float], float]] = None
 
-        # 范数属性：是否阿基米德、是否严格阿基米德、是否支持 q 阶推广
-        # 这些属性在 _init_xxx 方法中设置，用于内部逻辑判断和信息查询。
+        # Norm properties: whether Archimedean, strictly Archimedean, and whether q-rung generalization is supported.
+        # These properties are set in _init_xxx methods for internal logic and information queries.
         self.is_archimedean: bool = False
         self.is_strict_archimedean: bool = False
         self.supports_q: bool = False
 
-        # 初始化所有运算和属性
-        # 这是构造函数的核心，它会根据 norm_type 设置所有函数和属性。
+        # Initialize all operations and properties.
+        # This is the core of the constructor, which sets all functions and properties based on norm_type.
         self._initialize_operation()
 
-        # 验证范数属性
-        # 在初始化完成后，立即对所选 t-范数的数学性质进行验证，以确保其符合预期。
+        # Verify norm properties.
+        # After initialization, immediately verify the mathematical properties of the selected t-norm
+        # to ensure it meets expectations.
         if get_config().TNORM_VERIFY:
             self._verify_properties()
 
     def _initialize_operation(self):
         """
-        初始化所有基础 t-范数、t-余范数、生成元及其属性，
-        并根据 q 值进行 q 阶生成元变换。
+        Initializes all base t-norm, t-conorm, generator functions, and their properties,
+        and applies q-rung transformation to the generator functions based on the `q` value.
 
-        **流程概述:**
+        Process Overview:
 
-        1.  **初始化基础运算 (q=1)**: 根据 `self.norm_type` 调用对应的 `_init_xxx` 方法。
-            -   每个 `_init_xxx` 方法会设置 `_base_t_norm_raw`, `_base_t_conorm_raw`,
-                `_base_g_func_raw`, `_base_g_inv_func_raw`，以及 `is_archimedean`,
-                `is_strict_archimedean`, `supports_q` 等属性。
-        2.  **应用 q 值变换到 q 阶生成元**: 调用 `_q_transformation`。
-            -   这将根据 `self.q` 和 `self.supports_q`，将 `_base_g_func_raw` 和 `_base_g_inv_func_raw`
-                变换为最终的 `self.g_func` 和 `self.g_inv_func`。
-        3.  **应用 q 阶变换到对偶生成元及其伪逆**: 调用 `_init_dual_generators`。
-            -   这将根据 `self.q` 和 `self.supports_q`，生成 `self.f_func` 和 `self.f_inv_func`。
-        4.  **对t范数和t-余范数进行q阶同构映射**: 调用 `_q_transformation_for_t_norm`。
-            -   根据 q 值对 t-范数和 t-余范数操作符进行 q 阶同构映射。
-        5.  **直接根据生成元及其伪逆变换 t-范数，根据对偶生成元和伪逆变换 t-余范数**: 调用 `_t_norm_transformation`。
-            -   这将根据 `self.q` 和 `self.supports_q`，将 `self.g_func` 和 `self.g_inv_func` 变换为 `self.t_norm`。
-            -   同时，根据 `self.q` 和 `self.supports_q`，将 `self.f_func` 和 `self.f_inv_func` 变换为 `self.t_conorm`。
+        1.  **Initialize Base Operations (q=1)**: Calls the corresponding `_init_xxx` method
+            based on `self.norm_type`.
+            - Each `_init_xxx` method sets `_base_t_norm_raw`, `_base_t_conorm_raw`,
+              `_base_g_func_raw`, `_base_g_inv_func_raw`, as well as `is_archimedean`,
+              `is_strict_archimedean`, `supports_q`, and other attributes.
+        2.  **Apply q-value transformation to q-rung generators**: Calls `_q_transformation`.
+            - This transforms `_base_g_func_raw` and `_base_g_inv_func_raw` into the
+              final `self.g_func` and `self.g_inv_func` based on `self.q` and `self.supports_q`.
+        3.  **Apply q-rung transformation to dual generators and their pseudo-inverses**: Calls `_init_dual_generators`.
+            - This generates `self.f_func` and `self.f_inv_func` based on `self.q` and `self.supports_q`.
+        4.  **Perform q-rung isomorphic mapping for t-norms and t-conorms**: Calls `_q_transformation_for_t_norm`.
+            - This applies q-rung isomorphic mapping to the t-norm and t-conorm operators based on the `q` value.
+        5.  **Transform t-norms directly based on generators and their pseudo-inverses,
+            and t-conorms based on dual generators and pseudo-inverses**: Calls `_t_norm_transformation`.
+            - This transforms `self.g_func` and `self.g_inv_func` into `self.t_norm`
+              based on `self.q` and `self.supports_q`.
+            - Simultaneously, it transforms `self.f_func` and `self.f_inv_func` into `self.t_conorm`
+              based on `self.q` and `self.supports_q`.
         """
 
-        # 1. 初始化基础运算 (q=1) 的原始函数和属性
-        # 根据 norm_type 调用相应的初始化方法。
+        # 1. Initialize raw functions and properties for base operations (q=1).
+        # Calls the corresponding initialization method based on norm_type.
         if self.norm_type == "algebraic":
             self._init_algebraic()
         elif self.norm_type == "lukasiewicz":
@@ -275,37 +312,41 @@ class OperationTNorm:
         elif self.norm_type == "nilpotent":
             self._init_nilpotent()
 
-        # 2. 应用 q 值变换到 q 阶生成元
-        # 也就是说，通过q阶变换，将 _base_g_func_raw 和 _base_g_inv_func_raw 变换
-        # 为最终的 g_func 和 g_inv_func，这是 q 阶变换后的生成元函数。
+        # 2. Apply q-value transformation to q-rung generators.
+        # This means that through q-rung transformation, _base_g_func_raw and _base_g_inv_func_raw
+        # are transformed into the final g_func and g_inv_func, which are the q-transformed generator functions.
         self._q_transformation()
 
-        # 3. 生成对偶生成元及其伪逆
+        # 3. Generate dual generators and their pseudo-inverses.
         self._init_dual_generators()
 
-        # 4.
+        # 4. Perform q-rung isomorphic mapping for t-norms and t-conorms.
         self._q_transformation_for_t_norm()
 
-        # 5.
+        # 5. Transform t-norms directly based on generators and their pseudo-inverses,
+        # and t-conorms based on dual generators and pseudo-inverses.
         self._t_norm_transformation()
 
     def _q_transformation(self):
         """
-            根据 q 值对生成元和伪逆进行变换。在此之前需要判断有些 t 范数和 t 余范数并没有生成元。
+        Transforms the generator and pseudo-inverse functions based on the `q` value.
+        Before this, it checks if some t-norms and t-conorms do not have generators.
 
-            这些变换后的生成元 (`self.g_func`, `self.g_inv_func`)
+        These transformed generators (`self.g_func`, `self.g_inv_func`)
 
-            **数学表达式 (q-rung 生成元推广):**
-                -   **生成元**: `g_q(a) = g_base(a^q)`
-                -   **伪逆**: `g_q_inv(u) = (g_base_inv(u))^(1/q)`
+        Mathematical Expressions (q-rung Generator Generalization):
+            - **Generator**: `g_q(a) = g_base(a^q)`
+            - **Pseudo-inverse**: `g_q_inv(u) = (g_base_inv(u))^(1/q)`
 
-            **逻辑:**
-                -   如果 `self.supports_q` 为 True 且 `self.q` 不等于 1，并且基础生成元已定义，则应用上述 q 阶变换。
-                -   否则，直接使用原始的基础生成元。
-                -   如果基础生成元未定义（例如非阿基米德范数），则 `self.g_func` 和 `self.g_inv_func` 保持为 None。
+        Logic:
+            - If `self.supports_q` is True and `self.q` is not equal to 1, and the base
+              generator is defined, then the q-rung transformation described above is applied.
+            - Otherwise, the original base generator is used directly.
+            - If the base generator is undefined (e.g., for non-Archimedean norms),
+              `self.g_func` and `self.g_inv_func` remain None.
         """
         if self.supports_q and self.q != 1:
-            # 检查基础生成元是否存在，因为非阿基米德范数没有生成元。
+            # Check if base generator exists, as non-Archimedean norms do not have generators.
             if self._base_g_func_raw is None or self._base_g_inv_func_raw is None:
                 warnings.warn(f"The t-norm {self.norm_type} supports q-tung transformation, "
                               f"but its base generator or pseudo-inverse is empty. "
@@ -317,34 +358,36 @@ class OperationTNorm:
                 self.f_inv_func = None
                 return
 
-            # q 阶生成元: g_q(a) = g_base(a^q)
-            # 对于 a=0 的情况，a^q 仍为 0，g_base(0) 通常为无穷大。
-            # q 阶伪逆: g_q_inv(u) = (g_base_inv(u))^(1/q)
-            # 对于 u=inf 的情况，g_base_inv(inf) 通常为 0。
+            # q-rung generator: g_q(a) = g_base(a^q)
+            # For a=0, a^q is still 0, and g_base(0) is usually infinity.
+            # q-rung pseudo-inverse: g_q_inv(u) = (g_base_inv(u))^(1/q)
+            # For u=inf, g_base_inv(inf) is usually 0.
             self.g_func = lambda a: self._base_g_func_raw(a ** self.q) if a >= 0 else np.inf
             self.g_inv_func = lambda u: (self._base_g_inv_func_raw(u)) ** (1 / self.q) if u >= 0 else 0.0
         else:
-            # 如果 q=1 或不支持 q 阶，则直接使用原始的基础生成元
+            # If q=1 or q-rung is not supported, use the original base generator directly.
             self.g_func = self._base_g_func_raw
             self.g_inv_func = self._base_g_inv_func_raw
 
     def _init_dual_generators(self):
         """
-        初始化对偶生成元和及其伪逆。
-        对偶生成元是通过生成元及其伪逆得到的。和生成元及其伪逆共同构成 t 范数和 t 余范数。
+        Initializes the dual generator and its pseudo-inverse.
+        The dual generator is derived from the generator and its pseudo-inverse.
+        Together with the generator and its pseudo-inverse, they form the t-norm and t-conorm.
 
-        **数学表达式**：
-            - **对偶生成元**: `f(a) = g(1-a^q)^(1/q)`
-            - **对偶伪逆**: `f_inv(u) = (1 - g_inv(u)^q)^(1/q)`
+        Mathematical Expressions:
+            - **Dual Generator**: `f(a) = g(1-a^q)^(1/q)`
+            - **Dual Pseudo-inverse**: `f_inv(u) = (1 - g_inv(u)^q)^(1/q)`
 
-        **逻辑**
-            - 仅当当前 t-范数是阿基米德的，并且其生成元 (`self.g_func`)和伪逆 (`self.g_inv_func`) 已定义时，才初始化对偶生成元。
-            - 否则，对偶生成元保持为 None。
+        Logic:
+            - The dual generator is initialized only if the current t-norm is Archimedean
+              and its generator (`self.g_func`) and pseudo-inverse (`self.g_inv_func`) are defined.
+            - Otherwise, the dual generator remains None.
         """
         if self.is_archimedean and self.g_func is not None and self.g_inv_func is not None:
-            # 对偶生成元 f(a) = g(1-a^q)^(1/q)
-            # 确保 1-a 在有效域 [0,1] 内，否则结果为无穷大。
-            # 对偶伪逆 f_inv(u) = (1 - g_inv(u)^q)^(1/q
+            # Dual generator f(a) = g((1 - a^q)^(1/q))
+            # Ensure 1-a is within the valid domain [0,1], otherwise the result is infinity.
+            # Dual pseudo-inverse f_inv(u) = (1 - g_inv(u)^q)^(1/q)
             self.f_func = lambda a: self.g_func((1 - a ** self.q) ** (1 / self.q)) if 0 <= a <= 1 else np.inf
             self.f_inv_func = lambda u: (1 - self.g_inv_func(u) ** self.q) ** (1 / self.q)
         else:
@@ -353,39 +396,47 @@ class OperationTNorm:
 
     def _q_transformation_for_t_norm(self):
         """
-        根据 q 值对 t-范数和 t-余范数操作符进行 q 阶同构映射。
-        这些变换后的 t-范数和 t-余范数主要用于检验生成元变换后的 t-范数和 t-余范数是否符合数学定义，对其进行验证的。
+        Applies q-rung isomorphic mapping to the t-norm and t-conorm operators based on the `q` value.
+        These transformed t-norms and t-conorms are primarily used to verify if the t-norms and
+        t-conorms obtained after generator transformation conform to their mathematical definitions.
 
-        **数学表达式 (q-rung 推广):**
-            - **t-范数**: `T_q(a,b) = (T_base(a^q, b^q))^(1/q)`
-            - **t-余范数**: `S_q(a,b) = (S_base(a^q, b^q))^(1/q)`
-        **逻辑:**
-            - 如果 `self.supports_q` 为 True 且 `self.q` 不等于 1，则应用上述 q 阶同构映射。
-            - 否则（即 `q=1` 或该范数不支持 q 阶推广），直接使用原始的基础运算函数。
-            - 将t-范数和t-余范数其赋值到 `self._check_t_norm` 和 `self._check_t_conorm`
+        Mathematical Expressions (q-rung Generalization):
+            - **t-norm**: `T_q(a,b) = (T_base(a^q, b^q))^(1/q)`
+            - **t-conorm**: `S_q(a,b) = (S_base(a^q, b^q))^(1/q)`
+        Logic:
+            - If `self.supports_q` is True and `self.q` is not equal to 1, then the
+              q-rung isomorphic mapping described above is applied.
+            - Otherwise (i.e., `q=1` or the norm does not support q-rung generalization),
+              the original base operation function is used directly.
+            - The t-norm and t-conorm are assigned to `self._check_t_norm` and `self._check_t_conorm`.
         """
         if self.supports_q and self.q != 1:
-            # 应用 q 阶同构映射:t-范数 T_q(a,b) 的定义,t-余范数 S_q(a,b) 的定义
+            # Apply q-rung isomorphic mapping: definition of t-norm T_q(a,b) and t-conorm S_q(a,b)
             self._check_t_norm = lambda a, b: (self._base_t_norm_raw(a ** self.q, b ** self.q)) ** (1 / self.q)
             self._check_t_conorm = lambda a, b: (self._base_t_conorm_raw(a ** self.q, b ** self.q)) ** (1 / self.q)
         else:
-            # 如果 q=1 或不支持 q 阶，则直接使用原始的基础运算
+            # If q=1 or q-rung is not supported, use the original base operations directly.
             self._check_t_norm = self._base_t_norm_raw
             self._check_t_conorm = self._base_t_conorm_raw
 
     def _t_norm_transformation(self):
         """
-        直接根据生成元及其伪逆变换 t-范数，根据对偶生成元和伪逆变换 t-余范数。
-        检验变换后的 t-范数和 t-余范数是否符合数学定义。
+        Directly transforms the t-norm based on its generator and pseudo-inverse,
+        and the t-conorm based on its dual generator and pseudo-inverse.
+        This method verifies if the transformed t-norm and t-conorm conform to their
+        mathematical definitions.
 
-        **逻辑**
-            - 检查当前 t-范数是否是阿基米德的，并且其生成元和伪逆已定义。
-            - 检查对偶生成元和伪逆是否存在。
-            - 检查变换后的 t-范数和 t-余范数是否符合数学定义。
+        Logic:
+            - Checks if the current t-norm is Archimedean and if its generator and
+              pseudo-inverse are defined.
+            - Checks if the dual generator and pseudo-inverse exist.
+            - Checks if the transformed t-norm and t-conorm conform to their mathematical definitions.
 
-        **注意**
-            - 此方法仅用于验证变换后的 t-范数和 t-余范数是否符合数学定义。
-            - 实际应用中，通常不会直接使用此方法，而是使用已变换后的 t-范数和 t-余范数。
+        Note:
+            - This method is only used to verify if the transformed t-norm and t-conorm
+              conform to their mathematical definitions.
+            - In practical applications, this method is usually not called directly;
+              instead, the already transformed t-norm and t-conorm are used.
         """
         if not self.is_archimedean:
             self.t_norm = self._base_t_norm_raw
@@ -400,11 +451,12 @@ class OperationTNorm:
                 self.t_norm = self._base_t_norm_raw
                 self.t_conorm = self._base_t_conorm_raw
             else:
-                # 通过生成元及其伪逆，对偶生成元及其伪逆计算带有q变换的t-范数和t-余范数
+                # Calculate q-transformed t-norm and t-conorm using generator, pseudo-inverse,
+                # dual generator, and dual pseudo-inverse.
                 self.t_norm = lambda a, b: self.g_inv_func(self.g_func(a) + self.g_func(b))
                 self.t_conorm = lambda a, b: self.f_inv_func(self.f_func(a) + self.f_func(b))
 
-        # 检验变换后的 t-范数和 t-余范数是否符合初始的 t-范数和 t-余范数
+        # Verify if the transformed t-norm and t-conorm match the initial t-norm and t-conorm.
         if self.is_archimedean:
             test_data = (0.6, 0.4)
             check = self._check_t_norm(*test_data)
@@ -418,211 +470,213 @@ class OperationTNorm:
                               f"mapping values of the t-norm and t-conorm({check}).",
                               RuntimeWarning)
 
-    # ======================= 初始化基础运算 (q=1) ====================
-    # 每个 _init_xxx 方法负责定义该范数类型在 q=1 时的：
-    # - _base_g_func_raw: 原始生成元函数 g(a)
-    # - _base_g_inv_func_raw: 原始生成元伪逆函数 g_inv(u)
-    # - is_archimedean: 是否阿基米德 t-范数
-    # - is_strict_archimedean: 是否严格阿基米德 t-范数
-    # - supports_q: 是否支持 q 阶同构映射推广
+    # ======================= Initialize Base Operations (q=1) ====================
+    # Each _init_xxx method is responsible for defining the following for that norm type at q=1:
+    # - _base_g_func_raw: The raw generator function g(a).
+    # - _base_g_inv_func_raw: The raw generator pseudo-inverse function g_inv(u).
+    # - is_archimedean: Whether it is an Archimedean t-norm.
+    # - is_strict_archimedean: Whether it is a strictly Archimedean t-norm.
+    # - supports_q: Whether it supports q-rung isomorphic mapping generalization.
 
     def _init_algebraic(self):
         """
-        初始化代数积 t-范数 (Product t-norm) 及其对偶 t-余范数。
-        这是一种严格阿基米德 t-范数。
+        Initializes the Algebraic Product t-norm and its dual t-conorm.
+        This is a strictly Archimedean t-norm.
         """
         self._base_t_norm_raw = lambda a, b: a * b
-        """数学表达式：T(a,b) = a * b"""
+        """Mathematical expression: T(a,b) = a * b"""
 
         self._base_t_conorm_raw = lambda a, b: a + b - a * b
-        """数学表达式：S(a,b) = a + b - ab"""
+        """Mathematical expression: S(a,b) = a + b - ab"""
 
         self._base_g_func_raw = lambda a: -np.log(a) if a > get_config().DEFAULT_EPSILON else np.inf
-        """数学表达式：g(a) = -ln(a)
-        生成元 g(a) 在 a 趋近于 0 时趋近于无穷大，在 a 趋近于 1 时趋近于 0。
-        这里使用 get_config().DEFAULT_EPSILON 来处理 log(0) 的情况，避免运行时错误。
+        """Mathematical expression: g(a) = -ln(a)
+        The generator g(a) approaches infinity as a approaches 0, and approaches 0 as a approaches 1.
+        Here, get_config().DEFAULT_EPSILON is used to handle the log(0) case, avoiding runtime errors.
         """
 
         self._base_g_inv_func_raw = lambda u: np.exp(-u) if u < 100 else 0.0
-        """数学表达式：g^(-1)(u) = exp(-u)
-        伪逆 g_inv(u) 在 u 趋近于无穷大时趋近于 0，在 u 趋近于 0 时趋近于 1。
-        这里设置了一个上限 100，以防止 exp(-u) 过小导致浮点下溢，并直接返回 0.0。
+        """Mathematical expression: g^(-1)(u) = exp(-u)
+        The pseudo-inverse g_inv(u) approaches 0 as u approaches infinity, and approaches 1 as u approaches 0.
+        Here, an upper limit of 100 is set to prevent exp(-u) from becoming too small, leading to floating-point underflow, and directly returns 0.0.
         """
 
         self.is_archimedean = True
-        """是阿基米德 t-范数: T(x,x) < x 对于所有 x ∈ (0,1)。"""
+        """Is an Archimedean t-norm: T(x,x) < x for all x ∈ (0,1)."""
 
         self.is_strict_archimedean = True
-        """是严格阿基米德 t-范数: 除了阿基米德性外，T(x,y) = 0 当且仅当 x=0 或 y=0。"""
+        """Is a strictly Archimedean t-norm: In addition to Archimedean property, T(x,y) = 0 if and only if x=0 or y=0."""
 
         self.supports_q = True
-        """支持 q 阶同构映射推广: 该范数可以通过 q 阶变换进行推广。"""
+        """Supports q-rung isomorphic mapping generalization: This norm can be generalized through q-rung transformation."""
 
     def _init_lukasiewicz(self):
         """
-        初始化 Łukasiewicz t-范数 及其对偶 t-余范数。
-        这是一种阿基米德 t-范数，但不是严格阿基米德的。
+        Initializes the Łukasiewicz t-norm and its dual t-conorm.
+        This is an Archimedean t-norm, but not strictly Archimedean.
         """
         self._base_t_norm_raw = lambda a, b: max(0, a + b - 1)
-        """数学表达式：T(a,b) = max(0, a + b - 1)"""
+        """Mathematical expression: T(a,b) = max(0, a + b - 1)"""
 
         self._base_t_conorm_raw = lambda a, b: min(1, a + b)
-        """数学表达式：S(a,b) = min(1, a + b)"""
+        """Mathematical expression: S(a,b) = min(1, a + b)"""
 
         self._base_g_func_raw = lambda a: 1 - a
-        """数学表达式：g(a) = 1 - a"""
+        """Mathematical expression: g(a) = 1 - a"""
 
         self._base_g_inv_func_raw = lambda u: max(0, 1 - u)
-        """数学表达式：g^(-1)(u) = max(0, 1 - u)"""
+        """Mathematical expression: g^(-1)(u) = max(0, 1 - u)"""
 
         self.is_archimedean = True
-        """是阿基米德 t-范数"""
+        """Is an Archimedean t-norm"""
 
         self.is_strict_archimedean = False
-        """不是严格阿基米德 t-范数: 例如 T(0.5, 0.5) = 0，但 0.5 != 0。"""
+        """Is not a strictly Archimedean t-norm: For example, T(0.5, 0.5) = 0, but 0.5 != 0."""
 
         self.supports_q = True
-        """支持 q 阶同构映射推广"""
+        """Supports q-rung isomorphic mapping generalization"""
 
     def _init_einstein(self):
         """
-        初始化 Einstein t-范数 及其对偶 t-余范数。
-        这是一种严格阿基米德 t-范数。
+        Initializes the Einstein t-norm and its dual t-conorm.
+        This is a strictly Archimedean t-norm.
         """
         self._base_t_norm_raw = lambda a, b: (a * b) / (1 + (1 - a) * (1 - b))
-        """数学表达式：T(a,b) = (a * b) / (1 + (1-a)*(1-b))"""
+        """Mathematical expression: T(a,b) = (a * b) / (1 + (1-a)*(1-b))"""
 
         self._base_t_conorm_raw = lambda a, b: (a + b) / (1 + a * b)
-        """数学表达式：S(a,b) = (a + b)/(1 + a * b)"""
+        """Mathematical expression: S(a,b) = (a + b)/(1 + a * b)"""
 
         self._base_g_func_raw = lambda a: np.log((2 - a) / a) if a > get_config().DEFAULT_EPSILON else np.inf
-        """数学表达式：g(a) = ln((2-a)/a)"""
+        """Mathematical expression: g(a) = ln((2-a)/a)"""
 
         self._base_g_inv_func_raw = lambda u: 2 / (1 + np.exp(u)) if u < 100 else 0.0
-        """数学表达式：g^(-1)(u) = 2 / (1 + exp(u))"""
+        """Mathematical expression: g^(-1)(u) = 2 / (1 + exp(u))"""
 
         self.is_archimedean = True
-        """是阿基米德 t-范数"""
+        """Is an Archimedean t-norm"""
 
         self.is_strict_archimedean = True
-        """是严格阿基米德 t-范数"""
+        """Is a strictly Archimedean t-norm"""
 
         self.supports_q = True
-        """支持 q 阶同构映射推广"""
+        """Supports q-rung isomorphic mapping generalization"""
 
     def _init_hamacher(self):
         """
-        初始化 Hamacher t-范数 及其对偶 t-余范数。
-        这是一种严格阿基米德 t-范数，包含一个参数 `gamma`。
+        Initializes the Hamacher t-norm and its dual t-conorm.
+        This is a strictly Archimedean t-norm, containing a parameter `gamma`.
         """
         if 'hamacher_gamma' not in self.params:
             self.params['hamacher_gamma'] = 1.0
-        gamma = self.params.get('hamacher_gamma')  # 获取参数 gamma
+        gamma = self.params.get('hamacher_gamma')  # Get parameter gamma
         if gamma <= 0:
-            raise ValueError("Hamacher参数gamma必须大于0")
+            raise ValueError("Hamacher parameter gamma must be greater than 0")
 
         self._base_t_norm_raw = lambda a, b: (a * b) / (gamma + (1 - gamma) * (a + b - a * b))
-        """数学表达式：T(a,b) = (a * b) / (gamma + (1-gamma)*(a+b-a*b))"""
+        """Mathematical expression: T(a,b) = (a * b) / (gamma + (1-gamma)*(a+b-a*b))"""
 
         self._base_t_conorm_raw = lambda a, b: (a + b - (2 - gamma) * a * b) / (1 - (1 - gamma) * a * b)
-        """数学表达式：S(a,b) = (a+b-(2-gamma)*ab)/(1-(1-gamma)*ab)"""
+        """Mathematical expression: S(a,b) = (a+b-(2-gamma)*ab)/(1-(1-gamma)*ab)"""
 
         self._base_g_func_raw = lambda a: np.log((gamma + (1 - gamma) * a) / a) if a > get_config().DEFAULT_EPSILON else np.inf
-        """数学表达式：g(a) = ln((gamma + (1-gamma)*a)/a)"""
+        """Mathematical expression: g(a) = ln((gamma + (1-gamma)*a)/a)"""
 
         self._base_g_inv_func_raw = lambda u: gamma / (np.exp(u) - (1 - gamma)) if np.exp(u) > (1 - gamma) else 0.0
-        """数学表达式：g^(-1)(u) = gamma/(exp(u)-1+gamma)"""
+        """Mathematical expression: g^(-1)(u) = gamma/(exp(u)-1+gamma)"""
 
         self.is_archimedean = True
-        """是阿基米德 t-范数"""
+        """Is an Archimedean t-norm"""
 
         self.is_strict_archimedean = True
-        """是严格阿基米德 t-范数"""
+        """Is a strictly Archimedean t-norm"""
 
         self.supports_q = True
-        """支持 q 阶同构映射推广"""
+        """Supports q-rung isomorphic mapping generalization"""
 
     def _init_yager(self):
         """
-        初始化 Yager t-范数族 及其对偶 t-余范数族。
-        这是一种阿基米德 t-范数族，包含一个参数 `p`。
-        当 p=1 时，Yager t-范数退化为 Łukasiewicz t-范数。
+        Initializes the Yager t-norm family and its dual t-conorm family.
+        This is an Archimedean t-norm family, containing a parameter `p`.
+        When p=1, the Yager t-norm degenerates to the Łukasiewicz t-norm.
         """
         if 'yager_p' not in self.params:
             self.params['yager_p'] = 1.0
-        p = self.params.get('yager_p')  # 获取参数 p，默认为 1.0
+        p = self.params.get('yager_p')  # Get parameter p, defaults to 1.0
         if p <= 0:
-            raise ValueError("Yager参数p必须大于0")
+            raise ValueError("Yager parameter p must be greater than 0")
 
         self._base_t_norm_raw = lambda a, b: max(0, 1 - ((1 - a) ** p + (1 - b) ** p) ** (1 / p))
-        """数学表达式：T(a,b) = 1 - min(1, ((1-a)^p + (1-b)^p)^{1/p})"""
+        """Mathematical expression: T(a,b) = 1 - min(1, ((1-a)^p + (1-b)^p)^{1/p})"""
 
         self._base_t_conorm_raw = lambda a, b: min(1, (a ** p + b ** p) ** (1 / p))
-        """数学表达式：S(a,b) = min(1, (a^p + b^p)^{1/p})"""
+        """Mathematical expression: S(a,b) = min(1, (a^p + b^p)^{1/p})"""
 
         self._base_g_func_raw = lambda a: (1 - a) ** p
-        """数学表达式：g(a) = (1 - a)^p"""
+        """Mathematical expression: g(a) = (1 - a)^p"""
 
         # self._base_g_inv_func_raw = lambda u: 1 - min(1, u ** (1 / p))
         self._base_g_inv_func_raw = lambda u: 1 - (u ** (1 / p))
-        """数学表达式：g^(-1)(u) = 1 - min(1, u^{1/p})"""
+        """Mathematical expression: g^(-1)(u) = 1 - min(1, u^{1/p})"""
 
         self.is_archimedean = True
-        """是阿基米德 t-范数"""
+        """Is an Archimedean t-norm"""
 
         self.is_strict_archimedean = (p == 1)
-        """是否严格阿基米德 t-范数，p=1时严格。
-        当 p=1 时，Yager t-范数退化为 Łukasiewicz t-范数，而 Łukasiewicz 不是严格阿基米德的。
-        这里注释有误，应为：当 p 趋近于无穷大时，Yager t-范数趋近于 Minimum t-范数。
-        当 p=1 时，T(a,b) = max(0, a+b-1)，S(a,b) = min(1, a+b)，这正是 Łukasiewicz 范数。
-        Łukasiewicz 范数不是严格阿基米德的。
-        Yager 范数族通常是严格阿基米德的，除非 p=1 或 p 趋于无穷。
-        对于 p=1，T(a,a) = max(0, 2a-1)。如果 a=0.5，T(0.5,0.5)=0，但 a!=0，所以不是严格阿基米德。
+        """Whether it is a strictly Archimedean t-norm; it is strict when p=1.
+        When p=1, the Yager t-norm degenerates to the Łukasiewicz t-norm,
+        and Łukasiewicz is not strictly Archimedean.
+        The comment here is incorrect: it should be that as p approaches infinity,
+        the Yager t-norm approaches the Minimum t-norm.
+        When p=1, T(a,b) = max(0, a+b-1) and S(a,b) = min(1, a+b), which is exactly the Łukasiewicz norm.
+        The Łukasiewicz norm is not strictly Archimedean.
+        The Yager t-norm family is generally strictly Archimedean, unless p=1 or p approaches infinity.
+        For p=1, T(a,a) = max(0, 2a-1). If a=0.5, T(0.5,0.5)=0, but a!=0, so it is not strictly Archimedean.
         """
 
         self.supports_q = True
-        """支持 q 阶同构映射推广"""
+        """Supports q-rung isomorphic mapping generalization"""
 
     def _init_schweizer_sklar(self):
         """
-        初始化 Schweizer-Sklar t-范数 及其对偶 t-余范数。
-        这是一种严格阿基米德 t-范数，包含一个参数 `p`。
-        当 p 趋近于 0 时，退化为代数积。
-        当 p 趋近于无穷大时，退化为 Minimum。
-        当 p 趋近于负无穷大时，退化为 Drastic Product。
+        Initializes the Schweizer-Sklar t-norm and its dual t-conorm.
+        This is a strictly Archimedean t-norm, containing a parameter `p`.
+        As p approaches 0, it degenerates to the algebraic product.
+        As p approaches infinity, it degenerates to Minimum.
+        As p approaches negative infinity, it degenerates to Drastic Product.
         """
         if 'sklar_p' not in self.params:
             self.params['sklar_p'] = 1.0
-        p = self.params.get('sklar_p')  # 获取参数 p，默认为 1.0
+        p = self.params.get('sklar_p')  # Get parameter p, defaults to 1.0
         if p == 0:
-            raise ValueError("Schweizer-Sklar参数p不能为0")
+            raise ValueError("Schweizer-Sklar parameter p cannot be 0")
 
         if p > 0:
             self._base_t_norm_raw = lambda a, b: (max(0, a ** (-p) + b ** (-p) - 1)) ** (
                     -1 / p) if a > get_config().DEFAULT_EPSILON and b > get_config().DEFAULT_EPSILON else 0.0
-            """数学表达式：T(a,b) = (max(0, a^{-p} + b^{-p} - 1))^{-1/p}
-            处理 a 或 b 接近 0 的情况，避免除以 0 或负指数问题。
+            """Mathematical expression: T(a,b) = (max(0, a^{-p} + b^{-p} - 1))^{-1/p}
+            Handles cases where a or b are close to 0, avoiding division by 0 or negative exponent issues.
             """
 
             self._base_t_conorm_raw = \
                 lambda a, b: (1 - (max(0, (1 - a) ** (-p) + (1 - b) ** (-p) - 1))
                               ** (-1 / p)) if (1 - a) > get_config().DEFAULT_EPSILON and (1 - b) > get_config().DEFAULT_EPSILON else max(a, b)
-            """数学表达式：S(a,b) = 1 - (max(0, (1-a)^{-p} + (1-b)^{-p} - 1))^{-1/p}
-            处理 1-a 或 1-b 接近 0 的情况。
+            """Mathematical expression: S(a,b) = 1 - (max(0, (1-a)^{-p} + (1-b)^{-p} - 1))^{-1/p}
+            Handles cases where 1-a or 1-b are close to 0.
             """
 
             self._base_g_func_raw = lambda a: a ** (-p) - 1 if a > get_config().DEFAULT_EPSILON else np.inf
-            """数学表达式：g(a) = a^{-p} - 1"""
+            """Mathematical expression: g(a) = a^{-p} - 1"""
 
             self._base_g_inv_func_raw = lambda u: (u + 1) ** (-1 / p) if u > -1 else 0.0
-            """数学表达式：g^(-1)(u) = (u + 1)^{-1/p}"""
+            """Mathematical expression: g^(-1)(u) = (u + 1)^{-1/p}"""
 
         else:  # p < 0
-            # 当 p < 0 时，公式形式略有不同，以确保函数行为的正确性。
+            # When p < 0, the formula form is slightly different to ensure correct function behavior.
             self._base_t_norm_raw = lambda a, b: (a ** (-p) + b ** (-p) - 1) ** (
                     -1 / p) if a < 1.0 - get_config().DEFAULT_EPSILON and b < 1.0 - get_config().DEFAULT_EPSILON else min(a, b)
-            """数学表达式：T(a,b) = (a^{-p} + b^{-p} - 1)^{-1/p}
-            处理 a 或 b 接近 1 的情况。
+            """Mathematical expression: T(a,b) = (a^{-p} + b^{-p} - 1)^{-1/p}
+            Handles cases where a or b are close to 1.
             """
 
             self._base_t_conorm_raw = lambda a, b: 1 - ((1 - a) **
@@ -630,258 +684,261 @@ class OperationTNorm:
                                                                                                     < 1.0 - get_config().DEFAULT_EPSILON and (
                                                                                                             1 - b) < 1.0 - get_config().DEFAULT_EPSILON) else max(
                 a, b)
-            """数学表达式：S(a,b) = 1 - ((1-a)^{-p} + (1-b)^{-p} - 1)^{-1/p}
-            处理 1-a 或 1-b 接近 1 的情况。
+            """Mathematical expression: S(a,b) = 1 - ((1-a)^{-p} + (1-b)^{-p} - 1)^{-1/p}
+            Handles cases where 1-a or 1-b are close to 1.
             """
 
             self._base_g_func_raw = lambda a: (1 - a) ** (-p) - 1 if a < 1.0 - get_config().DEFAULT_EPSILON else np.inf
-            """数学表达式：g(a) = (1 - a)^{-p} - 1"""
+            """Mathematical expression: g(a) = (1 - a)^{-p} - 1"""
 
             self._base_g_inv_func_raw = lambda u: 1 - (u + 1) ** (-1 / p) if u > -1 else 0.0
-            """数学表达式：g^(-1)(u) = 1 - (u + 1)^{-1/p}"""
+            """Mathematical expression: g^(-1)(u) = 1 - (u + 1)^{-1/p}"""
 
         self.is_archimedean = True
-        """是阿基米德 t-范数"""
+        """Is an Archimedean t-norm"""
 
         self.is_strict_archimedean = True
-        """是严格阿基米德 t-范数"""
+        """Is a strictly Archimedean t-norm"""
 
         self.supports_q = True
-        """支持 q 阶同构映射推广"""
+        """Supports q-rung isomorphic mapping generalization"""
 
     def _init_dombi(self):
         """
-        初始化 Dombi t-范数 及其对偶 t-余范数。
-        这是一种严格阿基米德 t-范数，包含一个参数 `p`。
+        Initializes the Dombi t-norm and its dual t-conorm.
+        This is a strictly Archimedean t-norm, containing a parameter `p`.
         """
         if 'dombi_p' not in self.params:
             self.params['dombi_p'] = 1.0
-        p = self.params.get('dombi_p')  # 获取参数 p，默认为 1.0
+        p = self.params.get('dombi_p')  # Get parameter p, defaults to 1.0
         if p <= 0:
-            raise ValueError("Dombi参数p必须大于0")
+            raise ValueError("Dombi parameter p must be greater than 0")
 
-        # Dombi t-范数原始公式
+        # Dombi t-norm original formula
         def dombi_tnorm(a, b):
-            # 边界条件处理：T(a,0)=0, T(0,b)=0
+            # Boundary condition handling: T(a,0)=0, T(0,b)=0
             if a <= get_config().DEFAULT_EPSILON or b <= get_config().DEFAULT_EPSILON:
                 return 0.0
-            # 边界条件处理：T(a,1)=a, T(1,b)=b
+            # Boundary condition handling: T(a,1)=a, T(1,b)=b
             if abs(a - 1.0) < get_config().DEFAULT_EPSILON:
                 return b
             if abs(b - 1.0) < get_config().DEFAULT_EPSILON:
                 return a
 
-            # 避免 (1-x)/x 或 x/(1-x) 趋近于无穷大或0时，p次幂导致浮点错误
-            # 使用 np.power 安全计算幂次
+            # Avoid floating point errors when (1-x)/x or x/(1-x) approach infinity or 0,
+            # leading to issues with p-th power.
+            # Use np.power for safe power calculation.
             term_a = np.power((1.0 - a) / a, p)
             term_b = np.power((1.0 - b) / b, p)
 
-            # 确保分母不为零，尽管在处理了 a,b 接近 0 或 1 的情况后，通常不会出现
+            # Ensure denominator is not zero, although it usually won't be after handling
+            # cases where a,b are close to 0 or 1.
             denominator_term = np.power(term_a + term_b, 1 / p)
-            if denominator_term < get_config().DEFAULT_EPSILON:  # 避免除以0
-                return 1.0  # 此时 (1+denominator_term) 趋近于 1，结果趋近于 1
+            if denominator_term < get_config().DEFAULT_EPSILON:  # Avoid division by zero
+                return 1.0  # At this point, (1+denominator_term) approaches 1, and the result approaches 1.
 
             return 1 / (1 + denominator_term)
 
-        # Dombi t-余范数原始公式
+        # Dombi t-conorm original formula
         def dombi_tconorm(a, b):
-            # 边界条件处理：S(a,0)=a, S(0,b)=b
+            # Boundary condition handling: S(a,0)=a, S(0,b)=b
             if abs(a - 0.0) < get_config().DEFAULT_EPSILON:
                 return b
             if abs(b - 0.0) < get_config().DEFAULT_EPSILON:
                 return a
-            # 边界条件处理：S(a,1)=1, S(1,b)=1
+            # Boundary condition handling: S(a,1)=1, S(1,b)=1
             if abs(a - 1.0) < get_config().DEFAULT_EPSILON or abs(b - 1.0) < get_config().DEFAULT_EPSILON:
                 return 1.0
 
-            # 避免 (1-x)/x 或 x/(1-x) 趋近于无穷大或0时，p次幂导致浮点错误
-            # 注意：这里是 (x/(1-x))^p，与生成元相反
+            # Avoid floating point errors when (1-x)/x or x/(1-x) approach infinity or 0,
+            # leading to issues with p-th power.
+            # Note: Here it's (x/(1-x))^p, opposite to the generator.
             term_a = np.power(a / (1.0 - a), p)
             term_b = np.power(b / (1.0 - b), p)
 
-            # 确保分母不为零
+            # Ensure denominator is not zero.
             denominator_term = np.power(term_a + term_b, -1 / p)
-            if denominator_term < get_config().DEFAULT_EPSILON:  # 避免除以0
-                return 1.0  # 此时 (1+denominator_term) 趋近于 1，结果趋近于 1
+            if denominator_term < get_config().DEFAULT_EPSILON:  # Avoid division by zero
+                return 1.0  # At this point, (1+denominator_term) approaches 1, and the result approaches 1.
 
             return 1 / (1 + denominator_term)
 
-        # 修正生成元和伪逆的定义，使其在边界处符合数学定义
-        # 生成元 g(a) = ((1-a)/a)^p
+        # Corrected definitions for generator and pseudo-inverse to conform to mathematical definitions at boundaries.
+        # Generator g(a) = ((1-a)/a)^p
         def dombi_g_func(a):
-            if abs(a - 0.0) < get_config().DEFAULT_EPSILON:  # a 趋近于 0
+            if abs(a - 0.0) < get_config().DEFAULT_EPSILON:  # a approaches 0
                 return np.inf
-            if abs(a - 1.0) < get_config().DEFAULT_EPSILON:  # a 趋近于 1
+            if abs(a - 1.0) < get_config().DEFAULT_EPSILON:  # a approaches 1
                 return 0.0
             return np.power((1.0 - a) / a, p)
 
-        # 伪逆 g_inv(u) = 1 / (1 + u^(1/p))
+        # Pseudo-inverse g_inv(u) = 1 / (1 + u^(1/p))
         def dombi_g_inv_func(u):
-            if abs(u - 0.0) < get_config().DEFAULT_EPSILON:  # u 趋近于 0
+            if abs(u - 0.0) < get_config().DEFAULT_EPSILON:  # u approaches 0
                 return 1.0
-            # 当 u 趋近于无穷大时，u^(1/p) 趋近于无穷大，1 + u^(1/p) 趋近于无穷大，结果趋近于 0
+            # When u approaches infinity, u^(1/p) approaches infinity, 1 + u^(1/p) approaches infinity, and the result approaches 0.
             if np.isinf(u):
                 return 0.0
             return 1.0 / (1.0 + np.power(u, 1.0 / p))
 
         self._base_t_norm_raw = dombi_tnorm
-        """数学表达式：T(a,b) = 1/(1+(((1-a)/a)^p+((1-b)/b)^p)^{1/p})"""
+        """Mathematical expression: T(a,b) = 1/(1+(((1-a)/a)^p+((1-b)/b)^p)^{1/p})"""
 
         self._base_t_conorm_raw = dombi_tconorm
-        """数学表达式：S(a,b) = 1 / (1 + ((a/(1-a))^p + (b/(1/(1-b)))^p)^{-1/p})"""
+        """Mathematical expression: S(a,b) = 1 / (1 + ((a/(1-a))^p + (b/(1/(1-b)))^p)^{-1/p})"""
 
         self._base_g_func_raw = dombi_g_func
-        """数学表达式：g(a) = ((1 - a)/a)^p"""
+        """Mathematical expression: g(a) = ((1 - a)/a)^p"""
 
         self._base_g_inv_func_raw = dombi_g_inv_func
-        """数学表达式：g^(-1)(u) = 1 / (1 + u^{1/p})"""
+        """Mathematical expression: g^(-1)(u) = 1 / (1 + u^{1/p})"""
 
         self.is_archimedean = True
-        """是阿基米德 t-范数"""
+        """Is an Archimedean t-norm"""
 
         self.is_strict_archimedean = True
-        """是严格阿基米德 t-范数"""
+        """Is a strictly Archimedean t-norm"""
 
         self.supports_q = True
-        """支持 q 阶同构映射推广"""
+        """Supports q-rung isomorphic mapping generalization"""
 
     def _init_aczel_alsina(self):
         """
-        初始化 Aczel-Alsina t-范数 及其对偶 t-余范数。
-        这是一种严格阿基米德 t-范数，包含一个参数 `p`。
-        当 p 趋近于 0 时，退化为 Minimum。
-        当 p 趋近于 1 时，退化为代数积。
-        当 p 趋近于无穷大时，退化为 Drastic Product。
+        Initializes the Aczel-Alsina t-norm and its dual t-conorm.
+        This is a strictly Archimedean t-norm, containing a parameter `p`.
+        As p approaches 0, it degenerates to Minimum.
+        As p approaches 1, it degenerates to the algebraic product.
+        As p approaches infinity, it degenerates to Drastic Product.
         """
         if 'aa_p' not in self.params:
             self.params['aa_p'] = 1.0
-        p = self.params.get('aa_p')  # 获取参数 p，默认为 1.0
+        p = self.params.get('aa_p')  # Get parameter p, defaults to 1.0
         if p <= 0:
-            raise ValueError("Aczel-Alsina参数p必须大于0")
+            raise ValueError("Aczel-Alsina parameter p must be greater than 0")
 
         self._base_t_norm_raw = lambda a, b: np.exp(
             -(((-np.log(a)) ** p + (-np.log(b)) ** p) ** (1 / p))) if a > get_config().DEFAULT_EPSILON and b > get_config().DEFAULT_EPSILON else 0.0
-        """数学表达式：T(a,b) = exp(-(((-ln a)^p + (-ln b)^p)^{1/p}))
-        处理 a 或 b 接近 0 的情况，避免 log(0) 或负数次幂。
+        """Mathematical expression: T(a,b) = exp(-(((-ln a)^p + (-ln b)^p)^{1/p}))
+        Handles cases where a or b are close to 0, avoiding log(0) or negative power issues.
         """
 
         self._base_t_conorm_raw = lambda a, b: 1 - np.exp(
             -(((-np.log(1 - a)) ** p + (-np.log(1 - b)) ** p) ** (1 / p))) if (1 - a) > get_config().DEFAULT_EPSILON and (
                 1 - b) > get_config().DEFAULT_EPSILON else max(a, b)
-        """数学表达式：S(a,b) = 1 - exp(-(((-ln(1-a))^p + (-ln(1-b))^p)^{1/p}))
-        处理 1-a 或 1-b 接近 0 的情况。
+        """Mathematical expression: S(a,b) = 1 - exp(-(((-ln(1-a))^p + (-ln(1-b))^p)^{1/p}))
+        Handles cases where 1-a or 1-b are close to 0.
         """
 
         self._base_g_func_raw = lambda a: (-np.log(a)) ** p if a > get_config().DEFAULT_EPSILON else np.inf
-        """数学表达式：g(a) = (-ln a)^p"""
+        """Mathematical expression: g(a) = (-ln a)^p"""
 
         self._base_g_inv_func_raw = lambda u: np.exp(-(u ** (1 / p))) if u >= 0 else 1.0
-        """数学表达式：g^(-1)(u) = exp(-u^{1/p})"""
+        """Mathematical expression: g^(-1)(u) = exp(-u^{1/p})"""
 
         self.is_archimedean = True
-        """是阿基米德 t-范数"""
+        """Is an Archimedean t-norm"""
 
         self.is_strict_archimedean = True
-        """是严格阿基米德 t-范数"""
+        """Is a strictly Archimedean t-norm"""
 
         self.supports_q = True
-        """支持 q 阶同构映射推广"""
+        """Supports q-rung isomorphic mapping generalization"""
 
     def _init_frank(self):
         """
-        初始化 Frank t-范数 及其对偶 t-余范数。
-        这是一种严格阿基米德 t-范数族，包含一个参数 `s`。
-        当 s 趋近于 0 时，退化为 Drastic Product。
-        当 s 趋近于 1 时，退化为 Minimum。
-        当 s 趋近于无穷大时，退化为 Product。
+        Initializes the Frank t-norm and its dual t-conorm.
+        This is a strictly Archimedean t-norm family, containing a parameter `s`.
+        As s approaches 0, it degenerates to Drastic Product.
+        As s approaches 1, it degenerates to Minimum.
+        As s approaches infinity, it degenerates to Product.
         """
         if 'frank_s' not in self.params:
             self.params['frank_s'] = np.e
-        s = self.params.get('frank_s')  # 获取参数 s，默认为自然对数的底 e
+        s = self.params.get('frank_s')  # Get parameter s, defaults to natural logarithm base e
         if s <= 0 or s == 1:
-            raise ValueError("Frank参数s必须大于0且不等于1")
+            raise ValueError("Frank parameter s must be greater than 0 and not equal to 1")
 
         def frank_tnorm(a, b):
-            if s == np.inf:  # s 趋于无穷时，Frank 积退化为 Minimum 积
+            if s == np.inf:  # When s approaches infinity, Frank product degenerates to Minimum product.
                 return min(a, b)
-            # 避免 log(0) 或除以 0
+            # Avoid log(0) or division by 0.
             if abs(s - 1) < get_config().DEFAULT_EPSILON:
-                return min(a, b)  # s=1时退化为Minimum
+                return min(a, b)  # Degenerates to Minimum when s=1.
             val_a = s ** a - 1
             val_b = s ** b - 1
             denominator = s - 1
             if denominator == 0:
-                return min(a, b)  # 理论上 s!=1，但以防万一
-            # 计算 log 的参数，确保其大于 0
+                return min(a, b)  # Theoretically s!=1, but just in case.
+            # Calculate the argument for log, ensuring it's greater than 0.
             arg_log = 1 + (val_a * val_b) / denominator
             if arg_log <= 0:
-                return 0.0  # 避免 log(负数)
+                return 0.0  # Avoid log of negative number.
             return np.log(arg_log) / np.log(s)
 
         def frank_tconorm(a, b):
-            if s == np.inf:  # s 趋于无穷时，Frank 余范数退化为 Maximum 余范数
+            if s == np.inf:  # When s approaches infinity, Frank conorm degenerates to Maximum conorm.
                 return max(a, b)
             if abs(s - 1) < get_config().DEFAULT_EPSILON:
-                return max(a, b)  # s=1时退化为Maximum
+                return max(a, b)  # Degenerates to Maximum when s=1.
             val_1_a = s ** (1 - a) - 1
             val_1_b = s ** (1 - b) - 1
             denominator = s - 1
             if denominator == 0:
                 return max(a, b)
-            # 计算 log 的参数，确保其大于 0
+            # Calculate the argument for log, ensuring it's greater than 0.
             arg_log = 1 + (val_1_a * val_1_b) / denominator
             if arg_log <= 0:
-                return 1.0  # 避免 log(负数)
+                return 1.0  # Avoid log of negative number.
             return 1 - np.log(arg_log) / np.log(s)
 
         self._base_t_norm_raw = frank_tnorm
-        """数学表达式：T(a,b) = log_s(1 + ((s^a - 1)(s^b - 1))/(s - 1))"""
+        """Mathematical expression: T(a,b) = log_s(1 + ((s^a - 1)(s^b - 1))/(s - 1))"""
 
         self._base_t_conorm_raw = frank_tconorm
-        """数学表达式：S(a,b) = 1 - log_s(1 + ((s^{1-a} - 1)(s^{1-b} - 1))/(s - 1))"""
+        """Mathematical expression: S(a,b) = 1 - log_s(1 + ((s^{1-a} - 1)(s^{1-b} - 1))/(s - 1))"""
 
         self._base_g_func_raw = lambda a: -np.log((s ** a - 1) / (s - 1)) if a > get_config().DEFAULT_EPSILON else np.inf
-        """数学表达式：g(a) = -log_s((s^a - 1)/(s - 1))"""
+        """Mathematical expression: g(a) = -log_s((s^a - 1)/(s - 1))"""
 
         self._base_g_inv_func_raw = lambda u: np.log(1 + (s - 1) * np.exp(-u)) / np.log(s) if u < 100 else 0.0
-        """数学表达式：g^(-1)(u) = log_s(1 + (s - 1) exp(-u))"""
+        """Mathematical expression: g^(-1)(u) = log_s(1 + (s - 1) exp(-u))"""
 
         self.is_archimedean = True
-        """是阿基米德 t-范数"""
+        """Is an Archimedean t-norm"""
 
         self.is_strict_archimedean = True
-        """是严格阿基米德 t-范数"""
+        """Is a strictly Archimedean t-norm"""
 
         self.supports_q = True
-        """支持 q 阶同构映射推广"""
+        """Supports q-rung isomorphic mapping generalization"""
 
     def _init_minimum(self):
         """
-        初始化最小值 t-范数 (Minimum t-norm) 及其对偶 t-余范数 (Maximum t-conorm)。
-        这是一种非阿基米德 t-范数，也是最强的 t-范数。
+        Initializes the Minimum t-norm and its dual Maximum t-conorm.
+        This is a non-Archimedean t-norm, and also the strongest t-norm.
         """
         self._base_t_norm_raw = lambda a, b: min(a, b)
-        """数学表达式：T(a,b) = min(a,b)"""
+        """Mathematical expression: T(a,b) = min(a,b)"""
 
         self._base_t_conorm_raw = lambda a, b: max(a, b)
-        """数学表达式：S(a,b) = max(a,b)"""
+        """Mathematical expression: S(a,b) = max(a,b)"""
 
-        self._base_g_func_raw = None  # 非阿基米德 t-范数无生成元
+        self._base_g_func_raw = None  # Non-Archimedean t-norms do not have generators.
         self._base_g_inv_func_raw = None
 
         self.is_archimedean = False
-        """非阿基米德 t-范数: T(x,x) = x，不满足 T(x,x) < x。"""
+        """Is a non-Archimedean t-norm: T(x,x) = x, which does not satisfy T(x,x) < x."""
 
         self.is_strict_archimedean = False
-        """非严格阿基米德 t-范数"""
+        """Is a non-strictly Archimedean t-norm"""
 
         self.supports_q = False
-        """不支持 q 阶同构映射推广: 非阿基米德 t-范数通常不支持通过生成元进行 q 阶推广。"""
+        """Does not support q-rung isomorphic mapping generalization: Non-Archimedean t-norms typically do not support q-rung generalization via generators."""
 
     def _init_nilpotent(self):
         """
-        初始化 Nilpotent t-范数 及其对偶 t-余范数。
-        这是一种非阿基米德 t-范数。
+        Initializes the Nilpotent t-norm and its dual t-conorm.
+        This is a non-Archimedean t-norm.
         """
 
         def nilpotent_tnorm(a, b):
@@ -897,27 +954,27 @@ class OperationTNorm:
                 return 1.0
 
         self._base_t_norm_raw = nilpotent_tnorm
-        """数学表达式：T(a,b) = min(a,b) if a+b>1; 0 otherwise"""
+        """Mathematical expression: T(a,b) = min(a,b) if a+b>1; 0 otherwise"""
 
         self._base_t_conorm_raw = nilpotent_tconorm
-        """数学表达式：S(a,b) = max(a,b) if a+b<1; 1 otherwise"""
+        """Mathematical expression: S(a,b) = max(a,b) if a+b<1; 1 otherwise"""
 
         self._base_g_func_raw = None
         self._base_g_inv_func_raw = None
 
         self.is_archimedean = False
-        """非阿基米德 t-范数"""
+        """Is a non-Archimedean t-norm"""
 
         self.is_strict_archimedean = False
-        """非严格阿基米德 t-范数"""
+        """Is a non-strictly Archimedean t-norm"""
 
         self.supports_q = False
-        """不支持 q 阶同构映射推广"""
+        """Does not support q-rung isomorphic mapping generalization"""
 
     def _init_drastic(self):
         """
-        初始化剧烈积 t-范数 (Drastic Product t-norm) 及其对偶 t-余范数 (Drastic Sum t-conorm)。
-        这是一种非阿基米德 t-范数，也是最弱的 t-范数。
+        Initializes the Drastic Product t-norm and its dual Drastic Sum t-conorm.
+        This is a non-Archimedean t-norm, and also the weakest t-norm.
         """
 
         def drastic_tnorm(a, b):
@@ -937,151 +994,160 @@ class OperationTNorm:
                 return 1.0
 
         self._base_t_norm_raw = drastic_tnorm
-        """数学表达式：T(a,b) = a if b=1; b if a=1; 0 otherwise"""
+        """Mathematical expression: T(a,b) = a if b=1; b if a=1; 0 otherwise"""
 
         self._base_t_conorm_raw = drastic_tconorm
-        """数学表达式：S(a,b) = a if b=0; b if a=0; 1 otherwise"""
+        """Mathematical expression: S(a,b) = a if b=0; b if a=0; 1 otherwise"""
 
         self._base_g_func_raw = None
         self._base_g_inv_func_raw = None
 
         self.is_archimedean = False
-        """非阿基米德 t-范数"""
+        """Is a non-Archimedean t-norm"""
 
         self.is_strict_archimedean = False
-        """非严格阿基米德 t-范数"""
+        """Is a non-strictly Archimedean t-norm"""
 
         self.supports_q = False
-        """不支持 q 阶同构映射推广"""
+        """Does not support q-rung isomorphic mapping generalization"""
 
-    # ======================= 验证函数 ===========================
+    # ======================= Verification Functions ===========================
 
     def _verify_properties(self):
         """
-        验证当前 t-范数实例的数学性质，包括 t-范数公理、阿基米德性、
-        以及生成元与 t-范数的一致性。
-        验证结果会以警告形式输出，不会中断程序执行。
+        Verifies the mathematical properties of the current t-norm instance,
+        including t-norm axioms, Archimedean property, and consistency between
+        the generator and the t-norm.
+        Verification results are output as warnings and do not interrupt program execution.
 
-        **验证内容:**
-        1.  **t-范数公理**: 调用 `_verify_t_norm_axioms` 验证交换律、结合律、单调性和边界条件。
-        2.  **阿基米德性**: 调用 `_verify_archimedean_property` 验证是否满足阿基米德或严格阿基米德性质。
-        3.  **生成元性质**: 对于阿基米德 t-范数且生成元已定义的情况，调用 `_verify_generator_properties` 验证 `T(a,b) = g_inv(g(a) + g(b))` 是否成立。
+        Verification Contents:
+        1.  **t-norm Axioms**: Calls `_verify_t_norm_axioms` to verify commutativity,
+            associativity, monotonicity, and boundary conditions.
+        2.  **Archimedean Property**: Calls `_verify_archimedean_property` to verify
+            whether it satisfies the Archimedean or strictly Archimedean property.
+        3.  **Generator Properties**: For Archimedean t-norms where generators are defined,
+            calls `_verify_generator_properties` to verify if `T(a,b) = g_inv(g(a) + g(b))` holds.
         """
-        # 验证 t-范数公理
+        # Verify t-norm axioms.
         self._verify_t_norm_axioms()
 
-        # 验证阿基米德性
+        # Verify Archimedean property.
         self._verify_archimedean_property()
 
-        # 验证生成元性质（仅对阿基米德范数且生成元已定义时进行）
+        # Verify generator properties (only for Archimedean norms where generators are defined).
         if self.is_archimedean and self.g_func is not None and self.g_inv_func is not None:
             self._verify_generator_properties()
 
     def _verify_t_norm_axioms(self):
         """
-        验证 t-范数公理：交换律、结合律、单调性、边界条件。
-        使用一组测试值进行验证，并根据 `get_config().DEFAULT_EPSILON` 容差进行浮点数比较。
-        如果任何公理不满足，将发出 `UserWarning`。
+        Verifies t-norm axioms: commutativity, associativity, monotonicity, and boundary conditions.
+        Uses a set of test values for verification and performs floating-point comparisons
+        with a tolerance based on `get_config().DEFAULT_EPSILON`.
+        If any axiom is not satisfied, a `UserWarning` is issued.
         """
-        test_values = [0.2, 0.5, 0.8]  # 用于测试的模糊数值
+        test_values = [0.2, 0.5, 0.8]  # Fuzzy values used for testing
 
         for a in test_values:
             for b in test_values:
                 for c in test_values:
-                    # 1. 交换律 (Commutativity): T(a,b) = T(b,a)
-                    # 检查 abs(T(a,b) - T(b,a)) 是否大于容差
+                    # 1. Commutativity: T(a,b) = T(b,a)
+                    # Check if abs(T(a,b) - T(b,a)) is greater than the tolerance.
                     if abs(self.t_norm(a, b) - self.t_norm(b, a)) >= get_config().DEFAULT_EPSILON:
                         warnings.warn(
-                            f"({self.norm_type}, q={self.q}).交换律失败: T({a},{b}) ≠ T({b},{a}) "
+                            f"({self.norm_type}, q={self.q}).Commutativity failed: T({a},{b}) ≠ T({b},{a}) "
                             f"(T({a},{b})={self.t_norm(a, b):.6f}, T({b},{a})={self.t_norm(b, a):.6f}).",
                             UserWarning
                         )
 
-                    # 2. 结合律 (Associativity): T(T(a,b),c) = T(a,T(b,c))
+                    # 2. Associativity: T(T(a,b),c) = T(a,T(b,c))
                     left_assoc = self.t_norm(self.t_norm(a, b), c)
                     right_assoc = self.t_norm(a, self.t_norm(b, c))
-                    # 检查 abs(left_assoc - right_assoc) 是否大于容差
+                    # Check if abs(left_assoc - right_assoc) is greater than the tolerance.
                     if abs(left_assoc - right_assoc) >= get_config().DEFAULT_EPSILON:
                         warnings.warn(
-                            f"({self.norm_type}, q={self.q}).结合律失败: T(T({a},{b}),{c}) ≠ T({a},T({b},{c})) "
+                            f"({self.norm_type}, q={self.q}).Associativity failed: T(T({a},{b}),{c}) ≠ T({a},T({b},{c})) "
                             f"(left={left_assoc:.6f}, right={right_assoc:.6f}).",
                             UserWarning
                         )
 
-                    # 3. 单调性 (Monotonicity): 如果 a <= b，则 T(a,c) <= T(b,c)
+                    # 3. Monotonicity: If a <= b, then T(a,c) <= T(b,c)
                     if a <= b:
-                        # 检查 T(a,c) 是否严格大于 T(b,c) + _epsilon
+                        # Check if T(a,c) is strictly greater than T(b,c) + _epsilon.
                         if self.t_norm(a, c) > self.t_norm(b, c) + get_config().DEFAULT_EPSILON:
                             warnings.warn(
-                                f"({self.norm_type}, q={self.q}).单调性失败: a≤b但T(a,c)>T(b,c) "
+                                f"({self.norm_type}, q={self.q}).Monotonicity failed: a≤b but T(a,c)>T(b,c) "
                                 f"(T({a},{c})={self.t_norm(a, c):.6f}, T({b},{c})={self.t_norm(b, c):.6f}).",
                                 UserWarning
                             )
 
-                    # 4. 边界条件 (Boundary Condition): T(a,1) = a
-                    # 检查 abs(T(a,1) - a) 是否大于容差
+                    # 4. Boundary Condition: T(a,1) = a
+                    # Check if abs(T(a,1) - a) is greater than the tolerance.
                     if abs(self.t_norm(a, 1.0) - a) >= get_config().DEFAULT_EPSILON:
                         warnings.warn(
-                            f"({self.norm_type}, q={self.q}).边界条件失败: T({a},1) ≠ {a} "
+                            f"({self.norm_type}, q={self.q}).Boundary condition failed: T({a},1) ≠ {a} "
                             f"(T({a},1)={self.t_norm(a, 1.0):.6f}).",
                             UserWarning
                         )
 
     def _verify_archimedean_property(self):
         """
-        验证 t-范数的阿基米德性 (Archimedean Property) 和严格阿基米德性 (Strict Archimedean Property)。
+        Verifies the Archimedean Property and Strict Archimedean Property of the t-norm.
 
-        **定义:**
-        -   **阿基米德性**: 对于所有 `a ∈ (0,1)`，存在 `n` 使得 `T^n(a) = T(a, ..., a)` (n 次) ` = 0`。
-            等价地，对于所有 `a ∈ (0,1)`，`T(a,a) < a`。
-        -   **严格阿基米德性**: 除了阿基米德性外，`T(x,y) = 0` 当且仅当 `x=0` 或 `y=0`。
-            等价地，对于所有 `a ∈ (0,1)`，`T(a,a) < a` 且 `T(x,y) > 0` 对于所有 `x,y ∈ (0,1]`。
+        Definitions:
+        -   **Archimedean Property**: For all `a ∈ (0,1)`, there exists `n` such that
+            `T^n(a) = T(a, ..., a)` (n times) `= 0`.
+            Equivalently, for all `a ∈ (0,1)`, `T(a,a) < a`.
+        -   **Strict Archimedean Property**: In addition to the Archimedean property,
+            `T(x,y) = 0` if and only if `x=0` or `y=0`.
+            Equivalently, for all `a ∈ (0,1)`, `T(a,a) < a` and `T(x,y) > 0` for all `x,y ∈ (0,1]`.
 
-        **逻辑:**
-        -   仅对标记为阿基米德 (`self.is_archimedean` 为 True) 的范数进行验证。
-        -   对于严格阿基米德范数，检查 `T(a,a) < a`。
-        -   对于非严格阿基米德但阿基米德的范数，检查 `T(a,a) <= a`。
+        Logic:
+        -   Verification is performed only for norms marked as Archimedean (`self.is_archimedean` is True).
+        -   For strictly Archimedean norms, it checks `T(a,a) < a`.
+        -   For non-strictly Archimedean but Archimedean norms, it checks `T(a,a) <= a`.
         """
         if not self.is_archimedean:
-            return  # 仅对标记为阿基米德的范数进行验证
+            return  # Only verify for norms marked as Archimedean.
 
         test_values = [0.1, 0.3, 0.5, 0.7, 0.9]
         for a in test_values:
             t_aa = self.t_norm(a, a)
             if self.is_strict_archimedean:
-                # 严格阿基米德性要求 T(a,a) < a
-                # 检查 t_aa 是否大于等于 a - _epsilon
-                if t_aa >= a - get_config().DEFAULT_EPSILON:  # 使用 _epsilon 进行浮点数比较
+                # Strict Archimedean property requires T(a,a) < a.
+                # Check if t_aa is greater than or equal to a - _epsilon.
+                if t_aa >= a - get_config().DEFAULT_EPSILON:  # Use _epsilon for floating-point comparison.
                     warnings.warn(
-                        f"({self.norm_type}, q={self.q}).严格阿基米德性失败: T({a},{a}) = {t_aa:.6f} ≥ {a}.",
+                        f"({self.norm_type}, q={self.q}).Strict Archimedean property failed: T({a},{a}) = {t_aa:.6f} ≥ {a}.",
                         UserWarning
                     )
             else:
-                # 阿基米德性要求 T(a,a) <= a
-                # 检查 t_aa 是否严格大于 a + _epsilon
+                # Archimedean property requires T(a,a) <= a.
+                # Check if t_aa is strictly greater than a + _epsilon.
                 if t_aa > a + get_config().DEFAULT_EPSILON:
                     warnings.warn(
-                        f"({self.norm_type}, q={self.q}).阿基米德性失败: T({a},{a}) = {t_aa:.6f} > {a}.",
+                        f"({self.norm_type}, q={self.q}).Archimedean property failed: T({a},{a}) = {t_aa:.6f} > {a}.",
                         UserWarning
                     )
 
     def _verify_generator_properties(self):
         """
-        验证生成元性质：`T(a,b) = g_inv(g(a) + g(b))`。
-        此验证使用经过 q 阶变换后的生成元 (`self.g_func`, `self.g_inv_func`)
-        与经过 q 阶同构映射后的 t-范数 (`self.t_norm`) 进行比较。
+        Verifies generator properties: `T(a,b) = g_inv(g(a) + g(b))`.
+        This verification compares the t-norm calculated using the q-transformed
+        generator (`self.g_func`, `self.g_inv_func`) with the t-norm calculated
+        directly using the q-transformed isomorphic mapping (`self.t_norm`).
 
-        **逻辑:**
-        -   如果生成元或伪逆未定义，则跳过验证并发出警告。
-        -   使用一组测试值 `a` 和 `b`。
-        -   对于每对 `(a,b)`，计算 `g(a)` 和 `g(b)`。
-        -   通过生成元公式 `g_inv(g(a) + g(b))` 计算 t-范数结果 (`via_generator`)。
-        -   直接通过 `self.t_norm(a,b)` 计算 t-范数结果 (`direct`)。
-        -   比较 `via_generator` 和 `direct`，如果差异超出 `get_config().DEFAULT_EPSILON`，则发出警告。
-        -   包含错误处理，以防生成元计算过程中出现数值问题。
+        Logic:
+        -   If the generator or pseudo-inverse is undefined, skips verification and issues a warning.
+        -   Uses a set of test values `a` and `b`.
+        -   For each pair `(a,b)`, calculates `g(a)` and `g(b)`.
+        -   Calculates the t-norm result via the generator formula `g_inv(g(a) + g(b))` (`via_generator`).
+        -   Calculates the t-norm result directly via `self.t_norm(a,b)` (`direct`).
+        -   Compares `via_generator` and `direct`. If the difference exceeds
+            `get_config().DEFAULT_EPSILON`, a warning is issued.
+        -   Includes error handling to prevent numerical issues during generator calculation.
         """
         if self.g_func is None or self.g_inv_func is None:
-            warnings.warn(f"({self.norm_type}, q={self.q}).生成元或伪逆未定义，跳过生成元性质验证。", RuntimeWarning)
+            warnings.warn(f"({self.norm_type}, q={self.q}).Generator or pseudo-inverse is undefined, skipping generator property verification.", RuntimeWarning)
             return False
 
         test_values = [0.1, 0.3, 0.5, 0.7, 0.9]
@@ -1089,229 +1155,247 @@ class OperationTNorm:
         for a in test_values:
             for b in test_values:
                 try:
-                    # 使用当前 q 阶变换后的 g_func 和 g_inv_func
+                    # Use the current q-transformed g_func and g_inv_func.
                     g_a = self.g_func(a)
                     g_b = self.g_func(b)
 
-                    # 确保 g_a 和 g_b 是有限值，避免无穷大相加导致 NaN 或错误
+                    # Ensure g_a and g_b are finite values to avoid NaN or errors from adding infinities.
                     if np.isinf(g_a) or np.isinf(g_b):
-                        # 如果生成元值是无穷大，通常表示输入在边界上 (例如 a=0 或 b=0)。
-                        # 此时，T(a,b) 的结果通常是 0。
-                        # 直接比较可能不准确，跳过此测试对，因为生成元公式在边界处可能行为不确定。
+                        # If generator values are infinity, it usually means the input is at a boundary (e.g., a=0 or b=0).
+                        # In such cases, the result of T(a,b) is typically 0.
+                        # Direct comparison might be inaccurate, so skip this test pair because
+                        # the generator formula's behavior at boundaries can be uncertain.
                         continue
 
-                    # 尝试通过生成元计算 t-范数
+                    # Attempt to calculate t-norm via generator.
                     via_generator = self.g_inv_func(g_a + g_b)
 
-                    # 使用当前 q 阶同构映射后的 t-范数直接计算
+                    # Calculate directly using the current q-transformed isomorphic mapped t-norm.
                     direct = self.t_norm(a, b)
 
-                    # 比较两种计算结果，允许 _epsilon 容差
+                    # Compare the two calculation results, allowing for _epsilon tolerance.
                     if abs(direct - via_generator) >= get_config().DEFAULT_EPSILON:
                         warnings.warn(
-                            f"({self.norm_type}, q={self.q}).生成元验证失败: T({a},{b})={direct:.6f} ≠ g^(-1)(g(a)+g(b))={via_generator:.6f}. "
+                            f"({self.norm_type}, q={self.q}).Generator verification failed: T({a},{b})={direct:.6f} ≠ g^(-1)(g(a)+g(b))={via_generator:.6f}. "
                             f"g(a)={g_a:.6f}, g(b)={g_b:.6f}.",
                             UserWarning
                         )
-                        # return False # 不中断，继续检查其他值
+                        # return False # Do not interrupt, continue checking other values.
                 except Exception as e:
                     warnings.warn(
-                        f"({self.norm_type}, q={self.q}).生成元计算过程中出现错误: a={a}, b={b}. 错误信息: {e}.",
+                        f"({self.norm_type}, q={self.q}).Error during generator calculation: a={a}, b={b}. Error message: {e}.",
                         RuntimeWarning
                     )
-                    continue  # 跳过当前迭代，避免因计算错误导致后续比较失败
+                    continue  # Skip current iteration to avoid subsequent comparison failures due to calculation errors.
         return True
 
     def verify_de_morgan_laws(self, a: float = 0.6, b: float = 0.7) -> dict[str, bool]:
         """
-        验证德摩根定律在 q 阶同构映射下的对偶关系。
-        对于通过同构映射定义的 q 阶 t-范数和 t-余范数，德摩根定律通常是成立的。
+        Verifies De Morgan's Laws under q-rung isomorphic mapping.
+        For q-rung t-norms and t-conorms defined through isomorphic mapping,
+        De Morgan's Laws typically hold.
 
-        **德摩根定律形式:**
-        1.  `S(a,b) = 1 - T(1-a, 1-b)`
-        2.  `T(a,b) = 1 - S(1-a, 1-b)`
+        De Morgan's Law Forms (Generalized for q-rung fuzzy numbers):
+        1.  `S(a,b) = N(T(N(a), N(b)))`
+        2.  `T(a,b) = N(S(N(a), N(b)))`
+        where `N(x)` is the q-rung complement `(1 - x^q)^(1/q)`.
 
         Args:
-            a (float): 第一个模糊数值，默认为 0.6。
-            b (float): 第二个模糊数值，默认为 0.7。
+            a (float): The first fuzzy value, defaults to 0.6.
+            b (float): The second fuzzy value, defaults to 0.7.
 
         Returns:
-            dict[str, bool]: 包含两个布尔值的字典，表示德摩根定律是否成立。
-                             `'de_morgan_1'`: `S(a,b) == 1 - T(1-a, 1-b)`
-                             `'de_morgan_2'`: `T(a,b) == 1 - S(1-a, 1-b)`
+            dict[str, bool]: A dictionary containing two boolean values, indicating
+                             whether De Morgan's Laws hold.
+                             `'de_morgan_1'`: `S(a,b) == N(T(N(a), N(b)))`
+                             `'de_morgan_2'`: `T(a,b) == N(S(N(a), N(b)))`
         """
         # results = {}
         #
-        # # 验证: S(a,b) = 1 - T(1-a, 1-b)
+        # # Verify: S(a,b) = 1 - T(1-a, 1-b)
         # s_direct = self.t_conorm(a, b)
         # s_via_demorgan = 1 - self.t_norm(1 - a, 1 - b)
-        # # 使用 _epsilon 进行浮点数比较
+        # # Use _epsilon for floating-point comparison
         # results['de_morgan_1'] = abs(s_direct - s_via_demorgan) < get_config().DEFAULT_EPSILON
         #
-        # # 验证: T(a,b) = 1 - S(1-a, 1-b)
+        # # Verify: T(a,b) = 1 - S(1-a, 1-b)
         # t_direct = self.t_norm(a, b)
         # t_via_demorgan = 1 - self.t_conorm(1 - a, 1 - b)
-        # # 使用 _epsilon 进行浮点数比较
+        # # Use _epsilon for floating-point comparison
         # results['de_morgan_2'] = abs(t_direct - t_via_demorgan) < get_config().DEFAULT_EPSILON
         #
         # return results
 
         results = {}
 
-        # 定义 q-rung 补运算
+        # Define q-rung complement operation
         def q_rung_complement(x):
             if not (0 <= x <= 1):
-                return x  # 或抛出错误
+                return x  # Or raise an error
             return (1 - x ** self.q) ** (1 / self.q)
 
-        # 验证: S(a,b) = N(T(N(a), N(b)))
+        # Verify: S(a,b) = N(T(N(a), N(b)))
         s_direct = self.t_conorm(a, b)
         n_a = q_rung_complement(a)
         n_b = q_rung_complement(b)
         s_via_demorgan = q_rung_complement(self.t_norm(n_a, n_b))
         results['de_morgan_1'] = abs(s_direct - s_via_demorgan) < get_config().DEFAULT_EPSILON
 
-        # 验证: T(a,b) = N(S(N(a), N(b)))
+        # Verify: T(a,b) = N(S(N(a), N(b)))
         t_direct = self.t_norm(a, b)
         t_via_demorgan = q_rung_complement(self.t_conorm(n_a, n_b))
         results['de_morgan_2'] = abs(t_direct - t_via_demorgan) < get_config().DEFAULT_EPSILON
 
         return results
 
-    # ======================= 获取信息 ============================
+    # ======================= Information Retrieval ============================
 
     def get_info(self) -> dict:
         """
-        获取当前 t-范数实例的配置信息和属性。
+        Retrieves configuration information and properties of the current t-norm instance.
 
         Returns:
-            dict: 包含范数类型、q 值、参数、阿基米德性等信息的字典。
+            dict: A dictionary containing information such as norm type, q value,
+                  parameters, Archimedean property, etc.
         """
         info = {
-            'norm_type': self.norm_type,  # t-范数类型名称
-            'is_archimedean': self.is_archimedean,  # 是否阿基米德
-            'is_strict_archimedean': self.is_strict_archimedean,  # 是否严格阿基米德
-            'supports_q': self.supports_q,  # 是否支持 q 阶推广
-            'q_value': self.q,  # 当前 q 值
-            'parameter': self.params,  # 特定范数的额外参数
+            'norm_type': self.norm_type,  # Name of the t-norm type
+            'is_archimedean': self.is_archimedean,  # Whether it is Archimedean
+            'is_strict_archimedean': self.is_strict_archimedean,  # Whether it is strictly Archimedean
+            'supports_q': self.supports_q,  # Whether it supports q-rung generalization
+            'q_value': self.q,  # Current q value
+            'parameter': self.params,  # Additional parameters for specific norms
         }
         return info
 
     def plot_t_norm_surface(self, resolution: int = 50):
         """
-        绘制当前 t-范数和 t-余范数的三维表面图。
-        图表展示了 t-范数 T(a,b) 和 t-余范数 S(a,b) 在 [0,1]x[0,1] 平面上的曲面。
+        Plots the 3D surface of the current t-norm and t-conorm.
+        The plot displays the surfaces of t-norm T(a,b) and t-conorm S(a,b)
+        on the [0,1]x[0,1] plane.
 
         Args:
-            resolution (int): 绘图网格的分辨率，默认为 50。
-                              分辨率越高，曲面越平滑，但计算时间越长。
+            resolution (int): The resolution of the plotting grid, defaults to 50.
+                              Higher resolution results in a smoother surface but
+                              longer computation time.
         """
-        # 生成 a 和 b 的取值范围，避免边界值可能导致的计算问题（如 log(0) 或除以 0）
+        # Generate ranges for a and b, avoiding boundary values that might cause
+        # calculation issues (e.g., log(0) or division by 0).
         x = np.linspace(get_config().DEFAULT_EPSILON, 1.0 - get_config().DEFAULT_EPSILON, resolution)
         y = np.linspace(get_config().DEFAULT_EPSILON, 1.0 - get_config().DEFAULT_EPSILON, resolution)
-        X, Y = np.meshgrid(x, y)  # 创建网格点
+        X, Y = np.meshgrid(x, y)  # Create meshgrid points.
 
-        # 初始化 Z 坐标矩阵，用于存储 t-范数和 t-余范数的结果
+        # Initialize Z-coordinate matrices to store t-norm and t-conorm results.
         Z_t_norm = np.zeros_like(X, dtype=float)
         Z_t_conorm = np.zeros_like(X, dtype=float)
 
-        # 遍历网格点，计算每个 (a,b) 对的 t-范数和 t-余范数值
+        # Iterate through meshgrid points and calculate t-norm and t-conorm values for each (a,b) pair.
         for i in range(resolution):
             for j in range(resolution):
                 try:
                     Z_t_norm[i, j] = self.t_norm(X[i, j], Y[i, j])
                     Z_t_conorm[i, j] = self.t_conorm(X[i, j], Y[i, j])
                 except Exception as e:
-                    # 捕获绘图时可能出现的数值错误（例如，某些范数在特定参数下可能导致溢出或 NaN）
-                    # 将错误点的值设置为 NaN，这样在绘图时这些点会被跳过，不会导致图形中断。
+                    # Catch potential numerical errors during plotting (e.g., some norms
+                    # might cause overflow or NaN for certain parameters).
+                    # Set the value of erroneous points to NaN, so these points are skipped
+                    # during plotting and do not interrupt the graph.
                     Z_t_norm[i, j] = np.nan
                     Z_t_conorm[i, j] = np.nan
-                    # 可以选择在此处发出警告，但频繁的警告会影响用户体验，故注释掉。
-                    # warnings.warn(f"绘图计算错误: ({X[i,j]}, {Y[i,j]}) -> {e}", RuntimeWarning)
+                    # Can choose to issue a warning here, but frequent warnings might affect user experience, so commented out.
+                    # warnings.warn(f"Plotting calculation error: ({X[i,j]}, {Y[i,j]}) -> {e}", RuntimeWarning)
 
-        # 创建 Matplotlib 图形和子图
-        fig = plt.figure(figsize=(14, 6))  # 调整图大小，使其可以并排显示两个 3D 图
+        # Create Matplotlib figure and subplots.
+        fig = plt.figure(figsize=(14, 6))  # Adjust figure size to display two 3D plots side-by-side.
 
-        # 第一个子图：t-范数表面图
-        ax1 = fig.add_subplot(121, projection='3d')  # 1行2列的第一个子图，3D投影
-        ax1.plot_surface(X, Y, Z_t_norm, cmap='viridis', alpha=0.8)  # 绘制曲面
+        # First subplot: t-norm surface plot.
+        ax1 = fig.add_subplot(121, projection='3d')  # First subplot in a 1x2 grid, 3D projection.
+        ax1.plot_surface(X, Y, Z_t_norm, cmap='viridis', alpha=0.8)  # Plot surface.
         ax1.set_xlabel('a')
         ax1.set_ylabel('b')
         ax1.set_zlabel('T(a,b)')
-        ax1.set_title(f'T-Norm: {self.norm_type.title()} (q={self.q})')  # 设置标题
-        ax1.set_zlim(0, 1)  # 限制 Z 轴范围在 [0,1]，因为模糊数值通常在此范围内
+        ax1.set_title(f'T-Norm: {self.norm_type.title()} (q={self.q})')  # Set title.
+        ax1.set_zlim(0, 1)  # Limit Z-axis range to [0,1], as fuzzy values are typically within this range.
 
-        # 第二个子图：t-余范数表面图
-        ax2 = fig.add_subplot(122, projection='3d')  # 1行2列的第二个子图，3D投影
-        ax2.plot_surface(X, Y, Z_t_conorm, cmap='plasma', alpha=0.8)  # 绘制曲面
+        # Second subplot: t-conorm surface plot.
+        ax2 = fig.add_subplot(122, projection='3d')  # Second subplot in a 1x2 grid, 3D projection.
+        ax2.plot_surface(X, Y, Z_t_conorm, cmap='plasma', alpha=0.8)  # Plot surface.
         ax2.set_xlabel('a')
         ax2.set_ylabel('b')
         ax2.set_zlabel('S(a,b)')
-        ax2.set_title(f'T-Conorm: {self.norm_type.title()} (q={self.q})')  # 设置标题
-        ax2.set_zlim(0, 1)  # 限制 Z 轴范围在 [0,1]
+        ax2.set_title(f'T-Conorm: {self.norm_type.title()} (q={self.q})')  # Set title.
+        ax2.set_zlim(0, 1)  # Limit Z-axis range to [0,1].
 
-        plt.tight_layout()  # 自动调整子图参数，使之填充整个图像区域
-        plt.show()  # 显示图形
+        plt.tight_layout()  # Automatically adjust subplot parameters for a tight layout.
+        plt.show()  # Display the figure.
 
-    # ======================= 实用工具方法 ============================
-    # 这些方法提供了 t-范数与生成元之间转换的通用工具，不直接参与 OperationTNorm 的核心初始化流程。
-    # 它们被定义为静态方法，可以直接通过类名调用 (e.g., OperationTNorm.generator_to_t_norm(...))。
+    # ======================= Utility Methods ============================
+    # These methods provide general tools for converting between t-norms and generators;
+    # they are not directly involved in the core initialization process of OperationTNorm.
+    # They are defined as static methods and can be called directly via the class name
+    # (e.g., OperationTNorm.generator_to_t_norm(...)).
 
     @staticmethod
     def t_norm_to_generator(t_norm_func: Callable[[float, float], float],
                             epsilon: float = 1e-6) -> tuple[Callable[[float], float], Callable[[float], float]]:
         """
-        尝试从 t-范数函数（阿基米德 t-范数）推导其加性生成元 g(a) 和伪逆 g_inv(u)。
-        此方法采用数值方法，可能不适用于所有 t-范数或在所有输入范围内精确。
-        **注意**: 这是一个非常简化的示例实现，对于复杂的 t-范数，准确推导生成元通常需要更高级的数值积分技术或符号推导。
+        Attempts to derive the additive generator g(a) and its pseudo-inverse g_inv(u)
+        from a t-norm function (Archimedean t-norm).
+        This method uses a numerical approach and may not be accurate for all t-norms
+        or across all input ranges.
+        **Note**: This is a highly simplified example implementation. For complex t-norms,
+        accurate derivation of generators usually requires more advanced numerical
+        integration techniques or symbolic derivation.
 
-        这里仅提供一个概念性的框架，实际应用中可能需要针对特定范数进行定制。
+        This only provides a conceptual framework; actual applications may require
+        customization for specific norms.
 
         Args:
-            t_norm_func (Callable): t-范数函数 T(a,b)。
-            epsilon (float): 浮点数比较精度。
+            t_norm_func (Callable): The t-norm function T(a,b).
+            epsilon (float): Floating-point comparison precision.
 
         Returns:
-            tuple[Callable, Callable]: (生成元函数 g(a), 伪逆函数 g_inv(u))。
+            tuple[Callable, Callable]: A tuple containing (generator function g(a), pseudo-inverse function g_inv(u)).
         """
 
-        # 阿基米德 t-范数的生成元 g(x) 满足 g(x) = C * integral(1/phi(t) dt)
-        # 且 T(x,y) = g_inv(g(x) + g(y))
-        # 对于严格阿基米德 t-范数，g(x) 满足 g(x) = -ln(x) + ... 或 g(x) = (1-x)/x + ...
-        # 这里采用一种简化的数值方法，基于 g(x) + g(y) = g(T(x,y))
-        # 设定 g(1) = 0 (对于连续阿基米德 t-范数)
+        # The generator g(x) of an Archimedean t-norm satisfies g(x) = C * integral(1/phi(t) dt)
+        # And T(x,y) = g_inv(g(x) + g(y))
+        # For strictly Archimedean t-norms, g(x) satisfies g(x) = -ln(x) + ... or g(x) = (1-x)/x + ...
+        # Here, a simplified numerical method is used, based on g(x) + g(y) = g(T(x,y)).
+        # Set g(1) = 0 (for continuous Archimedean t-norms).
 
         def g(a: float) -> float:
             """
-            简化的生成元函数 g(a)。
-            对于 Product t-norm (T(a,b)=ab)，其生成元是 g(a) = -ln(a)。
-            这里直接使用这个形式作为示例，因为它是一个常见的生成元。
-            然而，对于其他 t-范数，其生成元形式会不同，需要更复杂的推导。
+            Simplified generator function g(a).
+            For the Product t-norm (T(a,b)=ab), its generator is g(a) = -ln(a).
+            This form is used directly as an example here because it is a common generator.
+            However, for other t-norms, the generator form will be different and require
+            more complex derivation.
             """
             if a <= epsilon:
-                return np.inf  # g(0) 通常为无穷大
+                return np.inf  # g(0) is usually infinity.
             if a >= 1.0 - epsilon:
-                return 0.0  # g(1) 通常为 0
+                return 0.0  # g(1) is usually 0.
 
-            # 严格阿基米德 t-范数 T(x,y) = g_inv(g(x) + g(y))
-            # 且 g(1)=0, T(x,1)=x
-            # 那么 g(T(x,1)) = g(x) + g(1) => g(x) = g(x) + 0
-            # 考虑 g(x) = integral_x^1 (1/phi(t)) dt
-            # 简化为 g(x) = C * (1/x - 1) for some C, or -ln(x) for Product
-            # 这里的数值推导可能不通用，需要根据具体范数进行调整
-            # 这是一个简化的示例，实际应用中需要更复杂的数值积分或特定公式
+            # For strictly Archimedean t-norms T(x,y) = g_inv(g(x) + g(y))
+            # And g(1)=0, T(x,1)=x
+            # Then g(T(x,1)) = g(x) + g(1) => g(x) = g(x) + 0
+            # Consider g(x) = integral_x^1 (1/phi(t)) dt
+            # Simplified to g(x) = C * (1/x - 1) for some C, or -ln(x) for Product.
+            # The numerical derivation here may not be general and needs to be adjusted for specific norms.
+            # This is a simplified example; actual applications require more complex numerical integration or specific formulas.
             try:
-                # 尝试使用代数积的生成元形式作为启发
-                # 对于 T(a,b) = ab, g(a) = -ln(a)
-                # g(T(a,b)) = -ln(ab) = -ln(a) - ln(b) = g(a) + g(b)
-                # 这是一个简化的尝试，不保证对所有范数都精确
-                # 更好的方法是数值积分或查找已知公式
-                return -np.log(a)  # 仅为示例，可能不适用于所有 t-范数
+                # Attempt to use the generator form of the algebraic product as an inspiration.
+                # For T(a,b) = ab, g(a) = -ln(a).
+                # g(T(a,b)) = -ln(ab) = -ln(a) - ln(b) = g(a) + g(b).
+                # This is a simplified attempt and does not guarantee accuracy for all norms.
+                # A better approach would be numerical integration or looking up known formulas.
+                return -np.log(a)  # Example only, may not apply to all t-norms.
             except Exception:
-                return np.inf  # 发生错误时返回无穷大
+                return np.inf  # Return infinity on error.
 
-        # 伪逆函数 g_inv(u) 的数值求解
-        # 调用静态方法 generator_to_generator_inv 来从 g 函数推导其伪逆。
+        # Numerical solution for the pseudo-inverse function g_inv(u).
+        # Calls the static method generator_to_generator_inv to derive its pseudo-inverse from the g function.
         g_inv = OperationTNorm.generator_to_generator_inv(g, epsilon=epsilon)
 
         return g, g_inv
@@ -1320,32 +1404,32 @@ class OperationTNorm:
     def generator_to_t_norm(g_func: Callable[[float], float],
                             g_inv_func: Callable[[float], float]) -> Callable[[float, float], float]:
         """
-        从生成元 g(a) 和其伪逆 g_inv(u) 构造 t-范数 T(a,b)。
-        这是阿基米德 t-范数的基本定义之一。
+        Constructs a t-norm T(a,b) from a generator g(a) and its pseudo-inverse g_inv(u).
+        This is one of the fundamental definitions of Archimedean t-norms.
 
-        **数学表达式：**
+        Mathematical Expression:
         `T(a,b) = g_inv(g(a) + g(b))`
 
         Args:
-            g_func (Callable): 生成元函数 g(a)。
-            g_inv_func (Callable): 生成元伪逆函数 g_inv(u)。
+            g_func (Callable): The generator function g(a).
+            g_inv_func (Callable): The pseudo-inverse function g_inv(u).
 
         Returns:
-            Callable: 构造出的 t-范数函数 T(a,b)。
+            Callable: The constructed t-norm function T(a,b).
         """
 
         def T(a: float, b: float) -> float:
             """
-            内部函数，实现 T(a,b) 的计算逻辑。
+            Internal function implementing the calculation logic for T(a,b).
             """
             try:
                 val_g_a = g_func(a)
                 val_g_b = g_func(b)
-                # 避免无穷大相加导致错误（如 NaN）
+                # Avoid errors from adding infinities (e.g., NaN).
                 if np.isinf(val_g_a) or np.isinf(val_g_b):
-                    # 如果 g(a) 或 g(b) 是无穷大，通常意味着 a 或 b 在边界上 (0或1)
-                    # 此时 T(a,b) 的结果通常是 0 (例如 T(0,b)=0)。
-                    # 这是一个简化的处理，更严谨需要根据范数特性判断
+                    # If g(a) or g(b) is infinity, it usually means a or b is at a boundary (0 or 1).
+                    # In such cases, the result of T(a,b) is typically 0 (e.g., T(0,b)=0).
+                    # This is a simplified handling; a more rigorous approach would depend on the norm's characteristics.
                     if val_g_a == np.inf and val_g_b == np.inf:
                         return 0.0  # g(0)+g(0) -> g_inv(inf) -> 0
                     if val_g_a == np.inf:
@@ -1355,8 +1439,8 @@ class OperationTNorm:
 
                 return g_inv_func(val_g_a + val_g_b)
             except Exception as e:
-                warnings.warn(f"从生成元构造 t-范数时发生错误: {e}", RuntimeWarning)
-                return 0.0  # 发生错误时返回 0
+                warnings.warn(f"Error constructing t-norm from generator: {e}", RuntimeWarning)
+                return 0.0  # Return 0 on error.
 
         return T
 
@@ -1368,62 +1452,69 @@ class OperationTNorm:
                                    epsilon: float = 1e-6,
                                    ) -> Callable[[float], float]:
         """
-        通过数值方法（二分法）从生成元 g_func 推导其伪逆 g_inv_func。
-        适用于严格单调的生成元。伪逆 `g_inv(u)` 满足 `g(g_inv(u)) = u`。
+        Derives the pseudo-inverse g_inv_func from a generator g_func using a numerical
+        method (bisection method). Applicable to strictly monotonic generators.
+        The pseudo-inverse `g_inv(u)` satisfies `g(g_inv(u)) = u`.
 
         Args:
-            g_func (Callable): 生成元函数，输入 x，输出 g(x)。
-                               假定 g(x) 是从 [domain_start, domain_end] 映射到某个范围的严格单调函数。
-            domain_start (float): 生成元输入域的起始值 (通常为 0)。
-            domain_end (float): 生成元输入域的结束值 (通常为 1)。
-            max_iterations (int): 最大迭代次数，防止无限循环。
-            epsilon (float): 浮点数比较精度，用于判断是否找到足够精确的解。
+            g_func (Callable): The generator function, taking x as input and returning g(x).
+                               Assumes g(x) is a strictly monotonic function mapping from
+                               [domain_start, domain_end] to some range.
+            domain_start (float): The starting value of the generator's input domain (usually 0).
+            domain_end (float): The ending value of the generator's input domain (usually 1).
+            max_iterations (int): Maximum number of iterations to prevent infinite loops.
+            epsilon (float): Floating-point comparison precision, used to determine if a
+                             sufficiently accurate solution has been found.
 
         Returns:
-            Callable: 生成元伪逆函数，输入 u，输出 x，使得 g(x) ≈ u。
+            Callable: The generator pseudo-inverse function, taking u as input and returning x,
+                      such that g(x) ≈ u.
         """
-        # 确定生成元的单调性
-        # 尝试在域内取两个点判断，避免 g(0) 或 g(1) 是无穷大
+        # Determine the monotonicity of the generator.
+        # Try to pick two points within the domain to determine, avoiding g(0) or g(1) being infinity.
         try:
-            # 在 domain_start 和 domain_end 附近取点，避免直接使用边界值（可能导致无穷大或错误）
+            # Pick points near domain_start and domain_end, avoiding direct use of boundary values
+            # (which might lead to infinity or errors).
             val_at_start = g_func(domain_start + epsilon)
             val_at_end = g_func(domain_end - epsilon)
-            # 判断 g(x) 是递减还是递增。例如，-ln(x) 是递减的。
-            is_decreasing = (val_at_start > val_at_end + epsilon)  # g(x) 递减 (例如 -ln(x))
+            # Determine if g(x) is decreasing or increasing. For example, -ln(x) is decreasing.
+            is_decreasing = (val_at_start > val_at_end + epsilon)  # g(x) is decreasing (e.g., -ln(x)).
         except Exception:
-            # 如果边界值计算失败，假设为递减（这是许多生成元的常见情况）
+            # If boundary value calculation fails, assume decreasing (common for many generators).
             is_decreasing = True
 
         def g_inv(u: float) -> float:
             """
-            伪逆函数实现：给定目标值 u，在 [domain_start, domain_end] 范围内寻找 x。
-            使用二分法进行搜索。
+            Pseudo-inverse function implementation: Given a target value u,
+            finds x within the range [domain_start, domain_end].
+            Uses the bisection method for searching.
             """
             low = domain_start
             high = domain_end
 
-            # 快速路径处理边界情况
-            # 如果目标值 u 接近 g(domain_start) 或 g(domain_end)，则直接返回对应的边界值。
-            # 这有助于处理生成元在边界处趋于无穷大的情况。
+            # Fast path for boundary cases.
+            # If the target value u is close to g(domain_start) or g(domain_end),
+            # directly return the corresponding boundary value.
+            # This helps handle cases where the generator approaches infinity at boundaries.
             if is_decreasing:
-                # 如果目标值 u 接近 g(domain_start) (通常是 inf)，则 x 趋近于 domain_start
+                # If target value u is close to g(domain_start) (usually inf), then x approaches domain_start.
                 if u >= g_func(domain_start + epsilon) - epsilon:
                     return domain_start
-                # 如果目标值 u 接近 g(domain_end) (通常是 0)，则 x 趋近于 domain_end
+                # If target value u is close to g(domain_end) (usually 0), then x approaches domain_end.
                 if u <= g_func(domain_end - epsilon) + epsilon:
                     return domain_end
-            else:  # g(x) 递增
+            else:  # g(x) is increasing.
                 if u <= g_func(domain_start + epsilon) + epsilon:
                     return domain_start
                 if u >= g_func(domain_end - epsilon) - epsilon:
                     return domain_end
 
-            # 二分法搜索
+            # Bisection search.
             for _ in range(max_iterations):
                 mid = (low + high) / 2.0
 
-                # 避免 mid 过于接近边界导致 g_func(mid) 溢出或错误
-                # 强制 mid 保持在 (domain_start, domain_end) 范围内，并与边界保持一定距离。
+                # Avoid mid being too close to boundaries, which might cause g_func(mid) to overflow or error.
+                # Force mid to stay within (domain_start, domain_end) and maintain a certain distance from boundaries.
                 if mid <= domain_start + epsilon:
                     mid = domain_start + epsilon
                 if mid >= domain_end - epsilon:
@@ -1432,32 +1523,32 @@ class OperationTNorm:
                 try:
                     g_mid = g_func(mid)
                 except Exception:
-                    # 如果 g_func(mid) 发生错误（例如 log(0)），尝试调整 mid
-                    # 这通常发生在 mid 过于接近生成元函数的定义域边界时。
+                    # If g_func(mid) encounters an error (e.g., log(0)), try adjusting mid.
+                    # This usually happens when mid is too close to the boundary of the generator function's domain.
                     if is_decreasing:
-                        high = mid  # 假设 mid 太小，需要增大 x，所以缩小 high 边界
+                        high = mid  # Assume mid is too small, need to increase x, so shrink high boundary.
                     else:
-                        low = mid  # 假设 mid 太大，需要减小 x，所以增大 low 边界
+                        low = mid  # Assume mid is too large, need to decrease x, so expand low boundary.
                     continue
 
-                # 如果 g(mid) 足够接近目标值 u，则找到解
+                # If g(mid) is sufficiently close to the target value u, then a solution is found.
                 if abs(g_mid - u) < epsilon:
                     return mid
 
-                # 根据单调性调整搜索区间
-                if is_decreasing:  # g(x) 递减 (例如 -ln(x))
-                    if g_mid > u:  # g(mid) 比目标值大，说明 mid 太小，需要增大 mid (因为 g 是递减的)
+                # Adjust search interval based on monotonicity.
+                if is_decreasing:  # g(x) is decreasing (e.g., -ln(x)).
+                    if g_mid > u:  # g(mid) is greater than target value, meaning mid is too small, need to increase mid (because g is decreasing).
                         low = mid
-                    else:  # g(mid) 比目标值小，说明 mid 太大，需要减小 mid
+                    else:  # g(mid) is smaller than target value, meaning mid is too large, need to decrease mid.
                         high = mid
-                else:  # g(x) 递增
-                    if g_mid < u:  # g(mid) 比目标值小，说明 mid 太小，需要增大 mid (因为 g 是递增的)
+                else:  # g(x) is increasing.
+                    if g_mid < u:  # g(mid) is smaller than target value, meaning mid is too small, need to increase mid (because g is increasing).
                         low = mid
-                    else:  # g(mid) 比目标值大，说明 mid 太大，需要减小 mid
+                    else:  # g(mid) is greater than target value, meaning mid is too large, need to decrease mid.
                         high = mid
 
-            # 达到最大迭代次数，返回当前最佳近似值
-            # 即使未达到精确解，也返回当前二分区间的中点作为近似值。
+            # Reached maximum iterations, return the current best approximation.
+            # Even if an exact solution is not found, return the midpoint of the current bisection interval as an approximation.
             return (low + high) / 2.0
 
         return g_inv

@@ -4,6 +4,26 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
+"""
+This module defines the base classes for fuzzy number strategies and templates
+within the FuzzLab framework.
+
+It provides an extensible architecture for defining various types of fuzzy numbers
+(e.g., intuitionistic fuzzy numbers, Pythagorean fuzzy numbers) and their
+associated operations and representations.
+
+Classes:
+    FuzznumStrategy: An abstract base class defining the core behavior and
+                     attributes for different fuzzy number types. It includes
+                     mechanisms for attribute validation, change callbacks,
+                     operation execution, and caching.
+    FuzznumTemplate: An abstract base class for defining how fuzzy numbers are
+                     represented (e.g., string representation, detailed reports)
+                     and providing cached computational properties.
+
+Example Usage (for subclasses):
+    # See ExampleStrategy and ExampleTemplate for concrete implementations.
+"""
 import collections
 import json
 import weakref
@@ -17,37 +37,74 @@ from fuzzlab.core.triangular import OperationTNorm
 
 
 class FuzznumStrategy(ABC):
-    # 基础属性定义
-    # 在模糊数各种类型里，任何模糊数都有一个 mtype 类型定义。而对于q，一般非q阶的直接设置为1 即可。
-    # mtype 被设置为全局配置器的默认值
+    """Abstract base class for defining fuzzy number strategies.
+
+    This class provides a foundational structure for various types of fuzzy numbers,
+    managing their core attributes, validation rules, change notifications,
+    and operation execution. It implements a robust attribute management system
+    with strict mode enforcement, attribute-level validation, and change callbacks.
+
+    Attributes:
+        mtype (str): The membership type identifier for the fuzzy number.
+                     Defaults to `get_config().DEFAULT_MTYPE`. This attribute
+                     is class-level and defines the type of fuzzy number
+                     (e.g., "intuitionistic", "pythagorean").
+        q (Optional[int]): The q-rung value for the fuzzy number, if applicable.
+                           For non-q-rung fuzzy numbers, it can be set to 1 or None.
+                           This attribute is validated to be an integer between 1 and 100.
+        _declared_attributes (Set[str]): A class-level set that stores the names
+                                         of all attributes explicitly declared
+                                         in the class and its subclasses. Used
+                                         for strict attribute mode and serialization.
+        _op_cache (LruCache): An LRU cache instance used to store results of
+                              expensive fuzzy number operations, improving performance.
+        _attribute_validators (Dict[str, Callable[[Any], bool]]): A dictionary
+                                                                  mapping attribute names
+                                                                  to validation functions.
+                                                                  Each function takes
+                                                                  an attribute value
+                                                                  and returns True if valid.
+        _change_callbacks (Dict[str, Callable[[str, Any, Any], None]]): A dictionary
+                                                                        mapping attribute
+                                                                        names to callback
+                                                                        functions. Each
+                                                                        function is called
+                                                                        after an attribute
+                                                                        changes, receiving
+                                                                        the attribute name,
+                                                                        old value, and new value.
+    """
 
     mtype: str = get_config().DEFAULT_MTYPE
     q: Optional[int] = None
 
-    # 私有属性管理
     _declared_attributes: Set[str] = set()
-
-    # 缓存设置
     _op_cache: LruCache = LruCache()
-
-    # 属性验证器和回调函数
     _attribute_validators: Dict[str, Callable[[Any], bool]] = {}
     _change_callbacks: Dict[str, Callable[[str, Any, Any], None]] = {}
 
-    # 注意：_attribute_validators 和 _change_callbacks 如果希望每个子类实例有自己独立的注册，
-    # 应该在 __init__ 中初始化为实例属性。但如果它们是类级别的，表示所有实例共享同一套验证器/回调。
-    # 鉴于 add_attribute_validator 和 add_change_callback 是实例方法，且修改的是 self._attribute_validators，
-    # 它们实际上修改的是类属性（如果类属性没有被实例覆盖）。
-
     def __init__(self, qrung: Optional[int] = None):
+        """Initializes a FuzznumStrategy instance.
 
+        Args:
+            qrung (Optional[int]): The q-rung value for this specific fuzzy number instance.
+                                   If None, it will be initialized based on default or
+                                   subclass-specific logic.
+        """
+        # Set 'q' attribute directly using object.__setattr__ to bypass custom __setattr__
+        # during initialization, preventing potential recursion or validation issues
+        # before the object is fully set up.
         object.__setattr__(self, 'q', qrung)
 
-        # 初始化运算缓存和注册表
-        # object.__setattr__(self, '_operation_registry', get_operation_registry())
+        # Initialize the operation cache for this instance.
+        # Using object.__setattr__ ensures that each instance gets its own cache,
+        # rather than sharing a class-level cache.
         object.__setattr__(self, '_op_cache', LruCache(maxsize=get_config().CACHE_SIZE))
 
-        # 确保每个实例有独立的验证器和回调
+        # Ensure each instance has its own independent validators and callbacks dictionaries.
+        # This prevents instances from inadvertently sharing or overwriting each other's
+        # validation rules or callback functions, which would happen if they were
+        # initialized as class attributes without this check.
         if (not hasattr(self, '_attribute_validators')
                 or self._attribute_validators is FuzznumStrategy._attribute_validators):
             object.__setattr__(self, '_attribute_validators', {})
@@ -56,171 +113,186 @@ class FuzznumStrategy(ABC):
                 or self._change_callbacks is FuzznumStrategy._change_callbacks):
             object.__setattr__(self, '_change_callbacks', {})
 
-        # 为 'q' 属性添加一个验证器。
+        # Add a validator for the 'q' attribute.
+        # The 'q' attribute is fundamental to many fuzzy number types (e.g., q-rung orthopair).
+        # This validator ensures that 'q' is an integer and falls within a reasonable range (1 to 100).
+        # This validation is applied whenever 'q' is set via __setattr__.
         self.add_attribute_validator(
             'q', lambda x: isinstance(x, int) and 1 <= x <= 100)
-        # 'q' 是 FuzznumStrategy 的核心属性，它必须是大于等于1的正整数。
-        # 将验证器添加到 _attribute_validators 字典中，确保每次通过 __setattr__ 设置 'q' 时都会进行验证。
-        # 这比在 _validate() 中进行事后验证更及时、更有效。
-        # 代码逻辑：调用 add_attribute_validator 方法，传入属性名 'q' 和一个 lambda 表达式作为验证函数。
-        # 验证函数检查值是否为整数且大于等于 1。
 
+        # Perform initial validation of the instance's state.
+        # This calls the _validate method, which can be overridden by subclasses
+        # to include specific validation logic for their attributes.
         self._validate()
 
     def __init_subclass__(cls, **kwargs):
+        """Automatically collects declared attributes for subclasses.
+
+        This method is called automatically when a class inherits from FuzznumStrategy.
+        It populates the `_declared_attributes` set for each subclass, which is then
+        used by `__setattr__` for strict attribute mode and by `get_declared_attributes`
+        for introspection and serialization.
+
+        Args:
+            **kwargs: Arbitrary keyword arguments passed during subclass creation.
         """
-        子类初始化自动收集声明的属性
-        """
-        # 调用父类的 __init_subclass__ 方法，确保继承链上的所有基类都能正确初始化。
+        # Call the __init_subclass__ method of the parent class (ABC) to ensure
+        # proper initialization across the inheritance hierarchy.
         super().__init_subclass__(**kwargs)
 
-        # 初始化当前子类的 _declared_attributes 集合。
-        # 注意：这里使用的是 `cls`（类本身），而不是 `self`（实例）。
-        # 这意味着这个集合是类级别的，所有该子类的实例将共享同一个声明属性列表。
+        # Initialize the _declared_attributes set for the current subclass (cls).
+        # This set is class-level, meaning all instances of this subclass will share
+        # the same list of declared attributes.
         cls._declared_attributes = set()
 
+        # Iterate through all attributes and methods of the current class.
         for attr_name in dir(cls):
-
+            # Exclude private attributes (starting with '_'), as they are typically
+            # internal implementation details and should not be directly accessed or modified externally.
+            # Ensure the attribute actually exists on the class.
+            # Exclude callable objects (methods) as we are only interested in data attributes.
             if (not attr_name.startswith('_') and
                     hasattr(cls, attr_name) and
                     not callable(getattr(cls, attr_name))):
-                # 排除以单下划线开头的私有属性（Python 约定），因为它们通常是内部实现细节，不应被外部直接访问或修改
-                # 确保这个属性名确实存在于类中，以防 dir() 返回一些特殊名称。
-                # 排除所有可调用的对象（即方法），因为我们只关心数据属性。
-
-                # 将符合条件的属性名添加到 _declared_attributes 集合中。
+                # Add the qualified attribute name to the _declared_attributes set.
+                # This set will be used for strict mode checks in __setattr__ and for
+                # attribute serialization (e.g., in to_dict/from_dict methods).
                 cls._declared_attributes.add(attr_name)
-                # 这个集合将用于后续的严格模式检查（__setattr__）和属性序列化（to_dict/from_dict）。
 
     def __setattr__(self, name: str, value: Any) -> None:
-        """属性设置方法"""
+        """Custom attribute setter method.
 
-        # 内部属性和特殊属性的快速路径
+        This method intercepts all attribute assignments to instances of FuzznumStrategy
+        and its subclasses. It enforces strict attribute mode, performs attribute-level
+        validation, and triggers change callbacks.
+
+        Args:
+            name (str): The name of the attribute being set.
+            value (Any): The value being assigned to the attribute.
+
+        Raises:
+            AttributeError: If strict attribute mode is enabled and the attribute
+                            is not declared in `_declared_attributes`.
+            ValueError: If an attribute's value fails validation or if a change
+                        callback rejects the change.
+            RuntimeError: If a change callback encounters an unexpected error.
+        """
+        # Fast path for internal attributes (starting with '_') and the 'mtype' attribute.
+        # These attributes bypass the custom logic (strict mode, validation, callbacks)
+        # and are set directly using the parent class's __setattr__ (object's __setattr__).
+        # This is crucial for internal state management and preventing infinite recursion.
         if name.startswith('_') or name == 'mtype':
-            # 如果符合条件，直接调用父类 (object) 的 __setattr__ 方法来设置属性。
             super().__setattr__(name, value)
-            # 这是一种“原始”的属性设置方式，不带任何自定义逻辑。
-            # 代码逻辑：调用 FuzznumStrategy 的直接父类 (通常是 object 或 ABC) 的 __setattr__。
-
             return
 
-        # 严格属性模式检查
+        # Strict attribute mode check.
+        # If `STRICT_ATTRIBUTE_MODE` is enabled in the global configuration and
+        # the attribute being set is not found in the `_declared_attributes` set
+        # (which contains attributes explicitly defined in the class or its subclasses),
+        # an AttributeError is raised. This prevents accidental creation of new attributes
+        # and helps maintain a well-defined object schema.
         config = get_config()
         if (hasattr(config, 'STRICT_ATTRIBUTE_MODE') and
                 config.STRICT_ATTRIBUTE_MODE and
                 name not in self._declared_attributes):
-            # 如果全局配置中存在 'STRICT_ATTRIBUTE_MODE' 且其值为 True (表示启用严格模式)，
-            # 并且当前尝试设置的属性名 'name' 不在 `_declared_attributes` 集合中（这个集合
-            # 是在 `__init_subclass__` 中自动收集的子类声明的属性），
-            # 这意味着用户尝试设置一个未在类中明确声明的属性。
-
             raise AttributeError(
                 f"Attribute '{name}' not declared in {self.__class__.__name__}. "
                 f"Declared attributes: {sorted(self._declared_attributes)}"
             )
-            # 抛出 AttributeError，明确指出哪个属性未声明，并列出所有已声明的属性，
-            # 方便开发者调试和理解。
 
-        # 获取旧值 (用于回调函数)
+        # Get the old value of the attribute before it's changed.
+        # This old value is passed to change callback functions.
+        # `getattr(self, name, None)` safely retrieves the current value, returning None
+        # if the attribute doesn't exist yet.
         old_value = getattr(self, name, None)
 
-        # 属性值验证
+        # Attribute value validation.
+        # Check if a validator function has been registered for the current attribute name.
+        # Validators are added via `add_attribute_validator`.
         if name in self._attribute_validators:
-            # 检查当前属性名 'name' 是否在 `_attribute_validators` 字典中注册了验证器。
-            # 开发者可以通过 `add_attribute_validator` 方法为特定属性添加自定义的验证逻辑。
-
             validator = self._attribute_validators[name]
-            # 如果存在，获取对应的验证函数。
-
+            # If the validator function returns False, it means the new value is invalid,
+            # and a ValueError is raised, preventing the invalid value from being set.
             if not validator(value):
-                # 调用获取到的验证函数，并传入即将设置的 'value'。
-                # 如果验证函数返回 False (表示验证失败)，则抛出异常。
                 raise ValueError(f"Validation failed for attribute '{name}' with value '{value}'")
 
-        # 实际设置属性值
+        # Actually set the attribute value.
+        # After all checks (strict mode, validation) have passed, the attribute's value
+        # is finally set using the parent class's __setattr__ method.
         super().__setattr__(name, value)
-        # 在通过了所有前置检查（严格模式、属性验证）之后，
-        # 最终调用父类 (object) 的 __setattr__ 方法来设置属性的实际值。
-        # 这是属性设置的核心操作。
 
-        # 执行属性变更回调
+        # Execute attribute change callbacks.
+        # Check if any callback functions are registered for the current attribute name.
+        # Callbacks are added via `add_change_callback`.
         if name in self._change_callbacks:
-
-            # 如果存在，取出对应的回调函数
             callback = self._change_callbacks[name]
             try:
+                # Call the callback function with the attribute name, old value, and new value.
                 callback(name, old_value, value)
             except ValueError as e:
-                # 如果回调函数抛出 ValueError，表示这是一个明确的验证失败。
+                # If the callback explicitly raises a ValueError, it indicates that the
+                # change is rejected by the callback's logic. This error is re-raised.
                 raise ValueError(f"Attribute '{name}' change rejected by callback: {e}") from e
-
             except Exception as e:
-                # 捕获回调函数执行时可能发生的任何异常
+                # Catch any other unexpected exceptions raised by the callback.
+                # This indicates a problem within the callback itself, and a RuntimeError is raised.
                 raise RuntimeError(f"Callback for attribute '{name}' failed, "
                                    f"change has been rolled back.") from e
 
     def add_attribute_validator(self,
                                 attr_name: str,
                                 validator: Callable[[Any], bool]) -> None:
-        """
-        添加属性验证器
+        """Adds an attribute validator function.
 
-        实现属性级验证：它的核心意义是为单个属性提供细粒度的、可定制的验证逻辑。
-        提高灵活性：允许开发者为不同的属性定义不同的验证规则，并且这些规则可以在运行时动态添加。
-        即时反馈：验证在属性被设置时立即进行，如果值不合法，会立即抛出 ValueError，防止无效数据进入对象状态。
+        This method allows registering a custom validation function for a specific
+        attribute. The validator will be called whenever the attribute is set,
+        ensuring data integrity.
 
         Args:
-            attr_name: 属性名
-            validator: 验证函数，返回True表示验证通过
+            attr_name (str): The name of the attribute to validate.
+            validator (Callable[[Any], bool]): A callable (function or lambda)
+                                               that takes the attribute's value
+                                               as input and returns True if the
+                                               value is valid, False otherwise.
         """
         self._attribute_validators[attr_name] = validator
 
     def add_change_callback(self,
                             attr_name: str,
                             callback: Callable[[str, Any, Any], None]) -> None:
-        """
-        添加属性变更回调
+        """Adds an attribute change callback function.
+
+        This method allows registering a function to be called whenever a specific
+        attribute's value changes. Callbacks can be used to trigger side effects,
+        update dependent properties, or perform additional validation after a change.
 
         Args:
-            attr_name: 属性名
-            callback: 回调函数，参数为(属性名, 旧值, 新值)
-
-        Returns:
-            None
-
-        Notes:
-            - 实现属性变更的副作用：它的核心意义是允许在属性值成功改变后触发额外的行为或副作用。
-            - 实现响应式编程：当一个属性的值发生变化时，可以自动执行预定义的逻辑，使得对象能够“响应”其内部状态的变化。
-            - 提高可扩展性：开发者可以在不修改 FuzznumStrategy 或其子类核心代码的情况下，为任何属性添加新的响应行为。
+            attr_name (str): The name of the attribute to monitor for changes.
+            callback (Callable[[str, Any, Any], None]): A callable (function or lambda)
+                                                        that takes three arguments:
+                                                        the attribute name, its old value,
+                                                        and its new value.
         """
         self._change_callbacks[attr_name] = callback
 
     def _validate(self) -> None:
-        """
-        子类 可重写的验证方法
+        """Performs internal validation of the fuzzy number strategy's state.
 
-        此方法应包含特定于子类的验证逻辑。默认实现对 `mtype` 进行基本验证。
+        This is a protected method intended to be overridden by subclasses to
+        implement specific validation logic relevant to their fuzzy number type.
+        It's typically used for complex constraints involving multiple attributes
+        or for validation that cannot be performed at the individual attribute
+        setting level.
 
-        Returns:
-            None
-
-        Notes:
-            - 定制化：它允许每个具体的 FuzznumStrategy 子类定义其独特的、复杂的验证规则。这是实现策略模式中“不同策略有不同行为”的重要体现。
-            - 核心约束：它通常用于检查那些构成模糊数定义的核心数学或逻辑约束，这些约束可能涉及多个属性的联合判断。
-            - 快速失败：如果发现严重违反核心约束的情况，它会立即抛出异常，而不是仅仅收集错误信息。这表明对象当前的状态是不可接受的。
-            - 继承链：子类在重写此方法时，通常会先调用 super()._validate() 来确保父类的基本验证也得到执行，体现了继承的层次性。
+        The default implementation performs a basic check on the `mtype` attribute.
+        Subclasses should call `super()._validate()` to ensure base class validation
+        is also performed.
 
         Raises:
-            ValueError: 如果 `mtype` 不符合预期。
+            ValueError: If any validation constraint is violated.
         """
-        # 这是一个受保护的方法（以下划线开头），意味着它主要供类内部使用或由子类重写。
-        # 它的核心目的是提供一个“钩子”（hook），让具体的策略子类能够在此处实现
-        # 它们特有的、通常是多属性关联的、或涉及复杂计算的、或在设置时无法立即判断的验证逻辑。
-        # 例如，检查模糊数成员度和非成员度之和的约束。
-
-        # 在 `ExampleStrategy` 等子类中，这个方法会被重写，
-        # 并且通常会先调用 `super()._validate()` 来执行父类的默认验证，
-        # 然后再添加子类特有的验证逻辑。
+        # Check if 'mtype' exists and is a non-empty string.
+        # This is a fundamental property for all fuzzy number strategies.
         if hasattr(self, 'mtype') and (not isinstance(self.mtype, str) or not self.mtype.strip()):
             raise ValueError(f"mtype must be a non-empty string, got '{self.mtype}'")
 
@@ -228,220 +300,359 @@ class FuzznumStrategy(ABC):
                             op_name: str,
                             operands: Union['FuzznumStrategy', int, float],
                             tnorm: OperationTNorm) -> Optional[str]:
-        """
-        Generates a unique cache key for an operation.
+        """Generates a unique cache key for an operation.
 
-        The key is based on the operation name, operands, and t-norm parameters.
+        The key is based on the operation name, the state of the operands (including
+        the current FuzznumStrategy instance and the other operand), and the
+        parameters of the t-norm used. This ensures that identical operations
+        with identical inputs and t-norm settings can retrieve cached results.
+
+        Args:
+            op_name (str): The name of the operation (e.g., 'add', 'mul').
+            operands (Union[FuzznumStrategy, int, float]): The second operand of the operation.
+            tnorm (OperationTNorm): The t-norm object used for the operation.
+
+        Returns:
+            Optional[str]: A unique MD5 hash string representing the cache key,
+                           or None if key generation fails (e.g., due to un-serializable objects).
         """
         def get_state_dict(obj: 'FuzznumStrategy'):
+            """Helper function to get a serializable state dictionary of a FuzznumStrategy."""
+            # Get all explicitly declared attributes of the FuzznumStrategy instance.
             attrs = obj.get_declared_attributes()
+            # Create a dictionary mapping attribute names to their current values.
             state = {attr: getattr(obj, attr, None) for attr in attrs}
+            # Include the 'q' attribute, which is crucial for many fuzzy number types.
             state['q'] = obj.q
             return state
 
         try:
             import hashlib
+            # Serialize the state of the first operand (self) into a JSON string.
+            # `sort_keys=True` ensures consistent key order for reproducible hashes.
             operand_1 = json.dumps(get_state_dict(self), sort_keys=True)
 
+            # Serialize the second operand based on its type.
             if isinstance(operands, FuzznumStrategy):
                 operand_2 = json.dumps(get_state_dict(operands), sort_keys=True)
             else:
+                # For scalar operands (int, float), convert directly to string.
                 operand_2 = str(operands)
 
-            # Information about dynamically created tnorm objects
+            # Get serializable information about the t-norm object.
             t_norm_info = json.dumps(tnorm.get_info(), sort_keys=True)
 
+            # Combine all parts into a list.
             key_parts = [op_name, operand_1, operand_2, t_norm_info]
 
+            # Join the parts and encode to bytes for hashing.
             key_str = '_'.join(key_parts)
+            # Compute the MD5 hash and return its hexadecimal representation.
             return hashlib.md5(key_str.encode()).hexdigest()
         except (TypeError, AttributeError):
+            # Return None if any part of the key generation fails (e.g., non-serializable data).
             return None
 
     def execute_operation(self,
                           op_name: str,
                           operand: Optional[Union['FuzznumStrategy', int, float]]) -> Dict[str, Any]:
+        """Executes a specified operation with another operand.
 
+        This method acts as a central dispatcher for performing various fuzzy
+        number operations (e.g., addition, multiplication, comparison, complement).
+        It retrieves the appropriate operation handler from the global registry
+        based on the operation name and the fuzzy number's `mtype`. It also
+        manages caching of operation results.
+
+        Args:
+            op_name (str): The name of the operation to execute (e.g., 'add', 'mul', 'complement').
+            operand (Optional[Union[FuzznumStrategy, int, float]]): The second operand for the operation.
+                                                                     Can be another FuzznumStrategy instance,
+                                                                     an integer, or a float, depending on the operation.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the result of the operation.
+                            The structure of the dictionary depends on the specific operation.
+
+        Raises:
+            NotImplementedError: If the requested operation is not supported for the current `mtype`.
+            TypeError: If the operand type is incompatible with the operation.
+            ValueError: If an unknown operation type is requested.
+        """
+        # Get the global operation registry.
         registry = get_operation_registry()
+        # Retrieve the specific operation handler for the given operation name and fuzzy number type.
         operation = registry.get_operation(op_name, self.mtype)
         if operation is None:
+            # If no operation handler is found, raise an error indicating lack of support.
             raise NotImplementedError(
                 f"Operation '{op_name}' is not supported for mtype '{self.mtype}'."
                 f" Available operations for '{self.mtype}': {self.get_available_operations()}"
             )
 
+        # Get the default t-norm configuration from the registry.
         norm_type, norm_params = registry.get_default_t_norm_config()
+        # Create an OperationTNorm instance with the retrieved configuration and the current q-rung.
         tnorm = OperationTNorm(norm_type=norm_type, q=self.q, norm_params=norm_params)
 
-        # Generate cache key
+        # Generate a unique cache key for the current operation.
         cache_key = self._generate_cache_key(op_name, operand, tnorm)
 
+        # If a valid cache key is generated, attempt to retrieve the result from the cache.
         if cache_key:
             cached_result = self._op_cache.get(cache_key)
             if cached_result is not None:
-                return cached_result
+                return cached_result  # Return cached result if found.
 
+        # Dispatch to the appropriate operation execution method based on the operation name.
         if op_name in ['add', 'sub', 'mul', 'div',
                        'intersection', 'union', 'implication',
                        'equivalence', 'difference', 'symdiff']:
+            # These are binary operations requiring another FuzznumStrategy as an operand.
             if not isinstance(operand, FuzznumStrategy):
                 raise TypeError(f"Operands must be a fuzznum strategy, got '{type(operand)}'")
             result = operation.execute_binary_op(self, operand, tnorm)
 
         elif op_name in ['pow', 'tim', 'exp', 'log']:
+            # These are operations with a scalar operand (int or float).
             if not isinstance(operand, (int, float)):
                 raise TypeError(f"Operands must be a number of 'int' or 'float', got '{type(operand)}'")
             result = operation.execute_unary_op_operand(self, operand, tnorm)
 
         elif op_name in ['complement']:
+            # This is a pure unary operation that takes no additional operand.
             if operand is not None:
                 raise TypeError(f"Pure unary operation '{op_name}' takes no additional operands.")
             result = operation.execute_unary_op_pure(self, tnorm)
 
         elif op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
+            # These are comparison operations requiring another FuzznumStrategy as an operand.
             if not isinstance(operand, FuzznumStrategy):
                 raise TypeError(f"Comparison operation '{op_name}' requires one FuzznumStrategy operand, "
                                 f"got '{type(operand)}'")
             result = operation.execute_comparison_op(self, operand, tnorm)
         else:
+            # If the operation name is not recognized, raise a ValueError.
             raise ValueError(f"Unknown operation type: {op_name}")
 
+        # If a valid cache key was generated and the operation was successful, cache the result.
         if cache_key:
             self._op_cache.put(cache_key, result)
 
         return result
 
     def get_declared_attributes(self) -> Set[str]:
-        """
-        获取声明的属性列表
+        """Retrieves a copy of the set of declared attribute names for this strategy.
+
+        This method provides introspection capabilities, allowing external code
+        to discover which attributes are explicitly defined as data members
+        of a `FuzznumStrategy` instance or its subclasses.
 
         Returns:
-            Set[str]: 包含所有声明属性名称的集合副本。
-
-        Notes:
-            - 提供内省能力：它的核心意义是允许外部代码查询一个 FuzznumStrategy 实例（或其子类）有哪些被明确声明为数据属性的成员。
+            Set[str]: A copy of the set containing the names of all declared attributes.
         """
         return self._declared_attributes.copy()
 
     def get_available_operations(self) -> List[str]:
-        """
-        Get the names of all operations supported by the current fuzzy number type.
+        """Gets the names of all operations supported by the current fuzzy number type.
+
+        This method queries the global operation registry to determine which
+        operations are registered and available for the `mtype` of this
+        `FuzznumStrategy` instance.
+
+        Returns:
+            List[str]: A list of strings, where each string is the name of an
+                       operation supported by this fuzzy number type.
         """
         operation = get_operation_registry()
-
         return operation.get_available_ops(self.mtype)
 
     def validate_all_attributes(self) -> Dict[str, Any]:
-        """
-        验证所有属性值
+        """Validates all attributes of the FuzznumStrategy instance.
 
-        提供了一个统一的接口来触发对一个 FuzznumStrategy 实例的全面健康检查。
+        This method provides a unified interface to trigger a comprehensive
+        health check of the instance's state. It performs both the general
+        `_validate()` checks and individual attribute validations.
 
         Returns:
-            Dict[str, Any]: 验证结果字典，包含验证状态和错误信息。
-                            {'is_valid': bool, 'errors': List[str], 'warnings': List[str]}
+            Dict[str, Any]: A dictionary containing the validation results.
+                            It includes:
+                            - 'is_valid' (bool): True if all validations pass, False otherwise.
+                            - 'errors' (List[str]): A list of error messages for failed validations.
         """
         validation_result = {
             'is_valid': True,
             'errors': [],
         }
-        # 初始化一个字典来存储验证的结果。
-        # 'is_valid' 标志表示整体验证是否通过，'errors' 列表收集所有错误信息，
+        # Initialize a dictionary to store the validation results.
+        # 'is_valid' flag indicates overall validation success, 'errors' list collects all error messages.
 
         try:
-            # 首先，调用 `_validate()` 方法。
-            #  `_validate()` 是一个受保护的方法，通常由子类重写，用于执行特定于该策略类型
-            #  的核心或复杂验证逻辑。例如，检查多个属性之间的关系（如 `md + nmd <= 1`）。
-            #  如果 `_validate()` 发现严重问题，它会直接抛出异常（如 `ValueError`），
-            #  此时外部的 `try-except` 块会捕获这个异常，并将其记录为错误。
+            # First, call the `_validate()` method.
+            # `_validate()` is a protected method, typically overridden by subclasses,
+            # to perform core or complex validation logic specific to that strategy type.
+            # For example, checking relationships between multiple attributes (e.g., `md + nmd <= 1`).
+            # If `_validate()` finds a serious issue, it will directly raise an exception (e.g., `ValueError`),
+            # which will be caught by the outer `try-except` block and recorded as an error.
             self._validate()
 
-            # 接着，遍历所有在类中明确声明的属性（这些属性是在 `__init_subclass__` 中
-            # 收集并存储在 `_declared_attributes` 集合中的）。
-            # 这样做是为了确保我们只验证那些属于该策略模型的数据属性，而不是内部私有属性或方法。
+            # Next, iterate through all attributes explicitly declared in the class.
+            # These attributes are collected and stored in the `_declared_attributes` set
+            # during `__init_subclass__`.
+            # This ensures that only data attributes belonging to this strategy model are validated,
+            # not internal private attributes or methods.
             for attr_name in self._declared_attributes:
                 if hasattr(self, attr_name):
                     value = getattr(self, attr_name)
 
-                    # 检查是否有为这个属性注册了特定的验证器。
-                    # 这些验证器是通过 `add_attribute_validator()` 方法添加的，
-                    # 它们通常用于验证单个属性的合法性（例如，值是否在某个范围内、是否是特定类型）。
+                    # Check if a specific validator has been registered for this attribute.
+                    # These validators are added via the `add_attribute_validator()` method,
+                    # and they are typically used to validate the legality of individual attributes
+                    # (e.g., whether a value is within a certain range, or if it's of a specific type).
                     if attr_name in self._attribute_validators:
                         validator = self._attribute_validators[attr_name]
 
-                        # 调用验证函数，并传入属性值。
-                        # 如果验证函数返回 `False`，表示该属性的值不符合要求。
+                        # Call the validator function with the attribute value.
+                        # If the validator function returns `False`, it means the attribute's value
+                        # does not meet the requirements.
                         if not validator(value):
                             validation_result['errors'].append(
                                 f"Attribute '{attr_name}' validation failed with value '{value}'"
                             )
-                            # 标记验证结果
+                            # Mark the overall validation result as False.
                             validation_result['is_valid'] = False
 
-        # 捕获在 `_validate()` 方法或属性验证过程中可能抛出的任何异常。
-        # 这样做是为了确保 `validate_all_attributes` 方法本身不会因为内部验证失败而崩溃，
-        # 而是能够优雅地返回错误信息。
+        # Catch any exception that might be raised during the `_validate()` method
+        # or during individual attribute validation.
+        # This ensures that the `validate_all_attributes` method itself does not crash
+        # due to internal validation failures, but instead gracefully returns error information.
         except Exception as e:
             validation_result['errors'].append(f"Validation error: {e}")
-            # 将捕获到的异常信息添加到 `errors` 列表中。
+            # Add the captured exception message to the `errors` list.
 
             validation_result['is_valid'] = False
-            # 将整体验证状态标记为 `False`。
+            # Mark the overall validation status as `False`.
 
         return validation_result
 
 
 class FuzznumTemplate(ABC):
-    """
-    模糊数模板抽象基类，定义了模糊数的表示方式和相关辅助功能
+    """Abstract base class for fuzzy number templates.
+
+    This class defines the interface for how fuzzy numbers are represented
+    and provides auxiliary functionalities, such as cached computational properties.
+    Subclasses are responsible for implementing specific representations
+    (e.g., string, report) and any derived properties.
+
+    Attributes:
+        mtype (str): The membership type identifier for the fuzzy number
+                     this template is associated with. Defaults to
+                     `get_config().DEFAULT_MTYPE`.
+        _instance_ref (weakref.ref): A weak reference to the associated
+                                     `Fuzznum` instance. This prevents
+                                     circular references and allows the
+                                     `Fuzznum` instance to be garbage
+                                     collected when no other strong
+                                     references exist.
+        _instance_id (int): The unique ID (memory address) of the associated
+                            `Fuzznum` instance at the time of template creation.
+                            Used for debugging and identifying the original instance.
+        _is_valid (bool): A flag indicating whether the template is still valid.
+                          It becomes False if the associated `Fuzznum` instance
+                          is garbage collected.
+        _max_cache_size (int): The maximum number of items to store in the
+                               internal template cache. Configurable via
+                               `TEMPLATE_CACHE_SIZE` in the global config.
+        _template_cache (collections.OrderedDict): An ordered dictionary used
+                                                   as an LRU cache for storing
+                                                   computed template values
+                                                   (e.g., report strings, scores).
+        _cache_enabled (bool): A flag indicating whether caching is currently enabled.
     """
 
     mtype: str = get_config().DEFAULT_MTYPE
 
     def __init__(self, instance: Any):
+        """Initializes a FuzznumTemplate instance.
+
+        Args:
+            instance (Any): The `Fuzznum` instance that this template will represent.
+                            This should be a concrete instance of a fuzzy number.
+
+        Raises:
+            ValueError: If the provided `instance` is None.
+        """
         if instance is None:
             raise ValueError("Template instance cannot be None.")
 
-        # 创建对传入 `instance`（通常是 Fuzznum 实例）的弱引用。
+        # Create a weak reference to the provided `instance` (typically a Fuzznum instance).
+        # This prevents the template from keeping the Fuzznum instance alive if it's
+        # no longer referenced elsewhere, avoiding memory leaks due to circular references.
+        # The `_on_instance_cleanup` method will be called when the instance is garbage collected.
         self._instance_ref = weakref.ref(instance, self._on_instance_cleanup)
 
+        # Store the unique identifier (memory address) of the associated instance.
+        # This can be useful for debugging and tracking.
         self._instance_id = id(instance)
-        # 存储关联实例的唯一标识符（内存地址）。
 
-        # 初始化一个布尔标志，表示当前模板实例是否仍然有效
-        # 如果关联的 Fuzznum 实例被垃圾回收，此标志将变为 False。
+        # Initialize a boolean flag indicating whether the current template instance is still valid.
+        # This flag will be set to False if the associated Fuzznum instance is garbage collected.
         self._is_valid = True
 
+        # Get configuration settings for caching.
         config = get_config()
+        # Set the maximum cache size, defaulting to 256 if not specified in config.
         self._max_cache_size = getattr(config, 'TEMPLATE_CACHE_SIZE', 256)
+        # Initialize an OrderedDict to serve as an LRU cache for template computation results.
+        # OrderedDict maintains insertion order, allowing easy removal of the least recently used item.
         self._template_cache: collections.OrderedDict = collections.OrderedDict()
-        # 初始化一个空字典，作为模板计算结果的缓存。
-        # 模板通常会生成报告字符串、简洁字符串表示或计算得分等，这些结果可以被缓存起来，
 
-        # 缓存开启默认为 True，表示缓存是启用的。
+        # Set the initial cache enabled status based on the global configuration.
         self._cache_enabled = config.ENABLE_CACHE
 
     def _on_instance_cleanup(self, ref: weakref.ref) -> None:
-        """实例被垃圾回收时的清理回调"""
-        self._is_valid = False
-        self._template_cache.clear()
+        """Callback method executed when the associated Fuzznum instance is garbage collected.
+
+        This method is registered with the weak reference and is automatically called
+        when the object it points to is no longer strongly referenced. It marks the
+        template as invalid and clears its cache.
+
+        Args:
+            ref (weakref.ref): The weak reference object that triggered the callback.
+        """
+        self._is_valid = False  # Mark the template as invalid.
+        self._template_cache.clear()  # Clear any cached results, as they are now stale.
 
     @property
     def instance(self) -> Any:
+        """Provides access to the associated Fuzznum instance.
+
+        This property ensures that the associated Fuzznum instance is still valid
+        and accessible before returning it. It raises a RuntimeError if the instance
+        has been garbage collected.
+
+        Returns:
+            Any: The associated Fuzznum instance.
+
+        Raises:
+            RuntimeError: If the associated Fuzznum instance has been garbage collected
+                          and the template is no longer valid.
+        """
+        # First, check the `_is_valid` flag. If it's already False, it means the
+        # associated instance has already been collected, so raise an error immediately.
         if not self._is_valid:
-            # 首先检查 `_is_valid` 标志。如果它已经是 False，说明关联实例已经被回收，
             raise RuntimeError(
                 f"Template for mtype '{self.mtype}' is no longer valid. "
                 f"Associated Fuzznum instance (id: {self._instance_id}) has been garbage collected."
             )
 
+        # Attempt to retrieve the strong reference from the weak reference.
         instance = self._instance_ref()
 
+        # If the weak reference returns None, it means the Fuzznum instance was
+        # garbage collected since the last check.
         if instance is None:
-            # 如果弱引用返回 None，说明 Fuzznum 实例在上次检查后已被回收。
-
-            self._is_valid = False
-
+            self._is_valid = False  # Mark the template as invalid.
             raise RuntimeError(
                 f"Template for mtype '{self.mtype}' has lost its Fuzznum instance "
                 f"(id: {self._instance_id}). Instance has been garbage collected."
@@ -450,245 +661,298 @@ class FuzznumTemplate(ABC):
         return instance
 
     def is_template_valid(self) -> bool:
-        """检查模板是否仍然有效"""
+        """Checks if the template is still valid and its associated Fuzznum instance exists.
 
+        Returns:
+            bool: True if the template is valid and its associated instance is still alive,
+                  False otherwise.
+        """
+        # If the internal `_is_valid` flag is already False, the template is definitely invalid.
         if not self._is_valid:
             return False
 
+        # Attempt to get the strong reference from the weak reference.
         instance = self._instance_ref()
 
+        # If the instance is None, it means the associated object has been garbage collected.
         if instance is None:
-            self._is_valid = False
+            self._is_valid = False  # Update the internal flag.
             return False
 
         return True
 
     def get_cached_value(self, key: str, compute_func: Optional[Callable[[], Any]] = None) -> Any:
-        """
-        获取缓存值，如果不存在则计算并缓存
+        """Retrieves a cached value, computing and caching it if it doesn't exist.
 
-        一般就是模糊数中的一些特殊属性值，比如得分函数，准确函数等等
-        对于一些复杂的得分函数，没必要一直重新算。
+        This method is designed to cache results of expensive computations related
+        to the fuzzy number's representation or properties (e.g., score functions,
+        report strings). If caching is disabled, it directly computes the value.
 
         Args:
-            key: 缓存键
-            compute_func: 计算函数，当缓存不存在时调用
+            key (str): The unique key for the cached value.
+            compute_func (Optional[Callable[[], Any]]): A callable (function or lambda)
+                                                        that computes the value if it's
+                                                        not found in the cache. This
+                                                        function should take no arguments.
 
         Returns:
-            缓存的值或计算的新值
+            Any: The cached value or the newly computed value. Returns None if the
+                 key is not found and no `compute_func` is provided.
         """
-        # 如果缓存机制被禁用，则直接执行计算函数（如果提供），不进行缓存操作。
+        # If caching is disabled, directly execute the compute function (if provided)
+        # and do not perform any caching operations.
         if not self._cache_enabled:
             return compute_func() if compute_func else None
 
-        # 检查缓存中是否已经存在指定 `key` 的值。
-        # 命中缓存，将其移到末尾表示最近使用
+        # Check if the value for the given `key` already exists in the cache.
         if key in self._template_cache:
+            # If found, move the item to the end of the OrderedDict to mark it as recently used (LRU logic).
             self._template_cache.move_to_end(key)
             return self._template_cache[key]
 
-        # 如果缓存中没有，并且提供了 `compute_func`（计算函数）。
-        # 调用 `compute_func` 来计算值。`compute_func` 应该是一个无参数的函数。
-        # 将计算得到的值存储到缓存中，以便下次访问时可以直接获取。
-        # 检查缓存是否超过大小限制，如果是，则移除最旧的条目
+        # If the value is not in the cache and a `compute_func` is provided:
         if compute_func:
+            # Call the `compute_func` to calculate the value.
             value = compute_func()
+            # Store the computed value in the cache.
             self._template_cache[key] = value
+            # Check if the cache size exceeds the maximum allowed size.
             if len(self._template_cache) > self._max_cache_size:
+                # If it does, remove the least recently used item (the first item in OrderedDict).
                 self._template_cache.popitem(last=False)
             return value
 
+        # If the key is not found and no compute function is provided, return None.
         return None
 
     def clear_cache(self) -> None:
-        """清空模板缓存"""
+        """Clears all entries from the template's internal cache."""
         self._template_cache.clear()
 
     def enable_cache(self) -> None:
-        """启用缓存"""
+        """Enables caching for this template."""
         self._cache_enabled = True
 
     def disable_cache(self) -> None:
-        """禁用缓存并清空现有缓存"""
+        """Disables caching for this template and clears any existing cached values."""
         self._cache_enabled = False
         self.clear_cache()
 
     def report(self) -> str:
-        """生成模糊数报告"""
+        """Generates a detailed report string for the fuzzy number.
+
+        This method must be implemented by subclasses to provide a specific
+        formatted string representation of the fuzzy number's properties.
+
+        Raises:
+            NotImplementedError: This method is abstract and must be implemented by subclasses.
+        """
         raise NotImplementedError("report method must be implemented by subclasses")
 
     def str(self) -> str:
-        """生成模糊数字符串表示"""
+        """Generates a concise string representation of the fuzzy number.
+
+        This method must be implemented by subclasses to provide a specific
+        short string representation, typically used for `print()` or `str()` calls.
+
+        Raises:
+            NotImplementedError: This method is abstract and must be implemented by subclasses.
+        """
         raise NotImplementedError("str method must be implemented by subclasses")
 
     def get_template_info(self) -> Dict[str, Any]:
-        """
-        获取模板信息
+        """Retrieves information about the template's current state and cache.
 
         Returns:
-            包含模板状态和缓存信息的字典
+            Dict[str, Any]: A dictionary containing various pieces of information, including:
+                            - 'mtype' (str): The fuzzy number type associated with this template.
+                            - 'is_valid' (bool): Whether the template is still valid (associated instance exists).
+                            - 'instance_id' (int): The unique ID of the associated Fuzznum instance.
+                            - 'cache_enabled' (bool): Whether caching is enabled.
+                            - 'cache_size' (int): The number of items currently in the cache.
+                            - 'cache_keys' (List[str] or str): A list of cache keys, or a summary string
+                                                               if there are too many keys.
         """
         return {
-            'mtype': self.mtype,  # 模板关联的模糊数类型。
-            'is_valid': self._is_valid,  # 模板是否仍然有效（关联实例是否还存在）。
-            'instance_id': self._instance_id,  # 关联 Fuzznum 实例的唯一 ID。
-            'cache_enabled': self._cache_enabled,  # 缓存是否启用。
-            'cache_size': len(self._template_cache),  # 缓存中存储的条目数量。
+            'mtype': self.mtype,  # The fuzzy number type associated with this template.
+            'is_valid': self._is_valid,  # Whether the template is still valid (associated instance exists).
+            'instance_id': self._instance_id,  # The unique ID of the associated Fuzznum instance.
+            'cache_enabled': self._cache_enabled,  # Whether caching is enabled.
+            'cache_size': len(self._template_cache),  # The number of items currently in the cache.
             'cache_keys': list(self._template_cache.keys())
-            # 缓存中的所有键列表。如果键的数量超过 10 个，则只显示数量，以避免输出过长。
+            # Display cache keys as a list if there are fewer than 10, otherwise show a summary string.
             if len(self._template_cache) < 10 else f"{len(self._template_cache)} items"
         }
 
 
-# ======================== 改进的示例实现 ========================
-# 并不参与到初始化和任何运算过程，仅仅用来展示一个示例
+# ======================== Improved Example Implementations ========================
+# These example implementations are for demonstration purposes and are not
+# directly involved in the core initialization or operation processes.
 
 class ExampleStrategy(FuzznumStrategy):
-    """一个示例模糊数策略类，演示了如何定义隶属度和非隶属度属性，并为其添加验证和回调。
+    """An example fuzzy number strategy class demonstrating attribute definition, validation, and callbacks.
 
-    此类继承自 `FuzznumStrategy`，具体实现了模糊数的核心属性 `md`（隶属度）和 `nmd`（非隶属度）。
-    它展示了如何利用基类提供的机制来：
-        - 为 `md` 和 `nmd` 设置值范围验证器。
-        - 在 `md` 或 `nmd` 改变时触发回调，检查模糊数的基本约束（`md + nmd <= 1`）。
-        - 扩展基础的验证逻辑，在 `_validate` 方法中强制检查 `md + nmd` 的和。
+    This class inherits from `FuzznumStrategy` and specifically implements the core
+    attributes `md` (membership degree) and `nmd` (non-membership degree) for a
+    hypothetical fuzzy number type. It showcases how to leverage the base class's
+    mechanisms to:
+        - Set value range validators for `md` and `nmd`.
+        - Trigger callbacks when `md` or `nmd` change, checking basic fuzzy number
+          constraints (e.g., `md + nmd <= 1`).
+        - Extend the base validation logic in the `_validate` method to enforce
+          the sum of `md` and `nmd`.
 
     Attributes:
-        mtype (str): 该策略对应的模糊数类型标识符，固定为 "example_fuzznum"。
-        md (Optional[float]): 隶属度，一个可选的浮点数，表示元素属于模糊集的程度。
-            其值应在 [0, 1] 范围内。
-        nmd (Optional[float]): 非隶属度，一个可选的浮点数，表示元素不属于模糊集的程度。
-            其值应在 [0, 1] 范围内。
+        mtype (str): The fuzzy number type identifier for this strategy, fixed as "example_fuzznum".
+        md (Optional[float]): The membership degree, an optional float representing
+                              the extent to which an element belongs to the fuzzy set.
+                              Its value should be in the range [0, 1].
+        nmd (Optional[float]): The non-membership degree, an optional float representing
+                               the extent to which an element does not belong to the fuzzy set.
+                               Its value should be in the range [0, 1].
     """
     mtype = "example_fuzznum"
     md: Optional[float] = None
     nmd: Optional[float] = None
 
     def __init__(self):
-        """初始化 ExampleStrategy 实例。
+        """Initializes an ExampleStrategy instance.
 
-        在此构造函数中，会调用父类的初始化方法，并为 `md` 和 `nmd` 属性注册验证器和变更回调。
+        In this constructor, the parent class's initialization method is called,
+        and validators and change callbacks are registered for the `md` and `nmd` attributes.
         """
         super().__init__()
-        # 调用父类 FuzznumStrategy 的初始化方法，这将初始化实例锁并为 'q' 属性添加验证器。
+        # Call the parent class (FuzznumStrategy)'s initialization method.
+        # This will initialize instance-specific attributes and add the validator for the 'q' attribute.
 
-        # 添加属性验证器
+        # Add attribute validators for 'md' and 'nmd'.
+        # The validator ensures that 'md' is either None or a float/int within the [0, 1] range.
         self.add_attribute_validator('md', lambda x: x is None or (isinstance(x, (int, float)) and 0 <= x <= 1))
+        # The validator ensures that 'nmd' is either None or a float/int within the [0, 1] range.
         self.add_attribute_validator('nmd', lambda x: x is None or (isinstance(x, (int, float)) and 0 <= x <= 1))
-        # 为 'md' 属性添加一个验证器。该验证器确保 'md' 的值要么是 None，要么是一个在 [0, 1] 范围内的整数或浮点数。
-        # 为 'nmd' 属性添加一个验证器。该验证器确保 'nmd' 的值要么是 None，要么是一个在 [0, 1] 范围内的整数或浮点数。
 
-        # 添加变更回调
+        # Add change callbacks for 'md' and 'nmd'.
+        # When the 'md' attribute's value changes, the `_on_membership_change` method is registered as a callback.
         self.add_change_callback('md', self._on_membership_change)
+        # When the 'nmd' attribute's value changes, the `_on_membership_change` method is registered as a callback.
         self.add_change_callback('nmd', self._on_membership_change)
-        # 当 'md' 属性的值发生变化时，注册 `_on_membership_change` 方法作为回调函数。
-        # 当 'nmd' 属性的值发生变化时，注册 `_on_membership_change` 方法作为回调函数。
 
     def _on_membership_change(self, attr_name: str, old_value: Any, new_value: Any) -> None:
-        """隶属度或非隶属度变更时的回调函数。
+        """Callback function triggered when membership or non-membership degrees change.
 
-        此回调函数在 `md` 或 `nmd` 属性被设置时触发。它会检查模糊数约束条件
-        `md + nmd <= 1`，如果违反则发出警告。
+        This callback is invoked when the `md` or `nmd` attribute is set. It checks
+        the fuzzy number constraint `md + nmd <= 1`. If the constraint is violated,
+        it raises a `ValueError`, which triggers the rollback logic in
+        `FuzznumStrategy.__setattr__`.
 
         Args:
-            attr_name (str): 发生变化的属性名（'md' 或 'nmd'）。
-            old_value (Any): 属性的旧值。
-            new_value (Any): 属性的新值。
+            attr_name (str): The name of the attribute that changed ('md' or 'nmd').
+            old_value (Any): The old value of the attribute.
+            new_value (Any): The new value of the attribute.
         """
+        # Only proceed with the check if the new value is not None and both 'md' and 'nmd'
+        # attributes exist on the instance. This prevents incomplete checks during object initialization.
         if new_value is not None and hasattr(self, 'md') and hasattr(self, 'nmd'):
-            # 只有当新值不为 None，并且实例上同时存在 'md' 和 'nmd' 属性时才执行后续检查。
-            # 这确保了在对象初始化过程中，当属性可能尚未完全设置时，不会触发不完整的检查。
-
+            # Only perform the fuzzy number constraint check if both 'md' and 'nmd' have been assigned (are not None).
             if self.md is not None and self.nmd is not None:
-                # 只有当 'md' 和 'nmd' 都已被赋值（非 None）时，才执行模糊数约束检查。
-                # 检查模糊数约束条件：通常，隶属度 (md) 和非隶属度 (nmd) 之和不应大于 1。
+                # Check the fuzzy number constraint: typically, the sum of membership (md)
+                # and non-membership (nmd) degrees should not exceed 1.
                 if self.md + self.nmd > 1:
-                    # **关键修改：从 warnings.warn 改为 raise ValueError。**
-                    # **这会触发 FuzznumStrategy.__setattr__ 中的回滚逻辑。**
+                    # **Critical change: Changed from warnings.warn to raise ValueError.**
+                    # Raising a ValueError here will cause `FuzznumStrategy.__setattr__`
+                    # to catch it and potentially roll back the attribute change,
+                    # ensuring that invalid states are not set.
                     raise ValueError(f"md + nmd = {self.md + self.nmd} > 1, violates fuzzy number constraints")
 
     def _validate(self) -> None:
-        """
-        扩展策略的验证方法，添加对隶属度和非隶属度之和的检查。
+        """Extends the strategy's validation method to include a check on the sum of membership and non-membership degrees.
 
-        此方法在父类 `_validate` 的基础上，进一步检查 `md` 和 `nmd` 属性的组合约束。
-        如果 `md + nmd` 的和大于 1，则抛出 `ValueError`。
+        This method builds upon the parent class's `_validate` method by adding
+        a specific check for the combined constraint of `md` and `nmd`. If the
+        sum `md + nmd` is greater than 1, a `ValueError` is raised.
         """
         super()._validate()
-        # 调用父类 FuzznumStrategy 的 _validate 方法，执行其默认的验证逻辑（例如对 mtype 的检查）。
+        # Call the `_validate` method of the parent class (FuzznumStrategy)
+        # to perform its default validation logic (e.g., for `mtype`).
 
-        # 检查隶属度和非隶属度的约束：md + nmd 必须不大于 1。
-        # 只有当 'md' 和 'nmd' 都已被赋值（非 None）时，才执行此组合约束检查。
+        # Check the constraint for membership and non-membership degrees: `md + nmd` must not exceed 1.
+        # This combined constraint check is only performed if both 'md' and 'nmd' have been assigned (are not None).
         if (self.md is not None and self.nmd is not None and
                 self.md + self.nmd > 1):
+            # If the sum of md and nmd is greater than 1, raise a ValueError,
+            # indicating that the fuzzy number's state is invalid.
             raise ValueError(f"md + nmd = {self.md + self.nmd} must not exceed 1")
-            # 如果 md 和 nmd 的和大于 1，则抛出 ValueError，指示模糊数的状态无效。
 
 
 class ExampleTemplate(FuzznumTemplate):
-    """
-    一个改进的示例模糊数模板实现，演示了如何生成模糊数的字符串表示、详细报告，以及添加自定义的计算方法。
+    """An improved example fuzzy number template implementation.
 
-    此类继承自 `FuzznumTemplate`，为 "example_fuzznum" 类型的模糊数提供了具体的表示逻辑。
-    它展示了如何利用基类的缓存机制来：
-        - 生成简洁的字符串表示（`str`）。
-        - 生成详细的报告字符串（`report`）。
-        - 计算一个自定义的得分函数（`score`）。
-    所有这些计算结果都会被缓存，以提高重复访问的性能。
+    This class demonstrates how to generate string representations, detailed reports,
+    and add custom computational methods for a fuzzy number. It inherits from
+    `FuzznumTemplate` and provides specific representation logic for fuzzy numbers
+    of type "example_fuzznum". It leverages the base class's caching mechanism to:
+        - Generate a concise string representation (`str`).
+        - Generate a detailed report string (`report`).
+        - Compute a custom score function (`score`).
+    All these computed results are cached to improve performance on repeated access.
 
     Attributes:
-        mtype (str): 该模板对应的模糊数类型标识符，固定为 "example_fuzznum"。
+        mtype (str): The fuzzy number type identifier for this template, fixed as "example_fuzznum".
     """
 
     mtype = "example_fuzznum"
 
     def report(self) -> str:
-        """生成模糊数的详细报告字符串。
+        """Generates a detailed report string for the fuzzy number.
 
-        此方法利用 `FuzznumTemplate` 的缓存机制，生成一个包含模糊数所有关键参数的详细报告。
-        报告内容包括隶属度 (`md`)、非隶属度 (`nmd`) 和阶数 (`q`)。
+        This method utilizes the caching mechanism of `FuzznumTemplate` to generate
+        a detailed report containing all key parameters of the fuzzy number.
+        The report includes membership degree (`md`), non-membership degree (`nmd`),
+        and q-rung (`q`).
 
         Returns:
-            str: 详细的模糊数报告字符串，例如 "ExampleFuzz(md=0.8, nmd=0.1, q=2)"。
+            str: A detailed fuzzy number report string, e.g., "ExampleFuzz(md=0.8, nmd=0.1, q=2)".
         """
         return self.get_cached_value(
-            'report',
-            # 缓存键，用于在 _template_cache 中查找或存储报告字符串。
+            'report',  # Cache key for the report string.
+            # Lambda function to compute the report string if not cached.
+            # It safely accesses the associated Fuzznum instance's attributes via `self.instance`.
             lambda: f"ExampleFuzz(md={self.instance.md}, nmd={self.instance.nmd}, q={self.instance.q})"
-            # 计算报告字符串的函数。
-            # 它通过 `self.instance` 安全地访问关联 Fuzznum 实例的属性。
         )
 
     def str(self) -> str:
-        """生成模糊数的简洁字符串表示。
+        """Generates a concise string representation of the fuzzy number.
 
-        此方法利用 `FuzznumTemplate` 的缓存机制，生成一个简洁的模糊数字符串表示。
-        通常用于 `print()` 或 `str()` 调用。
+        This method utilizes the caching mechanism of `FuzznumTemplate` to generate
+        a brief string representation of the fuzzy number. It is typically used
+        for `print()` or `str()` calls.
 
         Returns:
-            str: 简洁的模糊数字符串表示，例如 "<0.8,0.1>_q=2"。
+            str: A concise fuzzy number string representation, e.g., "<0.8,0.1>_q=2".
         """
         return self.get_cached_value(
-            'str',
-            # 缓存键，用于在 _template_cache 中查找或存储简洁字符串表示。
+            'str',  # Cache key for the concise string representation.
+            # Lambda function to compute the concise string representation if not cached.
+            # It safely accesses the associated Fuzznum instance's attributes via `self.instance`.
             lambda: f"<{self.instance.md},{self.instance.nmd}>_q={self.instance.q}"
-            # 计算简洁字符串表示的函数。
-            # 它通过 `self.instance` 安全地访问关联 Fuzznum 实例的属性。
         )
 
     def score(self) -> float:
-        """计算模糊数的得分函数。
+        """Computes the score function of the fuzzy number.
 
-        此方法计算模糊数的得分，定义为隶属度与非隶属度之差 (`md - nmd`)。
-        它利用 `FuzznumTemplate` 的缓存机制，避免重复计算。
-        如果 `md` 或 `nmd` 为 None，则在计算中将其视为 0。
+        This method calculates the score of the fuzzy number, defined as the
+        difference between the membership degree and the non-membership degree (`md - nmd`).
+        It utilizes the caching mechanism of `FuzznumTemplate` to avoid redundant computations.
+        If `md` or `nmd` are None, they are treated as 0 in the calculation.
 
         Returns:
-            float: 计算得到的模糊数得分。
+            float: The computed score of the fuzzy number.
         """
         return self.get_cached_value(
-            'score',
-            # 缓存键，用于在 _template_cache 中查找或存储得分。
+            'score',  # Cache key for the score.
+            # Lambda function to compute the score if not cached.
+            # `(self.instance.md or 0)` ensures that if `md` is None, it defaults to 0,
+            # preventing a TypeError during arithmetic operations.
             lambda: (self.instance.md or 0) - (self.instance.nmd or 0)
-            # 计算得分的函数。
-            # `(self.instance.md or 0)` 确保如果 md 为 None，则使用 0 进行计算，避免 TypeError。
         )
+    

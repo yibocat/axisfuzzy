@@ -4,11 +4,19 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
+"""
+This module defines the `Fuzznum` class, a core component of the FuzzLab library.
 
+The `Fuzznum` class acts as a facade, providing a unified interface for various
+types of fuzzy numbers (e.g., Intuitionistic Fuzzy Numbers, Pythagorean Fuzzy Numbers).
+It achieves this by dynamically delegating operations and attribute access to
+underlying strategy and template instances, which encapsulate the specific logic
+and representation for each fuzzy number type. This design pattern promotes
+extensibility, allowing new fuzzy number types to be added without modifying
+the core `Fuzznum` class.
+"""
 import difflib
 from typing import Optional, Dict, Callable, Any, Set, List
-
-import numpy as np
 
 from fuzzlab.config import get_config
 from fuzzlab.core.base import FuzznumTemplate, FuzznumStrategy
@@ -16,13 +24,75 @@ from fuzzlab.core.registry import get_registry
 
 
 class Fuzznum:
+    """Represents a generic fuzzy number, acting as a facade for specific fuzzy number types.
+
+    The `Fuzznum` class provides a high-level interface for creating, manipulating,
+    and interacting with various fuzzy number types. It uses a Strategy pattern
+    (via `FuzznumStrategy`) to encapsulate the core logic and data of different
+    fuzzy number models, and a Template pattern (via `FuzznumTemplate`) for
+    their representation and auxiliary computations.
+
+    Notes:
+        - **Dynamic Type Handling**: Supports different fuzzy number types (e.g., 'qrofn')
+          specified at instantiation, with their specific behaviors loaded dynamically.
+        - **Attribute Delegation**: Transparently delegates attribute access (get and set)
+          to the underlying strategy and template instances, allowing users to interact
+          with fuzzy number properties (e.g., `fuzznum.md`, `fuzznum.nmd`) directly.
+        - **Operator Overloading**: Overloads standard Python arithmetic and comparison
+          operators (`+`, `-`, `*`, `/`, `**`, `>`, `<`, `>=`, `<=`, `==`, `!=`)
+          to enable natural syntax for fuzzy number operations, dispatching to the
+          `dispatcher` module for type-aware execution.
+        - **Serialization**: Provides `to_dict()` and `from_dict()` methods for easy
+          serialization and deserialization of fuzzy number states.
+        - **Copying**: Supports creating independent copies of fuzzy number instances.
+        - **Information & Debugging**: Offers methods to inspect the internal state,
+          bound members, and validate the object's consistency.
+
+    Attributes:
+        __array_priority__ (float): A NumPy-specific attribute that determines the
+                                    priority of `Fuzznum` instances in mixed-type
+                                    operations with NumPy arrays. A higher value
+                                    means `Fuzznum` operations take precedence.
+        _INTERNAL_ATTRS (Set[str]): A class-level set of attribute names that are
+                                    considered internal to the `Fuzznum` class.
+                                    These attributes are handled directly by
+                                    `object.__setattr__` and `object.__getattribute__`
+                                    to prevent recursion and ensure proper initialization.
+        mtype (str): The membership type of the fuzzy number (e.g., 'qrofn', 'intuitionistic').
+                     This determines which `FuzznumStrategy` and `FuzznumTemplate`
+                     implementations are used.
+        q (int): The q-rung value of the fuzzy number. For q-rung orthopair fuzzy numbers,
+                 this specifies the rung. Defaults to 1 if not provided.
+        _initialized (bool): Internal flag indicating whether the `Fuzznum` instance
+                             has completed its initialization process.
+        _strategy_instance (FuzznumStrategy): An instance of the concrete
+                                              `FuzznumStrategy` subclass corresponding
+                                              to `mtype`. This object encapsulates
+                                              the core logic and data of the fuzzy number.
+        _template_instance (FuzznumTemplate): An instance of the concrete
+                                              `FuzznumTemplate` subclass corresponding
+                                              to `mtype`. This object handles
+                                              representation and auxiliary computations.
+        _bound_strategy_methods (Dict[str, Callable]): A dictionary mapping names of
+                                                       public methods from `_strategy_instance`
+                                                       to their bound callable objects on `self`.
+        _bound_strategy_attributes (Set[str]): A set of names of public attributes
+                                                from `_strategy_instance` that are
+                                                delegated to `self`.
+        _bound_template_methods (Dict[str, Callable]): A dictionary mapping names of
+                                                       public methods from `_template_instance`
+                                                       to their bound callable objects on `self`.
+        _bound_template_attributes (Set[str]): A set of names of public attributes
+                                                from `_template_instance` that are
+                                                delegated to `self`.
+    """
 
     __array_priority__ = 1.0
     _INTERNAL_ATTRS = {
         'mtype',
         '_initialized',
         '_strategy_instance',
-        '_strategy_instance',
+        '_template_instance',
         '_bound_strategy_methods',
         '_bound_strategy_attributes',
         '_bound_template_methods',
@@ -32,6 +102,26 @@ class Fuzznum:
     def __init__(self,
                  mtype: Optional[str] = None,
                  qrung: Optional[int] = None):
+        """Initializes a new Fuzznum instance.
+
+        This constructor sets up the basic properties of the fuzzy number and
+        dynamically loads and configures the appropriate `FuzznumStrategy` and
+        `FuzznumTemplate` instances based on the `mtype`.
+
+        Args:
+            mtype (Optional[str]): The membership type of the fuzzy number (e.g., 'qrofn').
+                                   If None, it defaults to the `DEFAULT_MTYPE` from the
+                                   FuzzLab configuration.
+            qrung (Optional[int]): The q-rung value for the fuzzy number. If None, it
+                                   defaults to 1.
+
+        Raises:
+            TypeError: If `mtype` is not a string or `qrung` is not an integer.
+            ValueError: If the specified `mtype` is not supported by the registry.
+            Exception: Catches any other exceptions during initialization and
+                       performs cleanup before re-raising.
+        """
+        # Set _initialized to False initially to prevent attribute access before full setup.
         object.__setattr__(self, '_initialized', False)
         config = get_config()
         if mtype is None:
@@ -46,22 +136,43 @@ class Fuzznum:
         if not isinstance(qrung, int):
             raise TypeError(f"qrung must be an integer, got '{type(qrung).__name__}'")
 
+        # Use object.__setattr__ to set these core attributes directly, bypassing
+        # the custom __setattr__ to prevent recursion during initialization.
         object.__setattr__(self, 'mtype', mtype)
         object.__setattr__(self, 'q', qrung)
 
         try:
+            # Perform the main initialization steps: configuring strategy and template.
             self._initialize()
+            # Mark the object as fully initialized after successful setup.
             object.__setattr__(self, '_initialized', True)
 
         except Exception:
+            # If any error occurs during initialization, clean up partially set attributes.
             self._cleanup_partial_initialization()
             raise
 
     def _initialize(self):
+        """Internal method to configure the strategy and template instances.
+
+        This method orchestrates the loading and binding of the `FuzznumStrategy`
+        and `FuzznumTemplate` instances based on the `mtype` of the `Fuzznum` object.
+        """
         self._configure_strategy()
         self._configure_template()
 
     def _configure_strategy(self):
+        """Configures and binds the appropriate FuzznumStrategy instance.
+
+        This method retrieves the `FuzznumStrategy` class corresponding to the
+        `mtype` from the global registry, instantiates it, and then binds its
+        public methods and attributes to the `Fuzznum` instance itself. This
+        enables transparent delegation of calls and attribute access.
+
+        Raises:
+            ValueError: If the `mtype` is not found in the strategy registry.
+            RuntimeError: If dynamic binding of strategy members fails.
+        """
         registry = get_registry()
 
         if self.mtype not in registry.strategies:
@@ -84,11 +195,25 @@ class Fuzznum:
         bound_methods, bound_attributes = self._bind_instance_members(
             strategy_instance, 'strategy'
         )
+        # Store the strategy instance and its bound members using object.__setattr__
+        # to avoid triggering the custom __setattr__ during initialization.
         object.__setattr__(self, '_strategy_instance', strategy_instance)
         object.__setattr__(self, '_bound_strategy_methods', bound_methods)
         object.__setattr__(self, '_bound_strategy_attributes', bound_attributes)
 
     def _configure_template(self) -> None:
+        """Configures and binds the appropriate FuzznumTemplate instance.
+
+        This method retrieves the `FuzznumTemplate` class corresponding to the
+        `mtype` from the global registry, instantiates it (passing `self` as
+        its associated instance), and then binds its public methods and attributes
+        to the `Fuzznum` instance. This allows for transparent access to
+        representation-related functionalities.
+
+        Raises:
+            ValueError: If the `mtype` is not found in the template registry.
+            RuntimeError: If dynamic binding of template members fails.
+        """
         registry = get_registry()
 
         if self.mtype not in registry.templates:
@@ -176,9 +301,12 @@ class Fuzznum:
                 else:
                     attr_value = getattr(instance, attr_name)
                     if callable(attr_value):
+                        # Bind callable attributes (methods) directly to the Fuzznum instance.
+                        # Use object.__setattr__ to avoid triggering custom __setattr__.
                         object.__setattr__(self, attr_name, attr_value)
                         bound_methods[attr_name] = attr_value
                     else:
+                        # Add non-callable attributes (properties) to the set of bound attributes.
                         bound_attributes.add(attr_name)
 
             return bound_methods, bound_attributes
@@ -208,8 +336,11 @@ class Fuzznum:
 
         for attr in cleanup_attrs:
             try:
+                # Attempt to delete the attribute from the instance.
+                # Use object.__delattr__ to bypass any custom __delattr__ logic.
                 object.__delattr__(self, attr)
             except AttributeError:
+                # Ignore AttributeError if the attribute was not set in the first place.
                 pass
 
     def _is_initialized(self) -> bool:
@@ -227,8 +358,12 @@ class Fuzznum:
                 otherwise returns False.
         """
         try:
+            # Directly access the _initialized flag using object.__getattribute__
+            # to prevent infinite recursion with the custom __getattribute__.
             return object.__getattribute__(self, '_initialized')
         except AttributeError:
+            # If _initialized attribute doesn't exist yet, it means the object
+            # is not fully initialized or is in the process of being initialized.
             return False
 
     def get_template_instance(self) -> FuzznumTemplate:
@@ -250,11 +385,14 @@ class Fuzznum:
                 fully initialized.
         """
         try:
+            # Directly access _template_instance using object.__getattribute__
+            # to avoid triggering custom attribute delegation.
             template_instance = object.__getattribute__(self, '_template_instance')
             if template_instance is None:
                 raise RuntimeError("Template instance not found.")
             return template_instance
         except AttributeError:
+            # If _template_instance attribute does not exist, it means it was not set.
             raise RuntimeError("Template instance not found.")
 
     def get_strategy_instance(self) -> FuzznumStrategy:
@@ -276,11 +414,14 @@ class Fuzznum:
                 fully initialized.
         """
         try:
+            # Directly access _strategy_instance using object.__getattribute__
+            # to avoid triggering custom attribute delegation.
             strategy_instance = object.__getattribute__(self, '_strategy_instance')
             if strategy_instance is None:
                 raise RuntimeError("Strategy instance not found.")
             return strategy_instance
         except AttributeError:
+            # If _strategy_instance attribute does not exist, it means it was not set.
             raise RuntimeError("Strategy instance not found.")
 
     def _delegate_attribute_access(self, name: str) -> Any:
@@ -306,6 +447,7 @@ class Fuzznum:
         """
 
         try:
+            # Get the set of strategy attribute names that are bound to the Fuzznum instance.
             bound_strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
             # 如果要访问的属性名在策略属性集合中。
             if name in bound_strategy_attrs:
@@ -331,6 +473,8 @@ class Fuzznum:
             #   final handling.
             pass
 
+        # If the attribute is not found in either strategy or template,
+        # fall back to __getattr__ for final handling (which will raise AttributeError).
         return self.__getattr__(name)
 
     def __getattribute__(self, name: str) -> Any:
@@ -380,12 +524,17 @@ class Fuzznum:
         except AttributeError:
             pass
 
+        # If the object is not yet fully initialized, and the attribute is not
+        # an internal or special attribute, raise an AttributeError. This prevents
+        # accessing delegated attributes before they are properly set up.
         if not self._is_initialized():
             raise AttributeError(
                 f"'{self.__class__.__name__}' object has no attribute '{name}'."
                 f"The Fuzznum is still initializing or the property does not exist."
             )
 
+        # If the attribute is not found directly on the instance, delegate the access
+        # to the underlying strategy or template instances.
         return self._delegate_attribute_access(name)
 
     def __getattr__(self, name: str) -> Any:
@@ -408,17 +557,20 @@ class Fuzznum:
         Raises:
             AttributeError: The attribute was not found in any of the possible lookup paths.
         """
+        # If the object is not initialized, raise an error indicating that.
         if not self._is_initialized():
             raise AttributeError(
                 f"'{self.__class__.__name__}' 对象没有属性 '{name}'。"
                 f"The Fuzznum is still initializing."
             )
 
+        # Get information about all available (bound) members for providing suggestions.
         available_info = self._get_available_members_info()
 
         # Construct detailed error messages
         error_msg = f"'{self.__class__.__name__}' object has no attribute '{name}'."
         all_members = available_info['attributes'] + available_info['methods']
+        # Use difflib to find close matches for the requested attribute name.
         suggestions = difflib.get_close_matches(name, all_members, n=3, cutoff=0.6)
         if suggestions:
             error_msg += f" Did you mean: {', '.join(suggestions)}?"
@@ -463,10 +615,12 @@ class Fuzznum:
             object.__setattr__(self, name, value)
             return
 
+        # Prevent modification of the 'mtype' attribute after initialization.
         if name == 'mtype':
             raise AttributeError(f"Cannot modify immutable attribute '{name}' of Fuzznum instance.")
 
         try:
+            # Attempt to set the attribute on the underlying strategy instance if it's a bound attribute.
             strategy_attributes = object.__getattribute__(self, '_bound_strategy_attributes')
 
             if name in strategy_attributes:
@@ -492,6 +646,7 @@ class Fuzznum:
                         # If it is not `property`, directly set the attribute of the
                         #   strategy instance through `setattr`.
                         setattr(strategy_instance, name, value)
+                        # Also set it on the Fuzznum instance itself for direct access optimization.
                         object.__setattr__(self, name, value)
                         return
 
@@ -502,6 +657,7 @@ class Fuzznum:
                     raise RuntimeError(f"An unexpected error occurred while setting the property '{name}' "
                                        f"on the strategy instance (fuzzy number type '{self.mtype}'): {e}")
 
+            # Attempt to set the attribute on the underlying template instance if it's a bound attribute.
             template_attributes = object.__getattribute__(self, '_bound_template_attributes')
             if name in template_attributes:
                 try:
@@ -527,8 +683,11 @@ class Fuzznum:
                                        f"on the template instance (fuzzy number type '{self.mtype}'): {e}")
 
         except AttributeError:
+            # If the attribute is not a bound strategy or template attribute,
+            # fall through to set it directly on the Fuzznum instance.
             pass
 
+        # If none of the above conditions are met, set the attribute directly on the Fuzznum instance.
         object.__setattr__(self, name, value)
 
     def __del__(self) -> None:
@@ -581,6 +740,7 @@ class Fuzznum:
                  If information cannot be retrieved due to initialization issues, return an empty list.
         """
         try:
+            # Retrieve bound methods and attributes from both strategy and template instances.
             strategy_methods = object.__getattribute__(self, '_bound_strategy_methods')
             strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
             template_methods = object.__getattribute__(self, '_bound_template_methods')
@@ -620,12 +780,13 @@ class Fuzznum:
         Examples:
             >>> fuzz = Fuzznum('qrofn', qrung=2).create(md=0.7, nmd=0.2)
             >>> print(fuzz.mtype)
-            example_fuzznum
+            'qrofn'
             >>> print(fuzz.md)
             0.7
             >>> print(fuzz.nmd)
             0.2
         """
+        # Create a new Fuzznum instance with the same mtype and q-rung as the current instance.
         instance = Fuzznum(self.mtype, self.q)
 
         # Batch Set Properties
@@ -638,6 +799,8 @@ class Fuzznum:
                 try:
                     setattr(instance, key, value)
                 except AttributeError:
+                    # If an attribute cannot be set (e.g., it's not a valid attribute for the mtype),
+                    # raise an error.
                     raise f"The parameter '{key}' is invalid for the fuzzy number mtype '{self.mtype}'"
 
         return instance
@@ -672,10 +835,12 @@ class Fuzznum:
 
         current_params = {}
         try:
+            # Get the names of all attributes bound from the strategy instance.
             strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
 
             for attr_name in strategy_attrs:
                 try:
+                    # Get the current value of each strategy attribute.
                     current_params[attr_name] = getattr(self, attr_name)
 
                 except AttributeError:
@@ -730,6 +895,7 @@ class Fuzznum:
         strategy_instance = self.get_strategy_instance()
 
         try:
+            # Get the set of attribute names that are bound from the strategy.
             declared_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
         except AttributeError:
             raise RuntimeError("Fuzznum's internal strategy attribute bindings are not properly initialized.")
@@ -761,6 +927,7 @@ class Fuzznum:
             }
 
         try:
+            # Retrieve information about bound methods and attributes from both strategy and template.
             strategy_methods = object.__getattribute__(self, '_bound_strategy_methods')
             strategy_attributes = object.__getattribute__(self, '_bound_strategy_attributes')
             template_attributes = object.__getattribute__(self, '_bound_template_attributes')
@@ -775,6 +942,7 @@ class Fuzznum:
                 }
             }
         except AttributeError as e:
+            # If an AttributeError occurs during retrieval, it indicates partial initialization.
             return {
                 'mtype': getattr(self, 'mtype', 'unknown'),
                 'status': 'partially_initialized',
@@ -802,15 +970,18 @@ class Fuzznum:
         }
 
         try:
+            # Check for the existence of the fundamental 'mtype' attribute.
             if not hasattr(self, 'mtype'):
                 validation_result['issues'].append("Missing mtype attribute")
                 validation_result['is_valid'] = False
 
+            # If the object is not fully initialized, report it and return early.
             if not self._is_initialized():
                 validation_result['issues'].append("Object not fully initialized")
                 validation_result['is_valid'] = False
                 return validation_result
 
+            # Check for the existence of all required internal attributes after initialization.
             required_attrs = [
                 '_strategy_instance', '_template_instance',
                 '_bound_strategy_methods', '_bound_strategy_attributes',
@@ -822,6 +993,7 @@ class Fuzznum:
                     validation_result['issues'].append(f"The initialized object is missing required attributes.: {attr}")
                     validation_result['is_valid'] = False
 
+            # Attempt to validate the state of the underlying strategy instance.
             try:
                 strategy_instance = self.get_strategy_instance()
                 if hasattr(strategy_instance, 'validate_all_attributes'):
@@ -834,6 +1006,7 @@ class Fuzznum:
                 validation_result['issues'].append(f"Strategy instance validation failed: {e}")
                 validation_result['is_valid'] = False
 
+            # Attempt to validate the state of the underlying template instance.
             try:
                 template_instance = self.get_template_instance()
                 if hasattr(template_instance, 'is_valid') and not template_instance.is_valid():
@@ -844,6 +1017,7 @@ class Fuzznum:
                 validation_result['is_valid'] = False
 
         except Exception as e:
+            # Catch any unexpected exceptions during the validation process.
             validation_result['issues'].append(f"An exception occurred during the verification process.: {e}")
             validation_result['is_valid'] = False
 
@@ -935,6 +1109,7 @@ class Fuzznum:
         if 'mtype' not in data:
             raise ValueError("The dictionary must contain the 'mtype' key.")
 
+        # Create a new Fuzznum instance using the 'mtype' from the dictionary.
         instance = cls(data['mtype'])
 
         # Setting Attributes
@@ -959,12 +1134,15 @@ class Fuzznum:
         Returns:
             str: The formal string representation of the object.
         """
+        # If a 'report' method is bound (from the template), use it for representation.
         if hasattr(self, 'report') and callable(self.report):
             try:
                 return self.get_template_instance().report()
             except ValueError:
+                # Fallback if the template's report method fails.
                 pass
 
+        # Default representation if no report method is available, or it fails.
         return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
 
     def __str__(self) -> str:
@@ -974,58 +1152,73 @@ class Fuzznum:
         Returns:
             str: A concise, user-friendly string representation of the object.
         """
+        # If a 'str' method is bound (from the template), use it for representation.
         if hasattr(self, 'str') and callable(self.str):
             try:
                 return self.get_template_instance().str()
             except ValueError:
+                # Fallback if the template's str method fails.
                 pass
 
+        # Default representation if no str method is available, or it fails.
         return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
 
     def __add__(self, other):
+        """Overloads the addition operator (+)."""
         from .dispatcher import operate
         return operate('add', self, other)
 
     def __sub__(self, other):
+        """Overloads the subtraction operator (-)."""
         from .dispatcher import operate
         return operate('sub', self, other)
 
     def __mul__(self, other):
+        """Overloads the multiplication operator (*)."""
         from .dispatcher import operate
         return operate('mul', self, other)
 
     def __rmul__(self, other):
+        """Overloads the reverse multiplication operator (*)."""
         from .dispatcher import operate
         return operate('mul', self, other)
 
     def __truediv__(self, other):
+        """Overloads the true division operator (/)."""
         from .dispatcher import operate
         return operate('div', self, other)
 
     def __pow__(self, power, modulo=None):
+        """Overloads the power operator (**)."""
         from .dispatcher import operate
         return operate('pow', self, power)
 
     def __gt__(self, other):
+        """Overloads the greater than operator (>)."""
         from .dispatcher import operate
         return operate('gt', self, other)
 
     def __lt__(self, other):
+        """Overloads the less than operator (<)."""
         from .dispatcher import operate
         return operate('lt', self, other)
 
     def __ge__(self, other):
+        """Overloads the greater than or equal to operator (>=)."""
         from .dispatcher import operate
         return operate('ge', self, other)
 
     def __le__(self, other):
+        """Overloads the less than or equal to operator (<=)."""
         from .dispatcher import operate
         return operate('le', self, other)
 
     def __eq__(self, other):
+        """Overloads the equality operator (==)."""
         from .dispatcher import operate
         return operate('eq', self, other)
 
     def __ne__(self, other):
+        """Overloads the inequality operator (!=)."""
         from .dispatcher import operate
         return operate('ne', self, other)
