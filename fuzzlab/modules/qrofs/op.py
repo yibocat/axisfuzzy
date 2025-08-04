@@ -41,12 +41,20 @@ class QROFNSubtraction(OperationMixin):
                                 strategy_1: Any,
                                 strategy_2: Any,
                                 tnorm: OperationTNorm) -> Dict[str, Any]:
-        md = tnorm.t_norm(
-            strategy_1.md,
-            tnorm.f_inv_func(tnorm.f_func(strategy_1.md) - tnorm.f_func(strategy_2.md)))
-        nmd = tnorm.t_conorm(
-            strategy_1.nmd,
-            tnorm.g_inv_func(tnorm.g_func(strategy_2.nmd) - tnorm.g_func(strategy_1.nmd)))
+        q = strategy_1.q
+
+        condition_1 = strategy_1.nmd / strategy_2.nmd
+        condition_2 = ((1 - strategy_1.md ** q)/(1 - strategy_2.md ** q)) ** (1/q)
+        epsilon = get_config().DEFAULT_EPSILON
+
+        if (epsilon <= condition_1 <= 1 - epsilon
+                and epsilon <= condition_2 <= 1 - epsilon
+                and condition_1 <= condition_2):
+            md = ((strategy_1.md ** q - strategy_2.md ** q) / (1 - strategy_2.md ** q)) ** (1/q)
+            nmd = strategy_1.nmd / strategy_2.nmd
+        else:
+            md = 0.
+            nmd = 1.
 
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
 
@@ -79,10 +87,20 @@ class QROFNDivision(OperationMixin):
                                 strategy_1: Any,
                                 strategy_2: Any,
                                 tnorm: OperationTNorm) -> Dict[str, Any]:
-        md = tnorm.t_norm(
-            strategy_1.md, tnorm.f_inv_func(tnorm.f_func(strategy_1.md) / tnorm.f_func(strategy_2.md)))
-        nmd = tnorm.t_conorm(
-            strategy_1.nmd, tnorm.g_inv_func(tnorm.g_func(strategy_2.nmd) / tnorm.g_func(strategy_1.nmd)))
+        q = strategy_1.q
+
+        condition_1 = strategy_1.md / strategy_2.md
+        condition_2 = ((1 - strategy_1.nmd ** q)/(1 - strategy_2.nmd ** q)) ** (1/q)
+        epsilon = get_config().DEFAULT_EPSILON
+
+        if (epsilon <= condition_1 <= 1 - epsilon
+                and epsilon <= condition_2 <= 1 - epsilon
+                and condition_1 <= condition_2):
+            md = strategy_1.md / strategy_2.md
+            nmd = ((strategy_1.nmd ** q - strategy_2.nmd ** q) / (1 - strategy_2.nmd ** q)) ** (1/q)
+        else:
+            md = 1.
+            nmd = 0.
 
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
 

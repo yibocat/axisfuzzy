@@ -16,6 +16,8 @@ from fuzzlab.core.triangular import OperationTNorm
 
 class Fuzzarray:
 
+    __array_priority__ = 1.0
+
     def __init__(self,
                  data: np.ndarray | list | tuple | Fuzznum,
                  mtype: Optional[str] = None,
@@ -52,7 +54,7 @@ class Fuzzarray:
         except (ValueError, TypeError):
             return
 
-        # 从原型中获取策略和模板绑定的方法和属性
+        # Methods and properties for obtaining strategies and template bindings from the prototype
         strategy_methods = object.__getattribute__(prototype_fuzznum, '_bound_strategy_methods').keys()
         strategy_attrs = object.__getattribute__(prototype_fuzznum, '_bound_strategy_attributes')
         template_methods = object.__getattribute__(prototype_fuzznum, '_bound_template_methods').keys()
@@ -97,7 +99,7 @@ class Fuzzarray:
         if self._data.size == 0:
             return expected_mtype or get_config().DEFAULT_MTYPE
 
-        # 检查第一个非 None Fuzznum 元素以确定 mtype
+        # Check the first non-None Fuzznum element to determine mtype.
         first_fuzznum = None
         for item in self._data.flat:
             if isinstance(item, Fuzznum):
@@ -279,11 +281,11 @@ class Fuzzarray:
 
     # ======================== Core implementation of vectorized operations ========================
 
-    def _execute_vectorized_op(self,
-                               op_name: str,
-                               other: Optional[
+    def execute_vectorized_op(self,
+                              op_name: str,
+                              other: Optional[
                                    Union['Fuzzarray', Fuzznum, np.ndarray, float, int]]
-                               = None) -> Union['Fuzzarray', np.ndarray]:
+                              = None) -> Union['Fuzzarray', np.ndarray]:
         """
         General logic for executing vectorized operations.
 
@@ -371,10 +373,11 @@ class Fuzzarray:
         if result_data.size == 0:
             return np.array([]) if op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne'] else self.copy()
 
+        if op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
+            # If it is a comparison operation, directly return the calculation result.
+            return result_data
+
         first_result = result_data.flat[0]
-        if isinstance(first_result, dict) and 'value' in first_result and isinstance(first_result['value'], bool):
-            convert_func = np.vectorize(lambda d: d.get('value', False), otypes=[bool])
-            return convert_func(result_data)
 
         if isinstance(first_result, dict):  # If the returned value is a dictionary, convert it to Fuzznum
             convert_func = np.vectorize(
@@ -387,56 +390,73 @@ class Fuzzarray:
 
     # ======================== Specific calculation method (operator overloading) ========================
 
-    def __add__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
-        return self._execute_vectorized_op('add', other)
+    def __add__(self, other):
+        from .dispatcher import operate
+        return operate('add', self, other)
 
-    def __sub__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
-        return self._execute_vectorized_op('sub', other)
+    def __radd__(self, other):
+        from .dispatcher import operate
+        return operate('add', self, other)
 
-    def __mul__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
-        return self._execute_vectorized_op('mul', other)
+    def __sub__(self, other):
+        from .dispatcher import operate
+        return operate('sub', self, other)
 
-    def __truediv__(self, other: Union['Fuzzarray', Fuzznum]) -> 'Fuzzarray':
-        return self._execute_vectorized_op('div', other)
+    def __mul__(self, other):
+        from .dispatcher import operate
+        return operate('mul', self, other)
 
-    def __pow__(self, operand: Union[int, float, np.ndarray]) -> 'Fuzzarray':
-        return self._execute_vectorized_op('pow', operand)
+    def __rmul__(self, other):
+        from .dispatcher import operate
+        return operate('mul', self, other)
 
-    # ======================== 比较运算 (返回 np.ndarray[bool]) ========================
+    def __truediv__(self, other):
+        from .dispatcher import operate
+        return operate('div', self, other)
 
-    def __gt__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
-        return self._execute_vectorized_op('gt', other)
+    def __pow__(self, power, modulo=None):
+        from .dispatcher import operate
+        return operate('pow', self, power)
 
-    def __lt__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
-        return self._execute_vectorized_op('lt', other)
+    def __gt__(self, other):
+        from .dispatcher import operate
+        return operate('gt', self, other)
 
-    def __ge__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
-        return self._execute_vectorized_op('ge', other)
+    def __lt__(self, other):
+        from .dispatcher import operate
+        return operate('lt', self, other)
 
-    def __le__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
-        return self._execute_vectorized_op('le', other)
+    def __ge__(self, other):
+        from .dispatcher import operate
+        return operate('ge', self, other)
 
-    def __eq__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
-        return self._execute_vectorized_op('eq', other)
+    def __le__(self, other):
+        from .dispatcher import operate
+        return operate('le', self, other)
 
-    def __ne__(self, other: Union['Fuzzarray', Fuzznum]) -> np.ndarray:
-        return self._execute_vectorized_op('ne', other)
+    def __eq__(self, other):
+        from .dispatcher import operate
+        return operate('eq', self, other)
+
+    def __ne__(self, other):
+        from .dispatcher import operate
+        return operate('ne', self, other)
 
     # ======================== 命名运算方法 ========================
 
     def times(self, operand: Union[int, float, np.ndarray]) -> 'Fuzzarray':
-        return self._execute_vectorized_op('tim', operand)
+        return self.execute_vectorized_op('tim', operand)
 
     def intersection(self, other: 'Fuzzarray') -> 'Fuzzarray':
-        return self._execute_vectorized_op('intersection', other)
+        return self.execute_vectorized_op('intersection', other)
 
     def union(self, other: 'Fuzzarray') -> 'Fuzzarray':
-        return self._execute_vectorized_op('union', other)
+        return self.execute_vectorized_op('union', other)
 
     def complement(self) -> 'Fuzzarray':
-        return self._execute_vectorized_op('complement')
+        return self.execute_vectorized_op('complement')
 
-    # ======================== 数组操作 ==========================
+    # ======================== Array Operations ==========================
 
     def tolist(self) -> List[Any]:
         return self._data.tolist()
@@ -521,19 +541,11 @@ class Fuzzarray:
     # ======================== String representation ========================
 
     def __repr__(self):
-        # Use numpy.array2string to format the internal data,
-        #   which automatically handles the ellipsis for large arrays.
-        array_str = np.array2string(self._data, formatter={'all': lambda x: str(x)})
-
-        # Remove 'array(' and ', dtype=object)' that may be added by numpy.array2string
-        array_str = array_str.replace("array(", "").replace(", dtype=object)", "")
-
-        return f"Fuzzarray(\n{array_str}, shape={self.shape}, mtype='{self.mtype}')"
+        report = str(self._data).replace('\n', '\n' + ' ' * 10)
+        return f'Fuzzarray({report}, qrung={self._q}, mtype={self.mtype})'
 
     def __str__(self) -> str:
-        array_str = np.array2string(self._data, formatter={'all': lambda x: str(x)})
-        array_str = array_str.replace("array(", "").replace(", dtype=object)", "")
-        return f"{array_str}"
+        return f"{self._data}"
 
 
 def fuzzarray(data: np.ndarray | list | tuple | Fuzznum,
@@ -547,7 +559,7 @@ def fuzzarray(data: np.ndarray | list | tuple | Fuzznum,
         data: Input data.
         mtype: Fuzzy number type.
         shape: Target shape.
-        copy: Whether to copy data.
+        copy: Whether to copy data. Default is True.
 
     Returns:
         Fuzzarray: Created array of fuzzy numbers.

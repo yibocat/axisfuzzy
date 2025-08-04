@@ -82,16 +82,19 @@ class QROFNTemplate(FuzznumTemplate):
     def report(self) -> str:
         # 实现 FuzznumTemplate 的抽象方法 report。
         # 这里简单地返回 str() 的结果，可以根据需要扩展为更详细的报告。
-        return self.str()
+
+        if self.instance.md is None and self.instance.nmd is None:
+            return "<>"
+        return f"<{self.instance.md},{self.instance.nmd}>"
 
     def str(self) -> str:
         # 实现 FuzznumTemplate 的抽象方法 str。
         # 返回 QROFN 的简洁字符串表示形式，包含 md, nmd 和 q。
         # 通过 self.instance 访问关联的 Fuzznum 实例的属性。
 
-        if self.instance.md and self.instance.nmd:
-            return f"<{self.instance.md},{self.instance.nmd}>_q={self.instance.q}"
-        return f"<>"
+        if self.instance.md is None and self.instance.nmd is None:
+            return "<>"
+        return f"<{self.instance.md},{self.instance.nmd}>"
 
     @property
     def score(self):

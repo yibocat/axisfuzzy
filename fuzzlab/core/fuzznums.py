@@ -4,8 +4,11 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
+
 import difflib
 from typing import Optional, Dict, Callable, Any, Set, List
+
+import numpy as np
 
 from fuzzlab.config import get_config
 from fuzzlab.core.base import FuzznumTemplate, FuzznumStrategy
@@ -14,6 +17,7 @@ from fuzzlab.core.registry import get_registry
 
 class Fuzznum:
 
+    __array_priority__ = 1.0
     _INTERNAL_ATTRS = {
         'mtype',
         '_initialized',
@@ -952,89 +956,20 @@ class Fuzznum:
         """
         String representation of the object
 
-        The `__repr__` method provides an "official" and unambiguous string representation, primarily intended
-        for developers and debugging. Its goal is to generate a string that, if entered as a valid Python
-        expression, can (ideally) recreate an object with the same value. For `Fuzznum` instances, it displays
-        the instance's type, initialization status, lifetime, as well as the specific class names of its
-        associated strategy and template, and attempts to include values of some key attributes.
-
         Returns:
             str: The formal string representation of the object.
         """
-        if not self._is_initialized():
-            return f"Fuzznum(mtype='{getattr(self, 'mtype', 'unknown')}', status='not_initialized')"
-
-        try:
-            mtype = self.mtype
-            obj_id = id(self)
-
-            # 获取策略和模板类名
-            strategy_cls_name = "N/A"
-            template_cls_name = "N/A"
+        if hasattr(self, 'report') and callable(self.report):
             try:
-                # 尝试获取策略实例并获取其类名
-                strategy_instance = self.get_strategy_instance()
-                strategy_cls_name = strategy_instance.__class__.__name__
-            except RuntimeError:
+                return self.get_template_instance().report()
+            except ValueError:
                 pass
 
-            try:
-                template_instance = self.get_template_instance()
-                template_cls_name = template_instance.__class__.__name__
-            except RuntimeError:
-                pass
-
-            key_attrs = []
-            bound_strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
-
-            attrs_to_prioritize = ['q', 'md', 'nmd']
-
-            for attr_name in attrs_to_prioritize:
-                if attr_name in bound_strategy_attrs:
-                    try:
-                        attr_value = getattr(self, attr_name)
-                        key_attrs.append(f"{attr_name}={attr_value!r}")
-                    except AttributeError:
-                        pass
-
-            other_attrs_count = 0
-            for attr_name in sorted(bound_strategy_attrs):
-                if attr_name not in attrs_to_prioritize:
-                    try:
-                        attr_value = getattr(self, attr_name)
-                        key_attrs.append(f"{attr_name}={attr_value!r}")
-                        other_attrs_count += 1
-                        if other_attrs_count >= 2:
-                            break
-                    except AttributeError:
-                        pass
-
-            attrs_str = ", ".join(key_attrs)
-
-            return (
-                f"Fuzznum("
-                f"\n {attrs_str}"
-                f"\n mtype='{mtype}'"
-                f"\n id={obj_id}"
-                f"\n is_valid={self.validate_state()['is_valid']}"
-                f"\n status=initialized"
-                f"\n strategy={strategy_cls_name}"
-                f"\n template={template_cls_name})"
-            )
-        except Exception as e:
-            return f"Fuzznum(mtype='{self.mtype}', status='initialized', error='Failed to generate detailed repr: {e}')"
+        return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
 
     def __str__(self) -> str:
         """
         User-friendly string representation
-
-        The `__str__` method provides an "informal" and user-friendly string representation,
-        mainly intended for end users. It aims to generate a concise and readable string,
-        typically used with the `print()` function or `str()` type conversion. For `Fuzznum` instances,
-        it first attempts to invoke the `str()` method of its associated template instance, as the
-        template is responsible for defining the external representation of the fuzzy number.
-        If the template is unavailable or its `str()` method fails, it falls back to a default
-        representation.
 
         Returns:
             str: A concise, user-friendly string representation of the object.
@@ -1048,80 +983,49 @@ class Fuzznum:
         return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
 
     def __add__(self, other):
-        result_dict = self.get_strategy_instance().add(other.get_strategy_instance())
-        return self.create(**result_dict)
+        from .dispatcher import operate
+        return operate('add', self, other)
 
     def __sub__(self, other):
-        result_dict = self.get_strategy_instance().subtract(other.get_strategy_instance())
-        return self.create(**result_dict)
+        from .dispatcher import operate
+        return operate('sub', self, other)
 
     def __mul__(self, other):
-        result_dict = self.get_strategy_instance().multiply(other.get_strategy_instance())
-        return self.create(**result_dict)
+        from .dispatcher import operate
+        return operate('mul', self, other)
+
+    def __rmul__(self, other):
+        from .dispatcher import operate
+        return operate('mul', self, other)
 
     def __truediv__(self, other):
-        result_dict = self.get_strategy_instance().divide(other.get_strategy_instance())
-        return self.create(**result_dict)
+        from .dispatcher import operate
+        return operate('div', self, other)
 
-    def __pow__(self, power):
-        result_dict = self.get_strategy_instance().pow(power)
-        return self.create(**result_dict)
+    def __pow__(self, power, modulo=None):
+        from .dispatcher import operate
+        return operate('pow', self, power)
 
     def __gt__(self, other):
-        result_dict = self.get_strategy_instance().gt(other.get_strategy_instance())
-        return result_dict['value']
+        from .dispatcher import operate
+        return operate('gt', self, other)
 
     def __lt__(self, other):
-        result_dict = self.get_strategy_instance().lt(other.get_strategy_instance())
-        return result_dict['value']
-
-    def __eq__(self, other):
-        result_dict = self.get_strategy_instance().eq(other.get_strategy_instance())
-        return result_dict['value']
+        from .dispatcher import operate
+        return operate('lt', self, other)
 
     def __ge__(self, other):
-        result_dict = self.get_strategy_instance().ge(other.get_strategy_instance())
-        return result_dict['value']
+        from .dispatcher import operate
+        return operate('ge', self, other)
 
     def __le__(self, other):
-        result_dict = self.get_strategy_instance().le(other.get_strategy_instance())
-        return result_dict['value']
+        from .dispatcher import operate
+        return operate('le', self, other)
+
+    def __eq__(self, other):
+        from .dispatcher import operate
+        return operate('eq', self, other)
 
     def __ne__(self, other):
-        result_dict = self.get_strategy_instance().ne(other.get_strategy_instance())
-        return result_dict['value']
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        from .dispatcher import operate
+        return operate('ne', self, other)

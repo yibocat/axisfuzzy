@@ -12,7 +12,7 @@ from typing import Optional, Set, Dict, Callable, Any, Union, List
 
 from fuzzlab.config import get_config
 from fuzzlab.core.cache import LruCache
-from fuzzlab.core.ops import get_operation_registry, OperationMixin
+from fuzzlab.core.ops import get_operation_registry
 from fuzzlab.core.triangular import OperationTNorm
 
 
@@ -26,6 +26,9 @@ class FuzznumStrategy(ABC):
 
     # 私有属性管理
     _declared_attributes: Set[str] = set()
+
+    # 缓存设置
+    _op_cache: LruCache = LruCache()
 
     # 属性验证器和回调函数
     _attribute_validators: Dict[str, Callable[[Any], bool]] = {}
@@ -88,28 +91,6 @@ class FuzznumStrategy(ABC):
                 # 将符合条件的属性名添加到 _declared_attributes 集合中。
                 cls._declared_attributes.add(attr_name)
                 # 这个集合将用于后续的严格模式检查（__setattr__）和属性序列化（to_dict/from_dict）。
-
-    def __getattr__(self, name: str) -> Any:
-        """
-        Dynamically obtain the calculation method.
-
-        If the accessed attribute is a predefined operation name,
-        return a function that calls `_execute_operation`.
-        """
-        operation_names = {
-            'add', 'sub', 'mul', 'div',
-            'pow', 'tim', 'exp', 'log',
-            'gt', 'lt', 'ge', 'le', 'eq', 'ne',
-            'intersection', 'union', 'complement', 'implication', 'equivalence', 'difference', 'symdiff'
-        }
-
-        if name in operation_names:
-            return lambda operands: self._execute_operation(name, operands)
-
-        try:
-            return object.__getattribute__(self, name)
-        except AttributeError:
-            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def __setattr__(self, name: str, value: Any) -> None:
         """属性设置方法"""
@@ -277,9 +258,9 @@ class FuzznumStrategy(ABC):
         except (TypeError, AttributeError):
             return None
 
-    def _execute_operation(self,
-                           op_name: str,
-                           operand: Optional[Union['FuzznumStrategy', int, float]]) -> Dict[str, Any]:
+    def execute_operation(self,
+                          op_name: str,
+                          operand: Optional[Union['FuzznumStrategy', int, float]]) -> Dict[str, Any]:
 
         registry = get_operation_registry()
         operation = registry.get_operation(op_name, self.mtype)
