@@ -196,8 +196,10 @@ class QROFNTemplate(FuzznumTemplate):
         if self.instance.md is None and self.instance.nmd is None:
             return "<>"
         # Return a formatted string including md, nmd, and q.
-        # TODO: 这里有一个问题，我们要把所有的精度剔除掉，只在打印的时候显示我们要的精度
-        return f"<{self.instance.md},{self.instance.nmd}>"
+        precision = get_config().DEFAULT_PRECISION
+        md = round(self.instance.md, precision)
+        nmd = round(self.instance.nmd, precision)
+        return f"<{md},{nmd}>"
 
     def str(self) -> str:
         """
@@ -214,7 +216,10 @@ class QROFNTemplate(FuzznumTemplate):
         if self.instance.md is None and self.instance.nmd is None:
             return "<>"
         # Return a formatted string including md, nmd, and q.
-        return f"<{self.instance.md},{self.instance.nmd}>"
+        precision = get_config().DEFAULT_PRECISION
+        md = round(self.instance.md, precision)
+        nmd = round(self.instance.nmd, precision)
+        return f"<{md},{nmd}>"
 
     @property
     def score(self):

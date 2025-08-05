@@ -226,41 +226,41 @@ class OperationMixin(ABC):
 
     # ======================= Post-processing of calculation results =======================
 
-    def _postprocess_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Performs post-processing on the calculation results.
-
-        This method recursively rounds floating-point values in the result
-        dictionary to the `DEFAULT_PRECISION` defined in the FuzzLab configuration.
-        It ensures consistent precision for all numerical outputs.
-
-        Args:
-            result (Dict[str, Any]): The original calculation result dictionary.
-
-        Returns:
-            Dict[str, Any]: The processed result dictionary with rounded float values.
-        """
-        if not isinstance(result, dict):
-            return result
-
-        config = get_config()
-        processed_result = {}
-
-        for key, value in result.items():
-            if isinstance(value, (int, float)):
-                if isinstance(value, float):
-                    processed_result[key] = round(value, config.DEFAULT_PRECISION)
-                else:
-                    processed_result[key] = value
-            elif isinstance(value, bool):
-                processed_result[key] = value
-            elif isinstance(value, dict):
-                # Recursively process nested dictionaries
-                processed_result[key] = self._postprocess_result(value)
-            else:
-                processed_result[key] = value
-
-        return processed_result
+    # def _postprocess_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    #     """
+    #     Performs post-processing on the calculation results.
+    #
+    #     This method recursively rounds floating-point values in the result
+    #     dictionary to the `DEFAULT_PRECISION` defined in the FuzzLab configuration.
+    #     It ensures consistent precision for all numerical outputs.
+    #
+    #     Args:
+    #         result (Dict[str, Any]): The original calculation result dictionary.
+    #
+    #     Returns:
+    #         Dict[str, Any]: The processed result dictionary with rounded float values.
+    #     """
+    #     if not isinstance(result, dict):
+    #         return result
+    #
+    #     config = get_config()
+    #     processed_result = {}
+    #
+    #     for key, value in result.items():
+    #         if isinstance(value, (int, float)):
+    #             if isinstance(value, float):
+    #                 processed_result[key] = round(value, config.DEFAULT_PRECISION)
+    #             else:
+    #                 processed_result[key] = value
+    #         elif isinstance(value, bool):
+    #             processed_result[key] = value
+    #         elif isinstance(value, dict):
+    #             # Recursively process nested dictionaries
+    #             processed_result[key] = self._postprocess_result(value)
+    #         else:
+    #             processed_result[key] = value
+    #
+    #     return processed_result
 
     # ========================= Calculation Execution Method ===============================
 
@@ -293,8 +293,9 @@ class OperationMixin(ABC):
         try:
             self._preprocess_binary_operands(strategy_1, strategy_2, tnorm)
             result = self._execute_binary_op_impl(strategy_1, strategy_2, tnorm)
-            processed_result = self._postprocess_result(result)
-            return processed_result
+            # processed_result = self._postprocess_result(result)
+            # return processed_result
+            return result
         finally:
             execution_time = time.perf_counter() - start_time
             get_operation_registry()._record_operation_time(op_name, 'binary', execution_time)
@@ -328,8 +329,9 @@ class OperationMixin(ABC):
         try:
             self._preprocess_unary_operand(strategy, operand, tnorm)
             result = self._execute_unary_op_operand_impl(strategy, operand, tnorm)
-            processed_result = self._postprocess_result(result)
-            return processed_result
+            # processed_result = self._postprocess_result(result)
+            # return processed_result
+            return result
         finally:
             execution_time = time.perf_counter() - start_time
             get_operation_registry()._record_operation_time(op_name, 'unary_operand', execution_time)
@@ -360,8 +362,9 @@ class OperationMixin(ABC):
         try:
             self._preprocess_pure_unary(strategy, tnorm)
             result = self._execute_unary_op_pure_impl(strategy, tnorm)
-            processed_result = self._postprocess_result(result)
-            return processed_result
+            # processed_result = self._postprocess_result(result)
+            # return processed_result
+            return result
         finally:
             execution_time = time.perf_counter() - start_time
             get_operation_registry()._record_operation_time(op_name, 'unary_pure', execution_time)
@@ -395,8 +398,9 @@ class OperationMixin(ABC):
         try:
             self._preprocess_comparison(strategy_1, strategy_2, tnorm)
             result = self._execute_comparison_op_impl(strategy_1, strategy_2, tnorm)
-            processed_result = self._postprocess_result(result)
-            return processed_result
+            # processed_result = self._postprocess_result(result)
+            # return processed_result
+            return result
         finally:
             execution_time = time.perf_counter() - start_time
             get_operation_registry()._record_operation_time(op_name, 'comparison', execution_time)

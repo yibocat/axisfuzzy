@@ -40,7 +40,7 @@ class Config:
     )
 
     DEFAULT_PRECISION: int = field(
-        default=6,
+        default=4,
         metadata={
             'category': 'basic',
             'description': '默认计算精度（小数位数），影响所有数值计算和显示',
