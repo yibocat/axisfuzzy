@@ -810,55 +810,55 @@ class Fuzzarray:
         from .dispatcher import operate
         return operate('ne', self, other)
 
-    # ======================== Named operation methods ========================
-    # These methods provide named access to specific fuzzy operations,
-    # often mapping to concepts like scalar multiplication, intersection, union, and complement.
-
-    def times(self, operand: Union[int, float, np.ndarray]) -> 'Fuzzarray':
+    def __and__(self, other):
+        """Overloads the and operator (&).
+            intersection operation.
         """
-        Performs scalar multiplication (or element-wise multiplication with a NumPy array)
-        on the Fuzzarray.
+        from .dispatcher import operate
+        return operate('intersection', self, other)
 
-        Args:
-            operand (Union[int, float, np.ndarray]): The scalar or NumPy array to multiply by.
+    def __or__(self, other):
+        from .dispatcher import operate
+        return operate('union', self, other)
 
-        Returns:
-            Fuzzarray: A new Fuzzarray with the result of the multiplication.
+    def __invert__(self, other=None):
+        """Overloads the invert operator (~).
+            Complement operation.
         """
-        return self.execute_vectorized_op('tim', operand)
+        from .dispatcher import operate
+        return operate('complement', self, other)
 
-    def intersection(self, other: 'Fuzzarray') -> 'Fuzzarray':
+    def __lshift__(self, other):
+        """Overloads the left shift operator (<<).
+            Denotes the left implication operation: self <- other
         """
-        Computes the intersection (AND operation) between this Fuzzarray and another.
+        from .dispatcher import operate
+        return operate('implication', other, self)
 
-        Args:
-            other (Fuzzarray): The other Fuzzarray to intersect with.
-
-        Returns:
-            Fuzzarray: A new Fuzzarray representing the intersection.
+    def __rshift__(self, other):
+        """Overloads the shift operator (>>).
+            Denotes the right implication operation: self -> other
         """
-        return self.execute_vectorized_op('intersection', other)
+        from .dispatcher import operate
+        return operate('implication', self, other)
 
-    def union(self, other: 'Fuzzarray') -> 'Fuzzarray':
+    def __xor__(self, other):
+        """Overloads the xor operator (^).
+            Denotes the symmetric difference operation.
         """
-        Computes the union (OR operation) between this Fuzzarray and another.
+        from .dispatcher import operate
+        return operate('symdiff', self, other)
 
-        Args:
-            other (Fuzzarray): The other Fuzzarray to union with.
-
-        Returns:
-            Fuzzarray: A new Fuzzarray representing the union.
+    def equivalent(self, other):
         """
-        return self.execute_vectorized_op('union', other)
+        Calculate the equivalence level between two fuzzy numbers
 
-    def complement(self) -> 'Fuzzarray':
+        Corresponding to the "if and only if" operation in classical logic,
+        it represents the degree to which two fuzzy propositions are
+        equivalent to each other.
         """
-        Computes the complement (NOT operation) of each Fuzznum in the Fuzzarray.
-
-        Returns:
-            Fuzzarray: A new Fuzzarray with the complemented Fuzznum elements.
-        """
-        return self.execute_vectorized_op('complement')
+        from .dispatcher import operate
+        return operate('equivalence', self, other)
 
     # ======================== Array Operations ==========================
     # These methods provide common array manipulation functionalities,
@@ -978,7 +978,7 @@ class Fuzzarray:
         """
         # Format the underlying NumPy array's string representation to be indented.
         report = str(self._data).replace('\n', '\n' + ' ' * 10)
-        return f'Fuzzarray({report}, qrung={self._q}, mtype={self.mtype})'
+        return f'Fuzzarray({report}, q={self._q}, mtype={self.mtype})'
 
     def __str__(self) -> str:
         """

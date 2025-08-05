@@ -126,7 +126,7 @@ class OperationTNorm:
         >>> print(f"Łukasiewicz (q=2) S(0.6, 0.7) = {luk_norm_q2.t_conorm(0.6, 0.7):.4f}") # 0.9220
 
         >>> # 3. Initialize a Hamacher t-norm and set parameter gamma
-        >>> hamacher_norm = OperationTNorm(norm_type='hamacher', hamacher_gamma=0.5)
+        >>> hamacher_norm = OperationTNorm(norm_type='hamacher', hamacher_param=0.5)
         >>> print(f"Hamacher (gamma=0.5) T(0.3, 0.9) = {hamacher_norm.t_norm(0.3, 0.9):.4f}")
 
         >>> # 4. Get norm information
@@ -192,12 +192,12 @@ class OperationTNorm:
                                operations degenerate to classical fuzzy operations.
             **params: Additional parameters for specific t-norms.
                       For example:
-                      - Hamacher norm: `hamacher_gamma` (float, must be > 0)
-                      - Yager norm: `yager_p` (float, must be > 0)
-                      - Schweizer-Sklar norm: `sklar_p` (float, must be != 0)
-                      - Dombi norm: `dombi_p` (float, must be > 0)
-                      - Aczel-Alsina norm: `aa_p` (float, must be > 0)
-                      - Frank norm: `frank_s` (float, must be > 0 and != 1)
+                      - Hamacher norm: `hamacher_param` (float, must be > 0)
+                      - Yager norm: `yager_param` (float, must be > 0)
+                      - Schweizer-Sklar norm: `sklar_param` (float, must be != 0)
+                      - Dombi norm: `dombi_param` (float, must be > 0)
+                      - Aczel-Alsina norm: `aa_param` (float, must be > 0)
+                      - Frank norm: `frank_param` (float, must be > 0 and != 1)
 
         Raises:
             ValueError: If `norm_type` is unknown or `q` does not meet the requirements.
@@ -567,9 +567,9 @@ class OperationTNorm:
         Initializes the Hamacher t-norm and its dual t-conorm.
         This is a strictly Archimedean t-norm, containing a parameter `gamma`.
         """
-        if 'hamacher_gamma' not in self.params:
-            self.params['hamacher_gamma'] = 1.0
-        gamma = self.params.get('hamacher_gamma')  # Get parameter gamma
+        if 'hamacher_param' not in self.params:
+            self.params['hamacher_param'] = 1.0
+        gamma = self.params.get('hamacher_param')  # Get parameter gamma
         if gamma <= 0:
             raise ValueError("Hamacher parameter gamma must be greater than 0")
 
@@ -600,9 +600,9 @@ class OperationTNorm:
         This is an Archimedean t-norm family, containing a parameter `p`.
         When p=1, the Yager t-norm degenerates to the Łukasiewicz t-norm.
         """
-        if 'yager_p' not in self.params:
-            self.params['yager_p'] = 1.0
-        p = self.params.get('yager_p')  # Get parameter p, defaults to 1.0
+        if 'yager_param' not in self.params:
+            self.params['yager_param'] = 1.0
+        p = self.params.get('yager_param')  # Get parameter p, defaults to 1.0
         if p <= 0:
             raise ValueError("Yager parameter p must be greater than 0")
 
@@ -645,9 +645,9 @@ class OperationTNorm:
         As p approaches infinity, it degenerates to Minimum.
         As p approaches negative infinity, it degenerates to Drastic Product.
         """
-        if 'sklar_p' not in self.params:
-            self.params['sklar_p'] = 1.0
-        p = self.params.get('sklar_p')  # Get parameter p, defaults to 1.0
+        if 'sklar_param' not in self.params:
+            self.params['sklar_param'] = 1.0
+        p = self.params.get('sklar_param')  # Get parameter p, defaults to 1.0
         if p == 0:
             raise ValueError("Schweizer-Sklar parameter p cannot be 0")
 
@@ -708,9 +708,9 @@ class OperationTNorm:
         Initializes the Dombi t-norm and its dual t-conorm.
         This is a strictly Archimedean t-norm, containing a parameter `p`.
         """
-        if 'dombi_p' not in self.params:
-            self.params['dombi_p'] = 1.0
-        p = self.params.get('dombi_p')  # Get parameter p, defaults to 1.0
+        if 'dombi_param' not in self.params:
+            self.params['dombi_param'] = 1.0
+        p = self.params.get('dombi_param')  # Get parameter p, defaults to 1.0
         if p <= 0:
             raise ValueError("Dombi parameter p must be greater than 0")
 
@@ -810,9 +810,9 @@ class OperationTNorm:
         As p approaches 1, it degenerates to the algebraic product.
         As p approaches infinity, it degenerates to Drastic Product.
         """
-        if 'aa_p' not in self.params:
-            self.params['aa_p'] = 1.0
-        p = self.params.get('aa_p')  # Get parameter p, defaults to 1.0
+        if 'aa_param' not in self.params:
+            self.params['aa_param'] = 1.0
+        p = self.params.get('aa_param')  # Get parameter p, defaults to 1.0
         if p <= 0:
             raise ValueError("Aczel-Alsina parameter p must be greater than 0")
 
@@ -852,9 +852,9 @@ class OperationTNorm:
         As s approaches 1, it degenerates to Minimum.
         As s approaches infinity, it degenerates to Product.
         """
-        if 'frank_s' not in self.params:
-            self.params['frank_s'] = np.e
-        s = self.params.get('frank_s')  # Get parameter s, defaults to natural logarithm base e
+        if 'frank_param' not in self.params:
+            self.params['frank_param'] = np.e
+        s = self.params.get('frank_param')  # Get parameter s, defaults to natural logarithm base e
         if s <= 0 or s == 1:
             raise ValueError("Frank parameter s must be greater than 0 and not equal to 1")
 
@@ -1513,7 +1513,7 @@ class OperationTNorm:
             for _ in range(max_iterations):
                 mid = (low + high) / 2.0
 
-                # Avoid mid being too close to boundaries, which might cause g_func(mid) to overflow or error.
+                # Avoid mid-being too close to boundaries, which might cause g_func(mid) to overflow or error.
                 # Force mid to stay within (domain_start, domain_end) and maintain a certain distance from boundaries.
                 if mid <= domain_start + epsilon:
                     mid = domain_start + epsilon

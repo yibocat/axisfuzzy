@@ -41,7 +41,7 @@ Classes:
 Functions:
     register_qrofn_operations: Registers all QROFN operations with the global registry.
 """
-
+import warnings
 from typing import List, Any, Dict, Union
 
 from fuzzlab.config import get_config
@@ -149,7 +149,16 @@ class QROFNSubtraction(OperationMixin):
         Returns:
             Dict[str, Any]: A dictionary containing the 'md', 'nmd', and 'q'
                             of the resulting QROFN.
+
+        Notes:
+            This operation is currently only applicable under the 'algebraic' t-norm;
+            other norms are not supported for now.
         """
+        if tnorm.norm_type != 'algebraic':
+            warnings.warn(f"The subtraction operation of 'qrofn' is currently only applicable to 'algebraic' t-norm. "
+                          f"Subtraction operations of 'qrofn' based on other t-norms "
+                          f"are temporarily performed using the 'algebraic' t-norm.")
+
         q = strategy_1.q  # Get the q-rung value.
 
         # Calculate conditions for valid subtraction.
@@ -275,6 +284,11 @@ class QROFNDivision(OperationMixin):
             Dict[str, Any]: A dictionary containing the 'md', 'nmd', and 'q'
                             of the resulting QROFN.
         """
+        if tnorm.norm_type != 'algebraic':
+            warnings.warn(f"The division operation of 'qrofn' is currently only applicable to 'algebraic' t-norm. "
+                          f"Division operations of 'qrofn' based on other t-norms "
+                          f"are temporarily performed using the 'algebraic' t-norm.")
+
         q = strategy_1.q  # Get the q-rung value.
 
         # Calculate conditions for valid division.
@@ -1009,12 +1023,10 @@ class QROFNImplication(OperationMixin):
             Dict[str, Any]: A dictionary containing the 'md', 'nmd', and 'q'
                             of the resulting QROFN.
         """
-        # Membership degree calculation for implication.
-        # Uses dual generator (f_func) and its pseudo-inverse (f_inv_func) for the complement part.
-        md = tnorm.t_conorm(tnorm.f_inv_func(1 - tnorm.f_func(strategy_1.md)), strategy_2.md)
-        # Non-membership degree calculation for implication.
-        # Uses generator (g_func) and its pseudo-inverse (g_inv_func) for the complement part.
-        nmd = tnorm.t_norm(strategy_1.nmd, tnorm.g_inv_func(1 - tnorm.g_func(strategy_2.nmd)))
+        # Membership degree is calculated using the t-conorm (S-norm).
+        md = tnorm.t_conorm(strategy_1.nmd, strategy_2.md)
+        # Non-membership degree is calculated using the t-norm (T-norm).
+        nmd = tnorm.t_norm(strategy_1.md, strategy_2.nmd)
 
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
@@ -1064,19 +1076,14 @@ class QROFNEquivalence(OperationMixin):
             Dict[str, Any]: A dictionary containing the 'md', 'nmd', and 'q'
                             of the resulting QROFN.
         """
-        # Membership degree calculation for equivalence.
-        # It's T(S(N(md1), md2), S(N(md2), md1))
         md = tnorm.t_norm(
-            tnorm.t_conorm(tnorm.f_inv_func(1 - tnorm.f_func(strategy_1.md)), strategy_2.md),
-            tnorm.t_conorm(tnorm.f_inv_func(1 - tnorm.f_func(strategy_2.md)), strategy_1.md)
-        )
-        # Non-membership degree calculation for equivalence.
-        # It's S(T(nmd1, N(nmd2)), T(nmd2, N(nmd1)))
+            tnorm.t_conorm(strategy_1.nmd, strategy_2.md),
+            tnorm.t_conorm(strategy_2.nmd, strategy_1.md))
+
         nmd = tnorm.t_conorm(
-            tnorm.t_norm(strategy_1.nmd, tnorm.g_inv_func(1 - tnorm.g_func(strategy_2.nmd))),
-            tnorm.t_norm(strategy_2.nmd, tnorm.g_inv_func(1 - tnorm.g_func(strategy_1.nmd)))
-        )
-        # The q-rung of the result is the same as the input QROFNs.
+            tnorm.t_norm(strategy_1.md, strategy_2.nmd),
+            tnorm.t_norm(strategy_2.md, strategy_1.nmd))
+
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
 
 
@@ -1122,10 +1129,9 @@ class QROFNDifference(OperationMixin):
             Dict[str, Any]: A dictionary containing the 'md', 'nmd', and 'q'
                             of the resulting QROFN.
         """
-        # Membership degree calculation for difference: T(md_A, N(md_B)).
-        # N(md_B) is calculated using the dual generator (f_func) and its pseudo-inverse (f_inv_func).
-        md = tnorm.t_norm(strategy_1.md, tnorm.f_inv_func(1 - tnorm.f_func(strategy_2.md)))
-        # Non-membership degree calculation for difference: S(nmd_A, md_B).
+        # Membership degree is calculated using the t-norm (T-norm).
+        md = tnorm.t_norm(strategy_1.md, strategy_2.nmd)
+        # Non-membership degree is calculated using the t-conorm (S-norm).
         nmd = tnorm.t_conorm(strategy_1.nmd, strategy_2.md)
 
         # The q-rung of the result is the same as the input QROFNs.
@@ -1176,16 +1182,15 @@ class QROFNSymmetricDifference(OperationMixin):
                             of the resulting QROFN.
         """
         # Membership degree calculation for symmetric difference.
-        # It's S(T(md1, N(md2)), T(md2, N(md1)))
+        # It's S(md1/nmd2, nmd1/md2), T(md1/nmd2, nmd1/md2))
+
         md = tnorm.t_conorm(
-            tnorm.t_norm(strategy_1.md, tnorm.f_inv_func(1 - tnorm.f_func(strategy_2.md))),
-            tnorm.t_norm(strategy_2.md, tnorm.f_inv_func(1 - tnorm.f_func(strategy_1.md)))
-        )
-        # Non-membership degree calculation for symmetric difference.
-        # It's T(S(nmd1, md2), S(nmd2, md1))
+            tnorm.t_norm(strategy_1.md, strategy_2.nmd),
+            tnorm.t_norm(strategy_1.nmd, strategy_2.md))
+
         nmd = tnorm.t_norm(
-            tnorm.t_conorm(strategy_1.nmd, strategy_2.md),
-            tnorm.t_conorm(strategy_2.nmd, strategy_1.md)
+            tnorm.t_conorm(strategy_1.md, strategy_2.nmd),
+            tnorm.t_conorm(strategy_1.nmd, strategy_2.md)
         )
 
         # The q-rung of the result is the same as the input QROFNs.

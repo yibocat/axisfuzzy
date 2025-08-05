@@ -1127,6 +1127,8 @@ class Fuzznum:
 
         return instance
 
+    # =========================== Magic Methods and Computation ================================
+
     def __repr__(self) -> str:
         """
         String representation of the object
@@ -1222,3 +1224,53 @@ class Fuzznum:
         """Overloads the inequality operator (!=)."""
         from .dispatcher import operate
         return operate('ne', self, other)
+
+    def __and__(self, other):
+        """Overloads the and operator (&).
+            intersection operation.
+        """
+        from .dispatcher import operate
+        return operate('intersection', self, other)
+
+    def __or__(self, other):
+        from .dispatcher import operate
+        return operate('union', self, other)
+
+    def __invert__(self, other=None):
+        """Overloads the invert operator (~).
+            Complement operation.
+        """
+        from .dispatcher import operate
+        return operate('complement', self, other)
+
+    def __lshift__(self, other):
+        """Overloads the left shift operator (<<).
+            Denotes the left implication operation: self <- other
+        """
+        from .dispatcher import operate
+        return operate('implication', other, self)
+
+    def __rshift__(self, other):
+        """Overloads the shift operator (>>).
+            Denotes the right implication operation: self -> other
+        """
+        from .dispatcher import operate
+        return operate('implication', self, other)
+
+    def __xor__(self, other):
+        """Overloads the xor operator (^).
+            Denotes the symmetric difference operation.
+        """
+        from .dispatcher import operate
+        return operate('symdiff', self, other)
+
+    def equivalent(self, other):
+        """
+        Calculate the equivalence level between two fuzzy numbers
+
+        Corresponding to the "if and only if" operation in classical logic,
+        it represents the degree to which two fuzzy propositions are
+        equivalent to each other.
+        """
+        from .dispatcher import operate
+        return operate('equivalence', self, other)

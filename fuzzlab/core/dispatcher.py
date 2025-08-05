@@ -12,12 +12,12 @@ It handles type-based dispatching to ensure that operations like addition,
 multiplication, and comparisons are correctly applied across different
 combinations of fuzzy numbers, fuzzy arrays, scalars, and NumPy arrays.
 """
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 
 
-def operate(op_name: str, operand1: Any, operand2: Any) -> Any:
+def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
     """Performs an operation between two operands based on their types.
 
     This function acts as a dispatcher, handling various combinations of Fuzznum,
@@ -69,7 +69,8 @@ def operate(op_name: str, operand1: Any, operand2: Any) -> Any:
     # Rule 1: Fuzznum <op> Fuzznum
     # Handles operations between two Fuzznum instances.
     if isinstance(operand1, Fuzznum) and isinstance(operand2, Fuzznum):
-        result_dict = operand1.get_strategy_instance().execute_operation(op_name, operand2.get_strategy_instance())
+        result_dict = operand1.get_strategy_instance().execute_operation(
+            op_name, operand2.get_strategy_instance())
         if op_name in ['gt', 'lt', 'ge', 'le', 'eq', 'ne']:
             # Comparison operations return boolean values.
             return result_dict.get('value', False)
@@ -145,6 +146,17 @@ def operate(op_name: str, operand1: Any, operand2: Any) -> Any:
         # Swap operands and recursively call operate for commutative operations.
         if op_name in ['add', 'mul']:
             return operate(op_name, operand2, operand1)
+
+    # Rule 9: Fuzznum / Fuzzarray
+    # Pure unary operation, referring to the complement operation
+    if isinstance(operand1, (Fuzznum, Fuzzarray)) and operand2 is None:
+        if op_name in ['complement']:
+            if isinstance(operand1, Fuzznum):
+                result_dict = operand1.get_strategy_instance().execute_operation(
+                    op_name, operand2)
+                return operand1.create(**result_dict)
+            else:
+                operand1.execute_vectorized_op(op_name, operand2)
 
     # If no rule matches, raise a TypeError indicating unsupported operand types.
     raise TypeError(f"Unsupported operand types for operation '{op_name}': "

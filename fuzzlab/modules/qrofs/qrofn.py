@@ -196,7 +196,8 @@ class QROFNTemplate(FuzznumTemplate):
         if self.instance.md is None and self.instance.nmd is None:
             return "<>"
         # Return a formatted string including md, nmd, and q.
-        return f"QROFN(md={self.instance.md}, nmd={self.instance.nmd}, q={self.instance.q})"
+        # TODO: 这里有一个问题，我们要把所有的精度剔除掉，只在打印的时候显示我们要的精度
+        return f"<{self.instance.md},{self.instance.nmd}>"
 
     def str(self) -> str:
         """
@@ -213,7 +214,7 @@ class QROFNTemplate(FuzznumTemplate):
         if self.instance.md is None and self.instance.nmd is None:
             return "<>"
         # Return a formatted string including md, nmd, and q.
-        return f"<{self.instance.md},{self.instance.nmd}>_q={self.instance.q}"
+        return f"<{self.instance.md},{self.instance.nmd}>"
 
     @property
     def score(self):
@@ -267,7 +268,7 @@ class QROFNTemplate(FuzznumTemplate):
         # Calculate indeterminacy based on the accuracy and q-rung.
         # Ensure the base of the power is non-negative to avoid complex numbers.
         base = 1 - self.accuracy
-        if base < 0:
+        if base < config.DEFAULT_EPSILON:
             base = 0    # Handle potential floating point inaccuracies
         result = base ** (1 / self.instance.q)
         return round(result, config.DEFAULT_PRECISION)
