@@ -806,9 +806,29 @@ class Fuzzarray:
             # Raise an error for unsupported assignment types.
             raise TypeError(f"Can only assign Fuzznum or Fuzzarray, got {type(value)}.")
 
-    def __delitem__(self, key): ...
+    def __delitem__(self, key):
+        """
+        Deletion of items is not supported for Fuzzarray.
 
-    def __contains__(self, item): ...
+        To maintain immutability patterns similar to NumPy arrays, in-place
+        deletion is disallowed. Use slicing and concatenation to create a new
+        array without the desired elements.
+        """
+        raise NotImplementedError("Fuzzarray does not support item deletion.")
+
+    def __contains__(self, item: Any) -> bool:
+        """
+        Checks if an item is present in the Fuzzarray.
+
+        Delegates the check to the underlying NumPy array.
+
+        Args:
+            item (Any): The item to check for.
+
+        Returns:
+            bool: True if the item is found, False otherwise.
+        """
+        return item in self._data
 
     def __iter__(self):
         """
@@ -828,8 +848,6 @@ class Fuzzarray:
             else:
                 # Otherwise, yield the Fuzznum object directly.
                 yield item
-
-    def __next__(self): ...
 
     # ======================== Array Operations ===============================
     # These methods provide common array manipulation functionalities,
@@ -962,9 +980,56 @@ class Fuzzarray:
         """
         return f"{self._data}"
 
-    def __bool__(self) -> bool: ...
+    def __bool__(self) -> bool:
+        """
+        Defines the truthiness of a Fuzzarray.
 
-    def __format__(self, format_spec): ...
+        An array is considered True if it is not empty.
+
+        Returns:
+            bool: True if the array contains one or more elements, False otherwise.
+        """
+        return self.size > 0
+
+    def __format__(self, format_spec: str) -> str:
+        """
+        Custom string formatting for Fuzzarray.
+
+        Formats the default string representation of the array.
+
+        Args:
+            format_spec (str): The format specification string.
+
+        Returns:
+            str: The formatted string.
+        """
+        return format(str(self), format_spec)
+
+    def __getstate__(self) -> tuple:
+        """
+        Returns the state of the Fuzzarray for pickling.
+
+        Captures the essential attributes needed to reconstruct the array.
+
+        Returns:
+            tuple: A tuple containing the core state (_data, _mtype, _q).
+        """
+        return self._data, self._mtype, self._q
+
+    def __setstate__(self, state: tuple) -> None:
+        """
+        Restores the state of the Fuzzarray from a pickled state.
+
+        Args:
+            state (tuple): The state tuple from __getstate__.
+        """
+        self._data, self._mtype, self._q = state
+        # After restoring the core state, re-initialize delegation and other
+        # non-serialized attributes.
+        self._operation_registry = get_operation_registry()
+        self._delegated_methods = set()
+        self._delegated_attributes = set()
+        self._initialize_delegation()
 
 
 # ================================= Factory function =================================

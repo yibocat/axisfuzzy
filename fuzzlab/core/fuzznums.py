@@ -1276,9 +1276,40 @@ class Fuzznum:
 
         return instance
 
-    def __getstate__(self): ...
+    def __getstate__(self) -> Dict[str, Any]:
+        """
+        Returns the state of the Fuzznum for pickling.
 
-    def __setstate__(self, state): ...
+        Uses the to_dict() method to create a serializable representation.
+
+        Returns:
+            Dict[str, Any]: A dictionary representing the object's state.
+        """
+        return self.to_dict()
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        """
+        Restores the state of the Fuzznum from a pickled state.
+
+        Re-initializes the object based on the state dictionary.
+
+        Args:
+            state (Dict[str, Any]): The state dictionary from __getstate__.
+        """
+        if 'mtype' not in state:
+            raise ValueError("Invalid state for Fuzznum: 'mtype' key is missing.")
+
+        # Manually call __init__ to set up the basic structure
+        self.__init__(mtype=state['mtype'], qrung=state.get('q', 1))
+
+        # Set attributes from the state
+        if 'attributes' in state:
+            for attr_name, value in state['attributes'].items():
+                try:
+                    setattr(self, attr_name, value)
+                except AttributeError:
+                    # Ignore if an attribute from an older version can't be set
+                    pass
 
     # ================================ Type Conversion ===============================
 
@@ -1318,6 +1349,38 @@ class Fuzznum:
         # Default representation if no str method is available, or it fails.
         return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
 
-    def __bool__(self) -> bool: ...
+    def __bool__(self) -> bool:
+        """
+        Defines the truthiness of a Fuzznum instance.
 
-    def __format__(self, format_spec): ...
+        A valid, initialized Fuzznum instance is always considered "truthy".
+
+        Returns:
+            bool: Always returns True for an initialized instance.
+        """
+        return True
+
+    def __format__(self, format_spec: str) -> str:
+        """
+        Custom string formatting for Fuzznum instances.
+
+        Delegates formatting to the underlying template if it supports it,
+        otherwise falls back to the default string representation.
+
+        Args:
+            format_spec (str): The format specification string.
+
+        Returns:
+            str: The formatted string representation.
+        """
+        try:
+            # Delegate to the template's __format__ method if it exists
+            # TODO: 这里还没有实现 template 的 __format__ 方法
+            template = self.get_template_instance()
+            if hasattr(template, '__format__'):
+                return template.__format__(format_spec)
+        except (RuntimeError, AttributeError):
+            # Fallback if template or its format method is not available
+            pass
+        # Default behavior if no custom format is available
+        return format(str(self), format_spec)
