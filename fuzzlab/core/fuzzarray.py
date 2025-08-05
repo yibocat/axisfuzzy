@@ -354,6 +354,15 @@ class Fuzzarray:
         # If the attribute is neither directly on Fuzzarray nor a delegated Fuzznum member, raise AttributeError.
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'.")
 
+    def copy(self) -> 'Fuzzarray':
+        """
+        Returns a deep copy of the Fuzzarray.
+
+        Returns:
+            Fuzzarray: A new Fuzzarray instance with independent copies of all Fuzznum elements.
+        """
+        return Fuzzarray(self._data, mtype=self.mtype, copy=True)
+
     # ========================= Special Attributes ==============================
 
     @property
@@ -403,7 +412,7 @@ class Fuzzarray:
         Returns:
             Fuzzarray: The transposed Fuzzarray.
         """
-        return self.transpose()
+        return Fuzzarray(self._data.T)
 
     @property
     def mtype(self) -> str:
@@ -438,56 +447,6 @@ class Fuzzarray:
             np.ndarray: The internal NumPy array.
         """
         return self._data
-
-    # ======================== Shape Operation Method ========================
-
-    def reshape(self, *shape) -> 'Fuzzarray':
-        """
-        Returns a new Fuzzarray with a different shape without changing its data.
-
-        Args:
-            *shape: The new shape, as a tuple or individual integers.
-
-        Returns:
-            Fuzzarray: A new Fuzzarray with the specified shape.
-        """
-        new_data = self._data.reshape(shape)
-        return Fuzzarray(new_data, mtype=self.mtype, copy=False)
-
-    def flatten(self) -> 'Fuzzarray':
-        """
-        Returns a copy of the array collapsed into one dimension.
-
-        Returns:
-            Fuzzarray: A new 1-D Fuzzarray.
-        """
-        return Fuzzarray(self._data.flatten(), mtype=self.mtype, copy=False)
-
-    def transpose(self, *axes) -> 'Fuzzarray':
-        """
-        Returns a new Fuzzarray with axes transposed.
-
-        Args:
-            *axes: Optional. A tuple or list of integers, specifying the new order of axes.
-                   If not provided, the array is simply reversed.
-
-        Returns:
-            Fuzzarray: A new Fuzzarray with transposed axes.
-        """
-        if not axes:
-            new_data = self._data.T  # NumPy's transpose property.
-        else:
-            new_data = self._data.transpose(*axes)
-        return Fuzzarray(new_data, mtype=self.mtype, copy=False)
-
-    def copy(self) -> 'Fuzzarray':
-        """
-        Returns a deep copy of the Fuzzarray.
-
-        Returns:
-            Fuzzarray: A new Fuzzarray instance with independent copies of all Fuzznum elements.
-        """
-        return Fuzzarray(self._data, mtype=self.mtype, copy=True)
 
     # ======================== Core implementation of vectorized operations ========================
 
@@ -886,7 +845,7 @@ class Fuzzarray:
         return self._data.tolist()
 
     @classmethod
-    def concatenate(cls, arrays: List['Fuzzarray'], axis: int = 0) -> 'Fuzzarray':
+    def concat(cls, arrays: List['Fuzzarray'], axis: int = 0) -> 'Fuzzarray':
         """
         Concatenates a sequence of Fuzzarray instances along a specified axis.
 

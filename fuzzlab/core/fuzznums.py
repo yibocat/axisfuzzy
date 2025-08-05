@@ -15,6 +15,7 @@ and representation for each fuzzy number type. This design pattern promotes
 extensibility, allowing new fuzzy number types to be added without modifying
 the core `Fuzznum` class.
 """
+import copy
 import difflib
 from typing import Optional, Dict, Callable, Any, Set, List, Tuple
 
@@ -502,7 +503,7 @@ class Fuzznum:
         # If the object is not initialized, raise an error indicating that.
         if not self._is_initialized():
             raise AttributeError(
-                f"'{self.__class__.__name__}' 对象没有属性 '{name}'。"
+                f"The '{self.__class__.__name__}' object has no attribute '{name}'."
                 f"The Fuzznum is still initializing."
             )
 
@@ -746,6 +747,57 @@ class Fuzznum:
                     raise f"The parameter '{key}' is invalid for the fuzzy number mtype '{self.mtype}'"
 
         return instance
+
+    def copy(self) -> 'Fuzznum':
+        """
+        Create a copy of the current instance
+
+        The `copy` method is used to create an independent copy of the current `Fuzznum` instance.
+        It performs a "deep copy," ensuring the new copy has all the same property values as the
+        original instance, and these property values are independent, so modifying the copy will
+        not affect the original instance. This is very useful when creating new variants based on
+        existing fuzzy numbers, or when performing operations without modifying the original object.
+
+        Returns:
+            Fuzznum: A standalone copy of the current instance.
+
+        Raises:
+            RuntimeError: If you attempt to copy an object that has not been fully initialized.
+
+        Examples:
+            >>> fuzz1 = Fuzznum('qrofn', qrung=3).create(md=0.7, nmd=0.2)
+            >>> fuzz2 = fuzz1.copy()
+            >>> fuzz2.md = 0.5 # Modifying a copy does not affect the original instance.
+            >>> print(fuzz1.md)
+            0.7
+            >>> print(fuzz2.md)
+            0.5
+        """
+        if not self._is_initialized():
+            raise RuntimeError("Cannot copy uninitialized object")
+
+        current_params = {}
+        try:
+            # Get the names of all attributes bound from the strategy instance.
+            strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
+
+            for attr_name in strategy_attrs:
+                try:
+                    # Get the current value of each strategy attribute.
+                    current_params[attr_name] = getattr(self, attr_name)
+
+                except AttributeError:
+                    pass
+        except AttributeError:
+            pass
+
+        # Use the `create` class method to create a new Fuzznum instance. Pass the original
+        #   instance's `mtype` to the `create` method to ensure the new copy is a fuzzy
+        #   number of the same types. Pass the collected `current_params` as keyword
+        #   arguments to set the new copy's properties during creation. This
+        #   approach ensures that the initialization process of the new copy is consistent
+        #   with the normal creation process, and that property values are correctly copied.
+        return self.create(**current_params)
 
     # ======================== Information and Debugging ========================
     # The Fuzznum class's information and debugging module provides a series of
@@ -1006,64 +1058,7 @@ class Fuzznum:
 
     @property
     def T(self) -> 'Fuzznum':
-        return self.copy()
-
-    # ======================== Shape Operation Method ========================
-
-    def reshape(self, *shape): ...
-
-    def flatten(self): ...
-
-    def copy(self) -> 'Fuzznum':
-        """
-        Create a copy of the current instance
-
-        The `copy` method is used to create an independent copy of the current `Fuzznum` instance.
-        It performs a "deep copy," ensuring the new copy has all the same property values as the
-        original instance, and these property values are independent, so modifying the copy will
-        not affect the original instance. This is very useful when creating new variants based on
-        existing fuzzy numbers, or when performing operations without modifying the original object.
-
-        Returns:
-            Fuzznum: A standalone copy of the current instance.
-
-        Raises:
-            RuntimeError: If you attempt to copy an object that has not been fully initialized.
-
-        Examples:
-            >>> fuzz1 = Fuzznum('qrofn', qrung=3).create(md=0.7, nmd=0.2)
-            >>> fuzz2 = fuzz1.copy()
-            >>> fuzz2.md = 0.5 # Modifying a copy does not affect the original instance.
-            >>> print(fuzz1.md)
-            0.7
-            >>> print(fuzz2.md)
-            0.5
-        """
-        if not self._is_initialized():
-            raise RuntimeError("Cannot copy uninitialized object")
-
-        current_params = {}
-        try:
-            # Get the names of all attributes bound from the strategy instance.
-            strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
-
-            for attr_name in strategy_attrs:
-                try:
-                    # Get the current value of each strategy attribute.
-                    current_params[attr_name] = getattr(self, attr_name)
-
-                except AttributeError:
-                    pass
-        except AttributeError:
-            pass
-
-        # Use the `create` class method to create a new Fuzznum instance. Pass the original
-        #   instance's `mtype` to the `create` method to ensure the new copy is a fuzzy
-        #   number of the same types. Pass the collected `current_params` as keyword
-        #   arguments to set the new copy's properties during creation. This
-        #   approach ensures that the initialization process of the new copy is consistent
-        #   with the normal creation process, and that property values are correctly copied.
-        return self.create(**current_params)
+        return copy.deepcopy(self)
 
     # ================== Specific calculation method (operator overloading) ============================
 
