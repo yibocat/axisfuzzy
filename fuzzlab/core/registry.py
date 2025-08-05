@@ -22,13 +22,13 @@ Classes:
                      and lifecycle of `FuzznumStrategy` and `FuzznumTemplate` classes.
 
 Functions:
-    get_registry(): Returns the global singleton instance of `FuzznumRegistry`.
+    get_fuzznum_registry(): Returns the global singleton instance of `FuzznumRegistry`.
     register_fuzznum(): A convenience function to register a single fuzzy number type.
     batch_register_fuzznums(): A convenience function to perform transactional batch registration.
     unregister_fuzznum(): A convenience function to unregister a fuzzy number type.
     get_strategy(): A convenience function to retrieve a registered strategy class.
     get_template(): A convenience function to retrieve a registered template class.
-    get_registered_mtypes(): A convenience function to get information about all registered types.
+    get_fuzznum_registered_mtypes(): A convenience function to get information about all registered types.
 """
 import datetime
 import logging
@@ -931,7 +931,7 @@ _registry_instance: Optional[FuzznumRegistry] = None
 _registry_lock = threading.RLock()
 
 
-def get_registry() -> FuzznumRegistry:
+def get_fuzznum_registry() -> FuzznumRegistry:
     """
     Retrieves the global singleton instance of `FuzznumRegistry`.
 
@@ -942,7 +942,7 @@ def get_registry() -> FuzznumRegistry:
         FuzznumRegistry: The global unique instance of the fuzzy number registry.
 
     Examples:
-        >>> registry_instance = get_registry()
+        >>> registry_instance = get_fuzznum_registry()
         >>> print(registry_instance) # Prints the registry instance
     """
     global _registry_instance
@@ -977,10 +977,10 @@ def register_fuzznum(strategy: Optional[Type[FuzznumStrategy]] = None,
         >>> print(result['mtype'], result['is_complete'])
         my_type True
         >>> # Verify if registered
-        >>> print(get_registry().get_registered_mtypes().get('my_type', {}).get('is_complete'))
+        >>> print(get_fuzznum_registry().get_fuzznum_registered_mtypes().get('my_type', {}).get('is_complete'))
         True
     """
-    return get_registry().register(strategy=strategy, template=template)
+    return get_fuzznum_registry().register(strategy=strategy, template=template)
 
 
 def batch_register_fuzznums(registrations: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
@@ -1018,10 +1018,10 @@ def batch_register_fuzznums(registrations: List[Dict[str, Any]]) -> Dict[str, Di
         >>> print(results['type_a']['is_complete'], results['type_b']['is_complete'])
         (True, True)
         >>> # Verify successful registration
-        >>> print(get_registry().get_registered_mtypes().get('type_a', {}).get('is_complete'))
+        >>> print(get_fuzznum_registry().get_fuzznum_registered_mtypes().get('type_a', {}).get('is_complete'))
         True
     """
-    return get_registry().batch_register(registrations)
+    return get_fuzznum_registry().batch_register(registrations)
 
 
 def unregister_fuzznum(mtype: str,
@@ -1045,10 +1045,10 @@ def unregister_fuzznum(mtype: str,
         >>> print(result['mtype'], result['strategy_removed'], result['template_removed'])
         my_type, True, True
         >>> # Verify if unregistered
-        >>> print(get_registry().get_registered_mtypes().get('my_type'))
+        >>> print(get_fuzznum_registry().get_fuzznum_registered_mtypes().get('my_type'))
         None
     """
-    return get_registry().unregister(
+    return get_fuzznum_registry().unregister(
         mtype=mtype,
         remove_strategy=remove_strategy,
         remove_template=remove_template
@@ -1059,7 +1059,7 @@ def get_strategy(mtype: str) -> Optional[Type[FuzznumStrategy]]:
     """
     Global get strategy function: Retrieves the strategy class for a given `mtype`.
 
-    This function is a convenient wrapper around `get_registry().get_strategy()`.
+    This function is a convenient wrapper around `get_fuzznum_registry().get_strategy()`.
 
     Args:
         mtype (str): The fuzzy number type identifier.
@@ -1077,7 +1077,7 @@ def get_strategy(mtype: str) -> Optional[Type[FuzznumStrategy]]:
         None
     """
     try:
-        return get_registry().get_strategy(mtype)
+        return get_fuzznum_registry().get_strategy(mtype)
     except ValueError:
         return None
 
@@ -1086,7 +1086,7 @@ def get_template(mtype: str) -> Optional[Type[FuzznumTemplate]]:
     """
     Global get template function: Retrieves the template class for a given `mtype`.
 
-    This function is a convenient wrapper around `get_registry().get_template()`.
+    This function is a convenient wrapper around `get_fuzznum_registry().get_template()`.
 
     Args:
         mtype (str): The fuzzy number type identifier.
@@ -1105,23 +1105,23 @@ def get_template(mtype: str) -> Optional[Type[FuzznumTemplate]]:
         None
     """
     try:
-        return get_registry().get_template(mtype)
+        return get_fuzznum_registry().get_template(mtype)
     except ValueError:
         return None
 
 
-def get_registered_mtypes() -> Dict[str, Dict[str, Any]]:
+def get_fuzznum_registered_mtypes() -> Dict[str, Dict[str, Any]]:
     """
     Global get registered types function: Retrieves information about all registered fuzzy number types.
 
-    This function is a convenient wrapper around `get_registry().get_registered_mtypes()`.
+    This function is a convenient wrapper around `get_fuzznum_registry().get_registered_mtypes()`.
 
     Returns:
         Dict[str, Dict[str, Any]]: A dictionary containing information for all registered types.
 
     Examples:
         >>> # Get all registered types
-        >>> all_types = get_registered_mtypes()
+        >>> all_types = get_fuzznum_registered_mtypes()
         >>> # Print information for 'some_type' (if registered)
         >>> print(all_types.get('some_type', {}).get('is_complete'))
         True
@@ -1129,4 +1129,4 @@ def get_registered_mtypes() -> Dict[str, Dict[str, Any]]:
         >>> print(sorted(list(all_types.keys())))
         ['ivqfn', 'qrofn', 'some_type'] # May include default registered types
     """
-    return get_registry().get_registered_mtypes()
+    return get_fuzznum_registry().get_registered_mtypes()

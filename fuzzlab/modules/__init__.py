@@ -4,3 +4,9 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
+
+from .qrofs import *
+
+__all__ = []
+
+__all__.extend(qrofs.__all__)

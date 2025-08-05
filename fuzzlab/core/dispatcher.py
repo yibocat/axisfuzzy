@@ -86,7 +86,7 @@ def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
 
     # Rule 3: Fuzznum <op> Scalar (int, float)
     # Handles operations between a Fuzznum and a standard scalar (int or float).
-    if isinstance(operand1, Fuzznum) and isinstance(operand2, (int, float)):
+    if isinstance(operand1, Fuzznum) and isinstance(operand2, (int, float, np.integer, np.floating)):
         # Special handling for 'mul' and 'div' to map them to 'tim' (times) operation.
         if op_name == 'mul':
             op_name = 'tim'
@@ -118,7 +118,7 @@ def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
 
     # Rule 6: Fuzzarray <op> Scalar / ndarray
     # Handles operations where a Fuzzarray interacts with a scalar or a NumPy array.
-    if isinstance(operand1, Fuzzarray) and isinstance(operand2, (int, float, np.ndarray)):
+    if isinstance(operand1, Fuzzarray) and isinstance(operand2, (int, float, np.integer, np.floating, np.ndarray)):
         # Special handling for 'mul' and 'div' to map them to 'tim' (times) operation.
         if op_name == 'mul':
             op_name = 'tim'
@@ -132,7 +132,7 @@ def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
 
     # Rule 7: Scalar <op> Fuzznum / Fuzzarray
     # Handles operations where a scalar is the first operand and a Fuzznum/Fuzzarray is the second.
-    if isinstance(operand1, (int, float)) and isinstance(operand2, (Fuzznum, Fuzzarray)):
+    if isinstance(operand1, (int, float, np.integer, np.floating)) and isinstance(operand2, (Fuzznum, Fuzzarray)):
         # Swap operands and recursively call operate for commutative operations.
         # Note: This only works for commutative operations (add, mul).
         if op_name in ['add', 'mul']:
@@ -156,7 +156,7 @@ def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
                     op_name, operand2)
                 return operand1.create(**result_dict)
             else:
-                operand1.execute_vectorized_op(op_name, operand2)
+                return operand1.execute_vectorized_op(op_name, operand2)
 
     # If no rule matches, raise a TypeError indicating unsupported operand types.
     raise TypeError(f"Unsupported operand types for operation '{op_name}': "

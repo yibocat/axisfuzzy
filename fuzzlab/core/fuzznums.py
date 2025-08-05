@@ -16,11 +16,11 @@ extensibility, allowing new fuzzy number types to be added without modifying
 the core `Fuzznum` class.
 """
 import difflib
-from typing import Optional, Dict, Callable, Any, Set, List
+from typing import Optional, Dict, Callable, Any, Set, List, Tuple
 
 from fuzzlab.config import get_config
 from fuzzlab.core.base import FuzznumTemplate, FuzznumStrategy
-from fuzzlab.core.registry import get_registry
+from fuzzlab.core.registry import get_fuzznum_registry
 
 
 class Fuzznum:
@@ -173,7 +173,7 @@ class Fuzznum:
             ValueError: If the `mtype` is not found in the strategy registry.
             RuntimeError: If dynamic binding of strategy members fails.
         """
-        registry = get_registry()
+        registry = get_fuzznum_registry()
 
         if self.mtype not in registry.strategies:
             available_mtypes = ', '.join(registry.strategies.keys())
@@ -214,7 +214,7 @@ class Fuzznum:
             ValueError: If the `mtype` is not found in the template registry.
             RuntimeError: If dynamic binding of template members fails.
         """
-        registry = get_registry()
+        registry = get_fuzznum_registry()
 
         if self.mtype not in registry.templates:
             available_templates = ', '.join(registry.templates.keys())
@@ -365,64 +365,6 @@ class Fuzznum:
             # If _initialized attribute doesn't exist yet, it means the object
             # is not fully initialized or is in the process of being initialized.
             return False
-
-    def get_template_instance(self) -> FuzznumTemplate:
-        """
-        Get Template Instance
-
-        This method provides a protected interface to securely access the
-        `FuzznumTemplate` instance associated with the Fuzznum instance. It is
-        called when there is a need to access template-specific functionalities
-        such as `report()` or `str()`. By centralizing access management, it ensures
-        that clear error messages can be provided when the instance does not exist
-        or is not fully initialized.
-
-        Returns:
-            FuzznumTemplate: Associated template instance.
-
-        Raises:
-            RuntimeError: If the template instance is not found or has not been
-                fully initialized.
-        """
-        try:
-            # Directly access _template_instance using object.__getattribute__
-            # to avoid triggering custom attribute delegation.
-            template_instance = object.__getattribute__(self, '_template_instance')
-            if template_instance is None:
-                raise RuntimeError("Template instance not found.")
-            return template_instance
-        except AttributeError:
-            # If _template_instance attribute does not exist, it means it was not set.
-            raise RuntimeError("Template instance not found.")
-
-    def get_strategy_instance(self) -> FuzznumStrategy:
-        """
-        Get strategy instance
-
-        This method provides a protected interface to securely access the
-        `FuzznumStrategy` instance associated with a Fuzznum instance. It is called
-        when there is a need to access strategy-specific features, such as property
-        values or core algorithms. Similar to `get_template_instance`, it ensures
-        clear error messages are provided if the instance does not exist or has not
-        been fully initialized.
-
-        Returns:
-            FuzznumStrategy: Associated strategy instance.
-
-        Raises:
-            RuntimeError: If the strategy instance is not found or has not been
-                fully initialized.
-        """
-        try:
-            # Directly access _strategy_instance using object.__getattribute__
-            # to avoid triggering custom attribute delegation.
-            strategy_instance = object.__getattribute__(self, '_strategy_instance')
-            if strategy_instance is None:
-                raise RuntimeError("Strategy instance not found.")
-            return strategy_instance
-        except AttributeError:
-            # If _strategy_instance attribute does not exist, it means it was not set.
-            raise RuntimeError("Strategy instance not found.")
 
     def _delegate_attribute_access(self, name: str) -> Any:
         """
@@ -805,63 +747,70 @@ class Fuzznum:
 
         return instance
 
-    def copy(self) -> 'Fuzznum':
-        """
-        Create a copy of the current instance
-
-        The `copy` method is used to create an independent copy of the current `Fuzznum` instance.
-        It performs a "deep copy," ensuring the new copy has all the same property values as the
-        original instance, and these property values are independent, so modifying the copy will
-        not affect the original instance. This is very useful when creating new variants based on
-        existing fuzzy numbers, or when performing operations without modifying the original object.
-
-        Returns:
-            Fuzznum: A standalone copy of the current instance.
-
-        Raises:
-            RuntimeError: If you attempt to copy an object that has not been fully initialized.
-
-        Examples:
-            >>> fuzz1 = Fuzznum('qrofn', qrung=3).create(md=0.7, nmd=0.2)
-            >>> fuzz2 = fuzz1.copy()
-            >>> fuzz2.md = 0.5 # Modifying a copy does not affect the original instance.
-            >>> print(fuzz1.md)
-            0.7
-            >>> print(fuzz2.md)
-            0.5
-        """
-        if not self._is_initialized():
-            raise RuntimeError("Cannot copy uninitialized object")
-
-        current_params = {}
-        try:
-            # Get the names of all attributes bound from the strategy instance.
-            strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
-
-            for attr_name in strategy_attrs:
-                try:
-                    # Get the current value of each strategy attribute.
-                    current_params[attr_name] = getattr(self, attr_name)
-
-                except AttributeError:
-                    pass
-        except AttributeError:
-            pass
-
-        # Use the `create` class method to create a new Fuzznum instance. Pass the original
-        #   instance's `mtype` to the `create` method to ensure the new copy is a fuzzy
-        #   number of the same types. Pass the collected `current_params` as keyword
-        #   arguments to set the new copy's properties during creation. This
-        #   approach ensures that the initialization process of the new copy is consistent
-        #   with the normal creation process, and that property values are correctly copied.
-        return self.create(**current_params)
-
     # ======================== Information and Debugging ========================
     # The Fuzznum class's information and debugging module provides a series of
     #   methods for obtaining an instance's internal state, performance metrics,
     #   and health status during runtime. These features are crucial for developers to
     #   understand object behavior, diagnose issues, monitor performance, and ensure
     #   data consistency.
+
+    def get_template_instance(self) -> FuzznumTemplate:
+        """
+        Get Template Instance
+
+        This method provides a protected interface to securely access the
+        `FuzznumTemplate` instance associated with the Fuzznum instance. It is
+        called when there is a need to access template-specific functionalities
+        such as `report()` or `str()`. By centralizing access management, it ensures
+        that clear error messages can be provided when the instance does not exist
+        or is not fully initialized.
+
+        Returns:
+            FuzznumTemplate: Associated template instance.
+
+        Raises:
+            RuntimeError: If the template instance is not found or has not been
+                fully initialized.
+        """
+        try:
+            # Directly access _template_instance using object.__getattribute__
+            # to avoid triggering custom attribute delegation.
+            template_instance = object.__getattribute__(self, '_template_instance')
+            if template_instance is None:
+                raise RuntimeError("Template instance not found.")
+            return template_instance
+        except AttributeError:
+            # If _template_instance attribute does not exist, it means it was not set.
+            raise RuntimeError("Template instance not found.")
+
+    def get_strategy_instance(self) -> FuzznumStrategy:
+        """
+        Get strategy instance
+
+        This method provides a protected interface to securely access the
+        `FuzznumStrategy` instance associated with a Fuzznum instance. It is called
+        when there is a need to access strategy-specific features, such as property
+        values or core algorithms. Similar to `get_template_instance`, it ensures
+        clear error messages are provided if the instance does not exist or has not
+        been fully initialized.
+
+        Returns:
+            FuzznumStrategy: Associated strategy instance.
+
+        Raises:
+            RuntimeError: If the strategy instance is not found or has not been
+                fully initialized.
+        """
+        try:
+            # Directly access _strategy_instance using object.__getattribute__
+            # to avoid triggering custom attribute delegation.
+            strategy_instance = object.__getattribute__(self, '_strategy_instance')
+            if strategy_instance is None:
+                raise RuntimeError("Strategy instance not found.")
+            return strategy_instance
+        except AttributeError:
+            # If _strategy_instance attribute does not exist, it means it was not set.
+            raise RuntimeError("Strategy instance not found.")
 
     def get_strategy_attributes_dict(self) -> Dict[str, Any]:
         """
@@ -1023,147 +972,100 @@ class Fuzznum:
 
         return validation_result
 
-    # ======================== Serialization support ========================
-    # Serialization is the process of converting the state of an object into a storable or transmittable
-    #   format (such as a byte stream, string, JSON, dictionary, etc.). Deserialization,
-    #   on the other hand, is the process of restoring this format back into the original
-    #   object. For complex objects like Fuzznum, serialization support has the following
-    #   significant importance:
-    # 1. Persistence: Allows the state of a Fuzznum instance to be saved to a file or database,
-    #   enabling data to be persistently stored and reloaded after the program is closed.
-    # 2. Data Exchange: Allows Fuzznum instances to be transmitted and shared between different
-    #   processes, machines, or systems. For example, sending the state of a fuzzy number object over a network.
-    # 3. Debugging & Logging: Convert object states into a human-readable format, helpful for
-    #   inspecting object contents during debugging or logging key object states in logs.
-    # 4. Configuration & Initialization: The initial state of fuzzy numbers can be defined
-    # through external configuration files (e.g., JSON), and then deserialized into Fuzznum instances.
-    # 5. Cloning & Copying: Although the copy() method provides object copying,
-    #   serialization/deserialization is also a common mechanism for achieving deep copying,
-    #   especially when the object structure is complex.
+    # ========================= Special Attributes ==============================
 
-    def to_dict(self) -> Dict[str, Any]:
+    @property
+    def shape(self) -> Tuple[int, ...]:
         """
-        Serialize the fuzzy number instance sequence into a dictionary
-
-        This method converts the core state of a `Fuzznum` instance into a Python dictionary.
-        This dictionary contains the type of the fuzzy number (`mtype`), its creation time,
-        and all attribute values of its underlying strategy instance. Optionally, it
-        can also include internal attribute caches. This makes it convenient to store,
-        transmit, or inspect `Fuzznum` instances.
+        The shape of the Fuzznum instance.
 
         Returns:
-            Dict[str, Any]: Dictionary containing instance status。
+            default ()
+        """
+        return ()
+
+    @property
+    def ndim(self) -> int:
+        """
+        The number of dimensions of the Fuzznum instance.
+
+        Returns:
+            default 1
+        """
+        return 1
+
+    @property
+    def size(self) -> int:
+        """
+        The size of the Fuzznum instance.
+
+        Returns:
+            default 1
+        """
+        return 1
+
+    @property
+    def T(self) -> 'Fuzznum':
+        return self.copy()
+
+    # ======================== Shape Operation Method ========================
+
+    def reshape(self, *shape): ...
+
+    def flatten(self): ...
+
+    def copy(self) -> 'Fuzznum':
+        """
+        Create a copy of the current instance
+
+        The `copy` method is used to create an independent copy of the current `Fuzznum` instance.
+        It performs a "deep copy," ensuring the new copy has all the same property values as the
+        original instance, and these property values are independent, so modifying the copy will
+        not affect the original instance. This is very useful when creating new variants based on
+        existing fuzzy numbers, or when performing operations without modifying the original object.
+
+        Returns:
+            Fuzznum: A standalone copy of the current instance.
 
         Raises:
-            RuntimeError: If attempting to serialize an object that has not been fully initialized.
+            RuntimeError: If you attempt to copy an object that has not been fully initialized.
+
+        Examples:
+            >>> fuzz1 = Fuzznum('qrofn', qrung=3).create(md=0.7, nmd=0.2)
+            >>> fuzz2 = fuzz1.copy()
+            >>> fuzz2.md = 0.5 # Modifying a copy does not affect the original instance.
+            >>> print(fuzz1.md)
+            0.7
+            >>> print(fuzz2.md)
+            0.5
         """
         if not self._is_initialized():
-            raise RuntimeError("Unable to serialize uninitialized object")
+            raise RuntimeError("Cannot copy uninitialized object")
 
+        current_params = {}
         try:
-            result = {
-                'mtype': self.mtype,
-                'attributes': {},
-            }
-
-            # Obtain the set of policy attribute names bound to the Fuzznum instance.
-            #   Only policy attributes represent the core data of the fuzzy number
-            #   and need to be serialized. Template attributes are typically computational
-            #   results or presentation-level attributes and do not need to be directly serialized.
+            # Get the names of all attributes bound from the strategy instance.
             strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
+
             for attr_name in strategy_attrs:
                 try:
-                    # Attempt to get the current value of each strategy attribute and add
-                    #   it to the `attributes` dictionary. Using `getattr(self, attr_name)`
-                    #   will trigger `__getattribute__` and `_delegate_attribute_access`,
-                    #   ensuring that the actual attribute value is obtained (possibly from
-                    #   the cache or the strategy instance).
-                    result['attributes'][attr_name] = getattr(self, attr_name)
+                    # Get the current value of each strategy attribute.
+                    current_params[attr_name] = getattr(self, attr_name)
+
                 except AttributeError:
                     pass
+        except AttributeError:
+            pass
 
-            return result
-        except AttributeError as e:
-            raise RuntimeError(f"Failed to serialize: {e}")
+        # Use the `create` class method to create a new Fuzznum instance. Pass the original
+        #   instance's `mtype` to the `create` method to ensure the new copy is a fuzzy
+        #   number of the same types. Pass the collected `current_params` as keyword
+        #   arguments to set the new copy's properties during creation. This
+        #   approach ensures that the initialization process of the new copy is consistent
+        #   with the normal creation process, and that property values are correctly copied.
+        return self.create(**current_params)
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Fuzznum':
-        """
-        Deserialize fuzzy number instance from dictionary
-
-        This method is a class method (`@classmethod`) used to reconstruct a `Fuzznum`
-        instance from a dictionary. It is the inverse operation of the `to_dict()` method,
-        allowing the object's state to be restored from serialized data.
-
-        Args:
-            cls: The class itself (Fuzznum).
-            data: A dictionary containing the state of a fuzzy number instance,
-                typically generated by the `to_dict()` method. It must contain the 'mtype' key.
-
-        Returns:
-            Fuzznum: A new `Fuzznum` instance reconstructed from the dictionary data.
-
-        Raises:
-            ValueError: If the input dictionary is missing the 'mtype' key.
-        """
-        if 'mtype' not in data:
-            raise ValueError("The dictionary must contain the 'mtype' key.")
-
-        # Create a new Fuzznum instance using the 'mtype' from the dictionary.
-        instance = cls(data['mtype'])
-
-        # Setting Attributes
-        # If the dictionary contains the 'attributes' key (which stores policy attributes),
-        #   iterate through and set these attributes. Using `setattr(instance, attr_name, value)`
-        #   will trigger the `__setattr__` method of the `Fuzznum` instance, ensuring that the
-        #   attribute value is properly delegated to the underlying policy instance and that any
-        #   associated validation and callbacks are triggered.
-        if 'attributes' in data:
-            for attr_name, value in data['attributes'].items():
-                try:
-                    setattr(instance, attr_name, value)
-                except AttributeError:
-                    pass
-
-        return instance
-
-    # =========================== Magic Methods and Computation ================================
-
-    def __repr__(self) -> str:
-        """
-        String representation of the object
-
-        Returns:
-            str: The formal string representation of the object.
-        """
-        # If a 'report' method is bound (from the template), use it for representation.
-        if hasattr(self, 'report') and callable(self.report):
-            try:
-                return self.get_template_instance().report()
-            except ValueError:
-                # Fallback if the template's report method fails.
-                pass
-
-        # Default representation if no report method is available, or it fails.
-        return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
-
-    def __str__(self) -> str:
-        """
-        User-friendly string representation
-
-        Returns:
-            str: A concise, user-friendly string representation of the object.
-        """
-        # If a 'str' method is bound (from the template), use it for representation.
-        if hasattr(self, 'str') and callable(self.str):
-            try:
-                return self.get_template_instance().str()
-            except ValueError:
-                # Fallback if the template's str method fails.
-                pass
-
-        # Default representation if no str method is available, or it fails.
-        return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
+    # ================== Specific calculation method (operator overloading) ============================
 
     def __add__(self, other):
         """Overloads the addition operator (+)."""
@@ -1274,3 +1176,153 @@ class Fuzznum:
         """
         from .dispatcher import operate
         return operate('equivalence', self, other)
+
+    # ======================== Serialization support ========================
+    # Serialization is the process of converting the state of an object into a storable or transmittable
+    #   format (such as a byte stream, string, JSON, dictionary, etc.). Deserialization,
+    #   on the other hand, is the process of restoring this format back into the original
+    #   object. For complex objects like Fuzznum, serialization support has the following
+    #   significant importance:
+    # 1. Persistence: Allows the state of a Fuzznum instance to be saved to a file or database,
+    #   enabling data to be persistently stored and reloaded after the program is closed.
+    # 2. Data Exchange: Allows Fuzznum instances to be transmitted and shared between different
+    #   processes, machines, or systems. For example, sending the state of a fuzzy number object over a network.
+    # 3. Debugging & Logging: Convert object states into a human-readable format, helpful for
+    #   inspecting object contents during debugging or logging key object states in logs.
+    # 4. Configuration & Initialization: The initial state of fuzzy numbers can be defined
+    # through external configuration files (e.g., JSON), and then deserialized into Fuzznum instances.
+    # 5. Cloning & Copying: Although the copy() method provides object copying,
+    #   serialization/deserialization is also a common mechanism for achieving deep copying,
+    #   especially when the object structure is complex.
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the fuzzy number instance sequence into a dictionary
+
+        This method converts the core state of a `Fuzznum` instance into a Python dictionary.
+        This dictionary contains the type of the fuzzy number (`mtype`), its creation time,
+        and all attribute values of its underlying strategy instance. Optionally, it
+        can also include internal attribute caches. This makes it convenient to store,
+        transmit, or inspect `Fuzznum` instances.
+
+        Returns:
+            Dict[str, Any]: Dictionary containing instance status。
+
+        Raises:
+            RuntimeError: If attempting to serialize an object that has not been fully initialized.
+        """
+        if not self._is_initialized():
+            raise RuntimeError("Unable to serialize uninitialized object")
+
+        try:
+            result = {
+                'mtype': self.mtype,
+                'attributes': {},
+            }
+
+            # Obtain the set of policy attribute names bound to the Fuzznum instance.
+            #   Only policy attributes represent the core data of the fuzzy number
+            #   and need to be serialized. Template attributes are typically computational
+            #   results or presentation-level attributes and do not need to be directly serialized.
+            strategy_attrs = object.__getattribute__(self, '_bound_strategy_attributes')
+            for attr_name in strategy_attrs:
+                try:
+                    # Attempt to get the current value of each strategy attribute and add
+                    #   it to the `attributes` dictionary. Using `getattr(self, attr_name)`
+                    #   will trigger `__getattribute__` and `_delegate_attribute_access`,
+                    #   ensuring that the actual attribute value is obtained (possibly from
+                    #   the cache or the strategy instance).
+                    result['attributes'][attr_name] = getattr(self, attr_name)
+                except AttributeError:
+                    pass
+
+            return result
+        except AttributeError as e:
+            raise RuntimeError(f"Failed to serialize: {e}")
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Fuzznum':
+        """
+        Deserialize fuzzy number instance from dictionary
+
+        This method is a class method (`@classmethod`) used to reconstruct a `Fuzznum`
+        instance from a dictionary. It is the inverse operation of the `to_dict()` method,
+        allowing the object's state to be restored from serialized data.
+
+        Args:
+            cls: The class itself (Fuzznum).
+            data: A dictionary containing the state of a fuzzy number instance,
+                typically generated by the `to_dict()` method. It must contain the 'mtype' key.
+
+        Returns:
+            Fuzznum: A new `Fuzznum` instance reconstructed from the dictionary data.
+
+        Raises:
+            ValueError: If the input dictionary is missing the 'mtype' key.
+        """
+        if 'mtype' not in data:
+            raise ValueError("The dictionary must contain the 'mtype' key.")
+
+        # Create a new Fuzznum instance using the 'mtype' from the dictionary.
+        instance = cls(data['mtype'])
+
+        # Setting Attributes
+        # If the dictionary contains the 'attributes' key (which stores policy attributes),
+        #   iterate through and set these attributes. Using `setattr(instance, attr_name, value)`
+        #   will trigger the `__setattr__` method of the `Fuzznum` instance, ensuring that the
+        #   attribute value is properly delegated to the underlying policy instance and that any
+        #   associated validation and callbacks are triggered.
+        if 'attributes' in data:
+            for attr_name, value in data['attributes'].items():
+                try:
+                    setattr(instance, attr_name, value)
+                except AttributeError:
+                    pass
+
+        return instance
+
+    def __getstate__(self): ...
+
+    def __setstate__(self, state): ...
+
+    # ================================ Type Conversion ===============================
+
+    def __repr__(self) -> str:
+        """
+        String representation of the object
+
+        Returns:
+            str: The formal string representation of the object.
+        """
+        # If a 'report' method is bound (from the template), use it for representation.
+        if hasattr(self, 'report') and callable(self.report):
+            try:
+                return self.get_template_instance().report()
+            except ValueError:
+                # Fallback if the template's report method fails.
+                pass
+
+        # Default representation if no report method is available, or it fails.
+        return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
+
+    def __str__(self) -> str:
+        """
+        User-friendly string representation
+
+        Returns:
+            str: A concise, user-friendly string representation of the object.
+        """
+        # If a 'str' method is bound (from the template), use it for representation.
+        if hasattr(self, 'str') and callable(self.str):
+            try:
+                return self.get_template_instance().str()
+            except ValueError:
+                # Fallback if the template's str method fails.
+                pass
+
+        # Default representation if no str method is available, or it fails.
+        return f"Fuzznum[{getattr(self, 'mtype', 'unknown')}]"
+
+    def __bool__(self) -> bool: ...
+
+    def __format__(self, format_spec): ...

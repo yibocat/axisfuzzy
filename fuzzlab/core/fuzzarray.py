@@ -298,79 +298,6 @@ class Fuzzarray:
                 result[index] = item  # Copy other types directly (e.g., None, scalars).
         return result
 
-    @property
-    def shape(self) -> tuple[int, ...]:
-        """
-        Returns the shape of the Fuzzarray.
-
-        This is a read-only property that delegates to the shape of the
-        underlying NumPy array.
-
-        Returns:
-            tuple[int, ...]: A tuple representing the dimensions of the array.
-        """
-        return self._data.shape
-
-    @property
-    def ndim(self) -> int:
-        """
-        Returns the number of dimensions of the Fuzzarray.
-
-        This is a read-only property that delegates to the ndim of the
-        underlying NumPy array.
-
-        Returns:
-            int: The number of array dimensions.
-        """
-        return self._data.ndim
-
-    @property
-    def size(self) -> int:
-        """
-        Returns the total number of elements in the Fuzzarray.
-
-        This is a read-only property that delegates to the size of the
-        underlying NumPy array.
-
-        Returns:
-            int: The total number of elements.
-        """
-        return self._data.size
-
-    @property
-    def mtype(self) -> str:
-        """
-        Returns the common fuzzy number type (`mtype`) of all Fuzznum elements in the array.
-
-        Returns:
-            str: The membership type string.
-        """
-        return self._mtype
-
-    @property
-    def q(self) -> int:
-        """
-        Returns the common q-rung value (`q`) of all Fuzznum elements in the array.
-
-        Returns:
-            int: The q-rung value.
-        """
-        return self._q
-
-    @property
-    def data(self) -> np.ndarray:
-        """
-        Returns the underlying NumPy array containing the Fuzznum elements.
-
-        Direct access to `_data` is provided for advanced use cases, but
-        modifications to this array should be done carefully to maintain
-        Fuzzarray's consistency guarantees (e.g., mtype, q).
-
-        Returns:
-            np.ndarray: The internal NumPy array.
-        """
-        return self._data
-
     def __getattr__(self, name: str) -> Any:
         """
         Dynamically proxies `Fuzznum`'s methods and properties to achieve
@@ -427,90 +354,90 @@ class Fuzzarray:
         # If the attribute is neither directly on Fuzzarray nor a delegated Fuzznum member, raise AttributeError.
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'.")
 
-    def __len__(self) -> int:
-        """
-        Returns the length of the first dimension of the array.
+    # ========================= Special Attributes ==============================
 
-        This allows `len(fuzzarray_instance)` to work like `len(numpy_array)`.
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """
+        Returns the shape of the Fuzzarray.
+
+        This is a read-only property that delegates to the shape of the
+        underlying NumPy array.
 
         Returns:
-            int: The size of the first dimension.
+            tuple[int, ...]: A tuple representing the dimensions of the array.
         """
-        return len(self._data)
+        return self._data.shape
 
-    def __iter__(self) -> Iterator[Union[Fuzznum, 'Fuzzarray']]:
+    @property
+    def ndim(self) -> int:
         """
-        Provides an iterator that yields sub-Fuzzarrays or individual Fuzznums
-        along the first dimension.
+        Returns the number of dimensions of the Fuzzarray.
 
-        This allows iteration over the Fuzzarray, similar to iterating over a NumPy array.
-
-        Yields:
-            Union[Fuzznum, 'Fuzzarray']: A Fuzznum object if the item is a scalar,
-                                         or a Fuzzarray if the item is a sub-array.
-        """
-        for item in self._data:
-            if isinstance(item, np.ndarray):
-                # If the item is a NumPy array (i.e., a sub-array), wrap it in a new Fuzzarray.
-                yield Fuzzarray(item, mtype=self.mtype, copy=False)
-            else:
-                # Otherwise, yield the Fuzznum object directly.
-                yield item
-
-    # ======================== Indexing and slicing operations ========================
-
-    def __getitem__(self, key) -> Union[Fuzznum, 'Fuzzarray']:
-        """
-        Implements indexing and slicing for Fuzzarray.
-
-        Allows accessing individual Fuzznum elements or sub-arrays using NumPy-like
-        indexing (e.g., `fuzzarray[0]`, `fuzzarray[1, 2]`, `fuzzarray[:, 0]`).
-
-        Args:
-            key: The index or slice object.
+        This is a read-only property that delegates to the ndim of the
+        underlying NumPy array.
 
         Returns:
-            Union[Fuzznum, 'Fuzzarray']: A single Fuzznum if a scalar element is accessed,
-                                         or a new Fuzzarray if a slice or sub-array is accessed.
+            int: The number of array dimensions.
         """
-        result = self._data[key]
-        if isinstance(result, np.ndarray):
-            # If the result of indexing is a NumPy array, wrap it in a new Fuzzarray.
-            return Fuzzarray(result, mtype=self._mtype, copy=False)
-        else:
-            # Otherwise, it's a single Fuzznum element.
-            return result
+        return self._data.ndim
 
-    def __setitem__(self, key, value: Union[Fuzznum, 'Fuzzarray']) -> None:
+    @property
+    def size(self) -> int:
         """
-        Implements item assignment for Fuzzarray.
+        Returns the total number of elements in the Fuzzarray.
 
-        Allows setting individual Fuzznum elements or sub-arrays. Ensures that
-        assigned Fuzznum(s) have a matching `mtype`.
+        This is a read-only property that delegates to the size of the
+        underlying NumPy array.
 
-        Args:
-            key: The index or slice object.
-            value (Union[Fuzznum, 'Fuzzarray']): The Fuzznum or Fuzzarray to assign.
-
-        Raises:
-            ValueError: If the assigned Fuzznum or Fuzzarray has a different `mtype`.
-            TypeError: If the assigned value is not a Fuzznum or Fuzzarray.
+        Returns:
+            int: The total number of elements.
         """
-        if isinstance(value, Fuzznum):
-            # If assigning a single Fuzznum, check its mtype.
-            if value.mtype != self._mtype:
-                raise ValueError(f"mtype mismatch: expected '{self._mtype}', "
-                                 f"got '{value.mtype}' for assigned Fuzznum.")
-            self._data[key] = value
-        elif isinstance(value, Fuzzarray):
-            # If assigning a Fuzzarray, check its mtype.
-            if value._mtype != self._mtype:
-                raise ValueError(f"mtype mismatch: expected '{self._mtype}', "
-                                 f"got '{value._mtype}' for assigned Fuzzarray.")
-            self._data[key] = value._data  # Assign the underlying NumPy array.
-        else:
-            # Raise an error for unsupported assignment types.
-            raise TypeError(f"Can only assign Fuzznum or Fuzzarray, got {type(value)}.")
+        return self._data.size
+
+    @property
+    def T(self) -> 'Fuzzarray':
+        """
+        Returns the transposed Fuzzarray (shortcut for `transpose()`).
+
+        Returns:
+            Fuzzarray: The transposed Fuzzarray.
+        """
+        return self.transpose()
+
+    @property
+    def mtype(self) -> str:
+        """
+        Returns the common fuzzy number type (`mtype`) of all Fuzznum elements in the array.
+
+        Returns:
+            str: The membership type string.
+        """
+        return self._mtype
+
+    @property
+    def q(self) -> int:
+        """
+        Returns the common q-rung value (`q`) of all Fuzznum elements in the array.
+
+        Returns:
+            int: The q-rung value.
+        """
+        return self._q
+
+    @property
+    def data(self) -> np.ndarray:
+        """
+        Returns the underlying NumPy array containing the Fuzznum elements.
+
+        Direct access to `_data` is provided for advanced use cases, but
+        modifications to this array should be done carefully to maintain
+        Fuzzarray's consistency guarantees (e.g., mtype, q).
+
+        Returns:
+            np.ndarray: The internal NumPy array.
+        """
+        return self._data
 
     # ======================== Shape Operation Method ========================
 
@@ -552,16 +479,6 @@ class Fuzzarray:
         else:
             new_data = self._data.transpose(*axes)
         return Fuzzarray(new_data, mtype=self.mtype, copy=False)
-
-    @property
-    def T(self) -> 'Fuzzarray':
-        """
-        Returns the transposed Fuzzarray (shortcut for `transpose()`).
-
-        Returns:
-            Fuzzarray: The transposed Fuzzarray.
-        """
-        return self.transpose()
 
     def copy(self) -> 'Fuzzarray':
         """
@@ -860,7 +777,102 @@ class Fuzzarray:
         from .dispatcher import operate
         return operate('equivalence', self, other)
 
-    # ======================== Array Operations ==========================
+    def __matmul__(self, other):
+        data = self.data @ other.data
+        return fuzzarray(data)
+
+    # ======================== Container Operations ===========================
+
+    def __len__(self) -> int:
+        """
+        Returns the length of the first dimension of the array.
+
+        This allows `len(fuzzarray_instance)` to work like `len(numpy_array)`.
+
+        Returns:
+            int: The size of the first dimension.
+        """
+        return len(self._data)
+
+    def __getitem__(self, key) -> Union[Fuzznum, 'Fuzzarray']:
+        """
+        Implements indexing and slicing for Fuzzarray.
+
+        Allows accessing individual Fuzznum elements or sub-arrays using NumPy-like
+        indexing (e.g., `fuzzarray[0]`, `fuzzarray[1, 2]`, `fuzzarray[:, 0]`).
+
+        Args:
+            key: The index or slice object.
+
+        Returns:
+            Union[Fuzznum, 'Fuzzarray']: A single Fuzznum if a scalar element is accessed,
+                                         or a new Fuzzarray if a slice or sub-array is accessed.
+        """
+        result = self._data[key]
+        if isinstance(result, np.ndarray):
+            # If the result of indexing is a NumPy array, wrap it in a new Fuzzarray.
+            return Fuzzarray(result, mtype=self._mtype, copy=False)
+        else:
+            # Otherwise, it's a single Fuzznum element.
+            return result
+
+    def __setitem__(self, key, value: Union[Fuzznum, 'Fuzzarray']) -> None:
+        """
+        Implements item assignment for Fuzzarray.
+
+        Allows setting individual Fuzznum elements or sub-arrays. Ensures that
+        assigned Fuzznum(s) have a matching `mtype`.
+
+        Args:
+            key: The index or slice object.
+            value (Union[Fuzznum, 'Fuzzarray']): The Fuzznum or Fuzzarray to assign.
+
+        Raises:
+            ValueError: If the assigned Fuzznum or Fuzzarray has a different `mtype`.
+            TypeError: If the assigned value is not a Fuzznum or Fuzzarray.
+        """
+        if isinstance(value, Fuzznum):
+            # If assigning a single Fuzznum, check its mtype.
+            if value.mtype != self._mtype:
+                raise ValueError(f"mtype mismatch: expected '{self._mtype}', "
+                                 f"got '{value.mtype}' for assigned Fuzznum.")
+            self._data[key] = value
+        elif isinstance(value, Fuzzarray):
+            # If assigning a Fuzzarray, check its mtype.
+            if value._mtype != self._mtype:
+                raise ValueError(f"mtype mismatch: expected '{self._mtype}', "
+                                 f"got '{value._mtype}' for assigned Fuzzarray.")
+            self._data[key] = value._data  # Assign the underlying NumPy array.
+        else:
+            # Raise an error for unsupported assignment types.
+            raise TypeError(f"Can only assign Fuzznum or Fuzzarray, got {type(value)}.")
+
+    def __delitem__(self, key): ...
+
+    def __contains__(self, item): ...
+
+    def __iter__(self):
+        """
+        Provides an iterator that yields sub-Fuzzarrays or individual Fuzznums
+        along the first dimension.
+
+        This allows iteration over the Fuzzarray, similar to iterating over a NumPy array.
+
+        Yields:
+            Union[Fuzznum, 'Fuzzarray']: A Fuzznum object if the item is a scalar,
+                                         or a Fuzzarray if the item is a sub-array.
+        """
+        for item in self._data:
+            if isinstance(item, np.ndarray):
+                # If the item is a NumPy array (i.e., a sub-array), wrap it in a new Fuzzarray.
+                yield Fuzzarray(item, mtype=self.mtype, copy=False)
+            else:
+                # Otherwise, yield the Fuzznum object directly.
+                yield item
+
+    def __next__(self): ...
+
+    # ======================== Array Operations ===============================
     # These methods provide common array manipulation functionalities,
     # similar to those found in NumPy.
 
@@ -964,7 +976,7 @@ class Fuzzarray:
         # Create a new Fuzzarray from the stacked data, preserving mtype and q.
         return cls(stacked_data, mtype=first_mtype, copy=False)
 
-    # ======================== String representation ========================
+    # ================================ Type Conversion ===============================
 
     def __repr__(self) -> str:
         """
@@ -991,6 +1003,12 @@ class Fuzzarray:
         """
         return f"{self._data}"
 
+    def __bool__(self) -> bool: ...
+
+    def __format__(self, format_spec): ...
+
+
+# ================================= Factory function =================================
 
 def fuzzarray(data: np.ndarray | list | tuple | Fuzznum,
               mtype: Optional[str] = None,
