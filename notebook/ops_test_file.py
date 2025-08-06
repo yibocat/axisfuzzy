@@ -28,7 +28,7 @@ import numpy as np
 # 假设此脚本与 fuzzlab 目录位于同一父目录下，或者 fuzzlab 已安装
 from fuzzlab.core.fuzzarray import fuzzarray
 from fuzzlab.core.fuzznums import Fuzznum
-from fuzzlab.core.ops import get_operation_registry
+from fuzzlab.core.mixin import get_operation_registry
 from fuzzlab.modules.qrofs.op import register_qrofn_operations
 
 

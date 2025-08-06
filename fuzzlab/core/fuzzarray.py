@@ -14,13 +14,13 @@ number types (`mtype`) and q-rungs (`q`) across all elements. It delegates
 operations to the underlying `Fuzznum` objects and supports broadcasting
 and common array manipulations.
 """
-from typing import Optional, Iterator, Union, List, Any
+from typing import Optional, Union, List, Any
 
 import numpy as np
 
 from fuzzlab.config import get_config
 from fuzzlab.core.fuzznums import Fuzznum
-from fuzzlab.core.ops import get_operation_registry, OperationMixin
+from fuzzlab.core.mixin import get_operation_registry, OperationMixin
 from fuzzlab.core.triangular import OperationTNorm
 
 
@@ -1019,7 +1019,7 @@ class Fuzzarray:
             >>> arr = fuzzarray([f1, f2])
 
             # Block formatting (right-align the entire array within a 50-character width)
-            >>> print(f"My Array:\n{arr:>50}")
+            >>> print(f"My Array:\\n{arr:>50}")
             My Array:
                                   [<Fuzznum (0.8, 0.3)> <Fuzznum (0.6, 0.4)>]
 

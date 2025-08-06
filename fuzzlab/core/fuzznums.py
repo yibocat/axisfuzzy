@@ -1042,9 +1042,9 @@ class Fuzznum:
         The number of dimensions of the Fuzznum instance.
 
         Returns:
-            default 1
+            default 0
         """
-        return 1
+        return 0
 
     @property
     def size(self) -> int:

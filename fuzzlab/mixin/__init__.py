@@ -6,7 +6,8 @@
 #  Software: FuzzLab
 
 from .registry import get_mixin_registry
-from .ops_func import *
+from .ops import *
+from .func import *
 
 from ..core import Fuzznum, Fuzzarray
 

@@ -20,7 +20,7 @@ Classes:
     QROFNTemplate: Defines the representation and auxiliary properties for QROFNs,
                    inheriting from `FuzznumTemplate`.
 
-Example Usage:
+Example:
     >>> from fuzzlab.core.fuzznums import Fuzznum
     >>> # Create a QROFN instance with q=3, membership degree 0.8, and non-membership degree 0.5
     >>> qrofn_num = Fuzznum(mtype='qrofn', qrung=3).create(md=0.8, nmd=0.5)
