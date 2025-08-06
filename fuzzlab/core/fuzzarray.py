@@ -20,7 +20,7 @@ import numpy as np
 
 from fuzzlab.config import get_config
 from fuzzlab.core.fuzznums import Fuzznum
-from fuzzlab.core.mixin import get_operation_registry, OperationMixin
+from fuzzlab.core.operation import get_operation_registry, OperationMixin
 from fuzzlab.core.triangular import OperationTNorm
 
 

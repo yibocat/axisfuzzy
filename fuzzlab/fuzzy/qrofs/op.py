@@ -45,7 +45,7 @@ import warnings
 from typing import List, Any, Dict, Union
 
 from fuzzlab.config import get_config
-from fuzzlab.core.mixin import OperationMixin, get_operation_registry
+from fuzzlab.core.operation import OperationMixin, get_operation_registry
 from fuzzlab.core.triangular import OperationTNorm
 
 

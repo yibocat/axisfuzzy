@@ -32,7 +32,7 @@ from typing import Optional, Set, Dict, Callable, Any, Union, List
 
 from fuzzlab.config import get_config
 from fuzzlab.core.cache import LruCache
-from fuzzlab.core.mixin import get_operation_registry
+from fuzzlab.core.operation import get_operation_registry
 from fuzzlab.core.triangular import OperationTNorm
 
 

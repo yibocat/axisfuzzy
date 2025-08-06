@@ -12,7 +12,7 @@ from .dispatcher import operate
 from .fuzzarray import Fuzzarray, fuzzarray
 from .fuzznums import Fuzznum
 
-from .mixin import OperationMixin, get_operation_registry
+from .operation import OperationMixin, get_operation_registry
 
 from .registry import (
     get_fuzznum_registry,

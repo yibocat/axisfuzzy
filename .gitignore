@@ -7,3 +7,4 @@ Icon
 __pycache__
 !/uv.lock
 /uv.lock
+/notebook/
