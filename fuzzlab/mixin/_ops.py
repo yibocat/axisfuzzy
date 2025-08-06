@@ -1,10 +1,9 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
 #  Python: 3.10.9
-#  Date: 2025/8/6 17:02
+#  Date: 2025/8/5 17:14
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-
 """
 This module defines common mathematical and aggregation operations
 (e.g., sum, mean, max, min) for Fuzzarray and Fuzznum objects.
@@ -18,9 +17,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
-# from .registry import get_mixin_registry
-
-from .registry import get_mixin_registry
+from ._registry import get_mixin_registry
 
 from ..core.fuzzarray import Fuzzarray
 from ..core.fuzznums import Fuzznum
@@ -29,7 +26,7 @@ from ..core.fuzznums import Fuzznum
 registry = get_mixin_registry()
 
 
-@registry.register(name='sum', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='sum', target_classes=["Fuzzarray", "Fuzznum"])
 def _sum_impl(self: Union['Fuzzarray', 'Fuzznum'],
               axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray']:
     """
@@ -89,7 +86,7 @@ def _sum_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return Fuzzarray(result, copy=False)
 
 
-@registry.register(name='mean', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='mean', target_classes=["Fuzzarray", "Fuzznum"])
 def _mean_impl(self: Union['Fuzzarray', 'Fuzznum'],
                axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray']:
     """
@@ -149,7 +146,7 @@ def _mean_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return Fuzzarray(result, copy=False)
 
 
-@registry.register(name='max', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='max', target_classes=["Fuzzarray", "Fuzznum"])
 def _max_impl(self: Union['Fuzzarray', 'Fuzznum'],
               axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray']:
     """
@@ -209,7 +206,7 @@ def _max_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return Fuzzarray(result, copy=False)
 
 
-@registry.register(name='min', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='min', target_classes=["Fuzzarray", "Fuzznum"])
 def _min_impl(self: Union['Fuzzarray', 'Fuzznum'],
               axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray']:
     """
@@ -251,7 +248,7 @@ def _min_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return Fuzzarray(result, copy=False)
 
 
-@registry.register(name='prod', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='prod', target_classes=["Fuzzarray", "Fuzznum"])
 def _prod_impl(self: Union['Fuzzarray', 'Fuzznum'],
                axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray']:
     """
@@ -285,7 +282,7 @@ def _prod_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return Fuzzarray(result, copy=False)
 
 
-@registry.register(name='var', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='var', target_classes=["Fuzzarray", "Fuzznum"])
 def _var_impl(self: Union['Fuzzarray', 'Fuzznum'],
               axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray', float]:
     """
@@ -317,7 +314,7 @@ def _var_impl(self: Union['Fuzzarray', 'Fuzznum'],
     return variance
 
 
-@registry.register(name='std', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='std', target_classes=["Fuzzarray", "Fuzznum"])
 def _std_impl(self: Union['Fuzzarray', 'Fuzznum'],
               axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray', float]:
     """
@@ -343,3 +340,52 @@ def _std_impl(self: Union['Fuzzarray', 'Fuzznum'],
 
     # Std dev is the square root of variance
     return variance ** 0.5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

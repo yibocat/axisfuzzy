@@ -1,22 +1,21 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
 #  Python: 3.10.9
-#  Date: 2025/8/6 17:03
+#  Date: 2025/8/6 13:13
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-
 import copy
 from typing import Union, Tuple
 
 import numpy as np
 
-from .registry import get_mixin_registry
+from ._registry import get_mixin_registry
 from ..core import Fuzznum, Fuzzarray
 
 registry = get_mixin_registry()
 
 
-@registry.register(name='reshape', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='reshape', target_classes=["Fuzzarray", "Fuzznum"])
 def _reshape_impl(self: Union['Fuzzarray', 'Fuzznum'],
                   *shape: int) -> 'Fuzzarray':
     """
@@ -59,7 +58,7 @@ def _reshape_impl(self: Union['Fuzzarray', 'Fuzznum'],
     return Fuzzarray(reshaped_data, copy=False)
 
 
-@registry.register(name='flatten', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='flatten', target_classes=["Fuzzarray", "Fuzznum"])
 def _flatten_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzzarray':
     """
     Return a copy of the array collapsed into one dimension.
@@ -86,7 +85,7 @@ def _flatten_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzzarray':
     return Fuzzarray(flattened_data, copy=False)
 
 
-@registry.register(name='squeeze', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='squeeze', target_classes=["Fuzzarray", "Fuzznum"])
 def _squeeze_impl(self: Union['Fuzzarray', 'Fuzznum'],
                   axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray']:
     """
@@ -124,7 +123,7 @@ def _squeeze_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return Fuzzarray(squeezed_data, copy=False)
 
 
-@registry.register(name='copy', injection_type='top_level_function')
+@registry.register_top_level_function(name='copy')
 def _copy_top_level_impl(obj: Union['Fuzzarray', 'Fuzznum']) -> Union['Fuzzarray', 'Fuzznum']:
     """
     Returns a deep copy of the fuzzy object.
@@ -151,7 +150,7 @@ def _copy_top_level_impl(obj: Union['Fuzzarray', 'Fuzznum']) -> Union['Fuzzarray
         raise TypeError(f"Unsupported type for copy: {type(obj)}. Expected Fuzzarray or Fuzznum.")
 
 
-@registry.register(name='ravel', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='ravel', target_classes=["Fuzzarray", "Fuzznum"])
 def _ravel_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzzarray':
     """
     Return a contiguous flattened array.
@@ -186,7 +185,7 @@ def _ravel_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzzarray':
     return Fuzzarray(raveled_data, copy=False)
 
 
-@registry.register(name='transpose', injection_type='top_level_function')
+@registry.register_top_level_function(name='transpose')
 def _transpose_impl(obj: Union['Fuzzarray', 'Fuzznum']) -> Union['Fuzzarray', 'Fuzznum']:
     """
     Returns a view of the fuzzy object with axes transposed.
@@ -208,7 +207,7 @@ def _transpose_impl(obj: Union['Fuzzarray', 'Fuzznum']) -> Union['Fuzzarray', 'F
         raise TypeError(f"Unsupported type for transpose: {type(obj)}")
 
 
-@registry.register(name='broadcast_to', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='broadcast_to', target_classes=["Fuzzarray", "Fuzznum"])
 def _broadcast_to_impl(self: Union['Fuzzarray', 'Fuzznum'],
                        *shape: int) -> 'Fuzzarray':
     """
@@ -250,7 +249,7 @@ def _broadcast_to_impl(self: Union['Fuzzarray', 'Fuzznum'],
         raise ValueError(f"Cannot broadcast object with shape {self.shape} to shape {target_shape}: {e}")
 
 
-@registry.register(name='item', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='item', target_classes=["Fuzzarray", "Fuzznum"])
 def _item_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzznum':
     """
     Returns the scalar item of the fuzzy object.
@@ -284,7 +283,7 @@ def _item_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzznum':
         raise TypeError(f"Unsupported type for item() method: {type(self)}")
 
 
-@registry.register(name='sort', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='sort', target_classes=["Fuzzarray", "Fuzznum"])
 def _sort_impl(self: Union['Fuzzarray', 'Fuzznum'],
                axis: int = -1) -> Union['Fuzzarray', 'Fuzznum']:
     """
@@ -306,7 +305,7 @@ def _sort_impl(self: Union['Fuzzarray', 'Fuzznum'],
     return Fuzzarray(sorted_data, copy=False)
 
 
-@registry.register(name='argsort', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='argsort', target_classes=["Fuzzarray", "Fuzznum"])
 def _argsort_impl(self: Union['Fuzzarray', 'Fuzznum'],
                   axis: int = -1) -> np.ndarray:
     """
@@ -325,7 +324,7 @@ def _argsort_impl(self: Union['Fuzzarray', 'Fuzznum'],
     return np.argsort(self._data, axis=axis)
 
 
-@registry.register(name='argmax', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='argmax', target_classes=["Fuzzarray", "Fuzznum"])
 def _argmax_impl(self: Union['Fuzzarray', 'Fuzznum'],
                  axis: Union[int, Tuple[int, ...]] = None) -> Union[np.integer, int, np.ndarray]:
     """
@@ -349,7 +348,7 @@ def _argmax_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return result.item()
 
 
-@registry.register(name='argmin', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@registry.register(name='argmin', target_classes=["Fuzzarray", "Fuzznum"])
 def _argmin_impl(self: Union['Fuzzarray', 'Fuzznum'],
                  axis: Union[int, Tuple[int, ...]] = None) -> Union[np.integer, int, np.ndarray]:
     """
@@ -371,3 +370,6 @@ def _argmin_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return result.tolist()
     else:
         return result.item()
+
+
+

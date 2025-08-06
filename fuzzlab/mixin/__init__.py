@@ -24,7 +24,7 @@ def _apply_functions():
         'Fuzzarray': Fuzzarray
     }
 
-    # 调用 FunctionRegistry 的 build_and_inject 方法。
+    # 调用 MixinFunctionRegistry 的 build_and_inject 方法。
     # globals() 传递的是当前模块（即 fuzzlab/__init__.py）的命名空间，
     # 这样顶层函数就可以被直接添加到 fuzzlab 模块下。
     get_mixin_registry().build_and_inject(class_map, globals())
