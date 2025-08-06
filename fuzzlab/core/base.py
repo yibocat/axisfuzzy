@@ -784,6 +784,22 @@ class FuzznumTemplate(ABC):
             if len(self._template_cache) < 10 else f"{len(self._template_cache)} items"
         }
 
+    def __format__(self, format_spec):
+        """
+        Custom string formatting for Fuzznum instances.
+
+        This method provides a default implementation for formatting that can be
+        overridden by subclasses for more specific behavior. By default, it applies
+        the format specification to the standard string representation of the object.
+
+        Args:
+            format_spec (str): The format specification string.
+
+        Returns:
+            str: The formatted string representation.
+        """
+        return format(self.str(), format_spec)
+
 
 # ======================== Improved Example Implementations ========================
 # These example implementations are for demonstration purposes and are not

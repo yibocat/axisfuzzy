@@ -277,3 +277,64 @@ class QROFNTemplate(FuzznumTemplate):
             base = 0    # Handle potential floating point inaccuracies
         result = base ** (1 / self.instance.q)
         return round(result, config.DEFAULT_PRECISION)
+
+    def __format__(self, format_spec: str) -> str:
+        """Provides custom formatting for the example fuzzy number.
+
+        This implementation extends the default formatting behavior to support
+        several custom format specifiers specific to this fuzzy number type.
+
+        Format Specifiers:
+            s: The score of the fuzzy number (md - nmd).
+            a: The accuracy of the fuzzy number accuracy.
+            i: The indeterminacy of the fuzzy number indeterminacy.
+            r: The detailed report string.
+            p: The parameters as a tuple string, e.g., '(0.8, 0.1)'.
+            j: A JSON string representation of the fuzzy number's attributes.
+
+        If a specifier other than the custom ones is provided, it falls back
+        to the standard string formatting applied to the concise representation.
+
+        Args:
+            format_spec (str): The format specification string.
+
+        Returns:
+            str: The formatted string representation.
+
+        Examples:
+            fuzz = ...
+            f"Score: {fuzz:s}"
+            f"Accuracy: {fuzz:a}"
+            f"Indeterminacy: {fuzz:i}"
+            f"Report: {fuzz:r}"
+            f"Params: {fuzz:p}"
+            f"JSON: {fuzz:j}"
+            f"Right-aligned: {fuzz:>20}"
+        """
+        # If no format specifier is provided, return the default string representation.
+        if not format_spec:
+            return self.str()
+
+        # Handle custom format specifiers.
+        if format_spec == 's':
+            return str(self.score)
+        if format_spec == 'a':
+            return str(self.accuracy)
+        if format_spec == 'i':
+            return str(self.indeterminacy)
+        if format_spec == 'r':
+            return self.report()
+        if format_spec == 'p':
+            return f"({self.instance.md}, {self.instance.nmd})"
+        if format_spec == 'j':
+            import json
+            return json.dumps({
+                'mtype': self.mtype,
+                'md': self.instance.md,
+                'nmd': self.instance.nmd,
+                'q': self.instance.q
+            })
+
+        # If it's not a special specifier, use the default behavior from the base class.
+        # This allows for standard formatting like alignment and width on the default string.
+        return super().__format__(format_spec)

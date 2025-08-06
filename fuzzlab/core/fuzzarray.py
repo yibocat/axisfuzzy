@@ -993,17 +993,67 @@ class Fuzzarray:
 
     def __format__(self, format_spec: str) -> str:
         """
-        Custom string formatting for Fuzzarray.
+        Provides advanced string formatting capabilities for Fuzzarray instances.
 
-        Formats the default string representation of the array.
+        This method supports two primary types of formatting:
+            1.  **Block Formatting**: Standard format specifiers (e.g., for alignment and width like `>20`, `^30`)
+                are applied to each line of the array's string representation. This is useful for aligning
+                the entire multi-line array within a larger string context.
+
+            2.  **Element-wise Formatting**: Using a custom format specifier prefixed with `e:` (e.g., `e:s`, `e:j`),
+                you can apply a specific format to each individual `Fuzznum` element within the array.
+                The part after `e:` is passed directly to the `__format__` method of each `Fuzznum` element.
 
         Args:
             format_spec (str): The format specification string.
 
         Returns:
-            str: The formatted string.
+            str: The formatted string representation of the Fuzzarray.
+
+        Examples:
+            >>> from fuzzlab.core.fuzznums import Fuzznum
+            >>> from fuzzlab.modules.qrofs.qrofn import QROFNStrategy, QROFNTemplate
+            >>> # Assuming QROFNTemplate supports 's' (score) and 'j' (JSON) format specifiers
+            >>> f1 = Fuzznum(mtype='qrofn', qrung=2).create(md=0.8, nmd=0.3)
+            >>> f2 = Fuzznum(mtype='qrofn', qrung=2).create(md=0.6, nmd=0.4)
+            >>> arr = fuzzarray([f1, f2])
+
+            # Block formatting (right-align the entire array within a 50-character width)
+            >>> print(f"My Array:\n{arr:>50}")
+            My Array:
+                                  [<Fuzznum (0.8, 0.3)> <Fuzznum (0.6, 0.4)>]
+
+            # Element-wise formatting (display the score 's' for each element)
+            >>> print(f"{arr:e:s}")
+            [0.55 0.2]
+
+            # Element-wise formatting (display the JSON 'j' for each element)
+            >>> print(f"{arr:e:j}")
+            [{"mtype": "qrofn", "md": 0.8, "nmd": 0.3, "q": 2} {"mtype": "qrofn", "md": 0.6, "nmd": 0.4, "q": 2}]
         """
-        return format(str(self), format_spec)
+        # If no format specifier is provided, return the default string representation.
+        if not format_spec:
+            return str(self)
+
+        # Handle custom element-wise formatting (e.g., "e:s" to format each element with 's').
+        if format_spec.startswith('e:'):
+            # Extract the inner format specifier that will be applied to each Fuzznum.
+            inner_spec = format_spec[2:]
+            # Create a vectorized function to apply the inner format specifier to each Fuzznum.
+            # `otypes=[str]` is crucial to ensure the output is a NumPy array of strings.
+            formatter = np.vectorize(lambda fuzznum: format(fuzznum, inner_spec), otypes=[str])
+            # Apply the formatter to the underlying data and return the string representation
+            # of the resulting NumPy array (which now contains formatted strings).
+            return str(formatter(self._data))
+
+        # Handle block-level alignment and width formatting.
+        # This works by applying the format specifier to each line of the array's string representation.
+        s = str(self)
+        lines = s.split('\n')
+        # Apply the format specifier to each individual line.
+        formatted_lines = [format(line, format_spec) for line in lines]
+        # Join the formatted lines back together with newline characters.
+        return '\n'.join(formatted_lines)
 
     def __getstate__(self) -> tuple:
         """

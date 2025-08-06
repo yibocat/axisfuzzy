@@ -1374,13 +1374,11 @@ class Fuzznum:
             str: The formatted string representation.
         """
         try:
-            # Delegate to the template's __format__ method if it exists
-            # TODO: 这里还没有实现 template 的 __format__ 方法
-            template = self.get_template_instance()
-            if hasattr(template, '__format__'):
-                return template.__format__(format_spec)
+            # Delegate to the template's __format__ method.
+            # The base FuzznumTemplate provides a default implementation,
+            # so this call should generally succeed for initialized objects.
+            return self.get_template_instance().__format__(format_spec)
         except (RuntimeError, AttributeError):
-            # Fallback if template or its format method is not available
-            pass
-        # Default behavior if no custom format is available
-        return format(str(self), format_spec)
+            # Fallback if template is not available or an error occurs.
+            # This can happen during initialization or if the instance is invalid.
+            return format(str(self), format_spec)
