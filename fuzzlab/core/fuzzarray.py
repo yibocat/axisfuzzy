@@ -1012,7 +1012,7 @@ class Fuzzarray:
 
         Examples:
             >>> from fuzzlab.core.fuzznums import Fuzznum
-            >>> from fuzzlab.modules.qrofs.qrofn import QROFNStrategy, QROFNTemplate
+            >>> from fuzzlab.fuzzy.qrofs.qrofn import QROFNStrategy, QROFNTemplate
             >>> # Assuming QROFNTemplate supports 's' (score) and 'j' (JSON) format specifiers
             >>> f1 = Fuzznum(mtype='qrofn', qrung=2).create(md=0.8, nmd=0.3)
             >>> f2 = Fuzznum(mtype='qrofn', qrung=2).create(md=0.6, nmd=0.4)

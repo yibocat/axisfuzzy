@@ -216,7 +216,7 @@ class FuzznumRegistry:
                                                                        strategy and template class.
         """
 
-        from fuzzlab.modules.qrofs.qrofn import QROFNStrategy, QROFNTemplate
+        from fuzzlab.fuzzy.qrofs.qrofn import QROFNStrategy, QROFNTemplate
 
         return [
             (QROFNStrategy, QROFNTemplate),
@@ -352,7 +352,7 @@ class FuzznumRegistry:
     #   it only needs to call `_notify_observers` when its state changes.
     #   Components that care about these changes (observers) register themselves independently.
     #   This loose coupling makes the system easier to maintain and extend.
-    # Event-driven: It transforms registry operations into events, allowing other modules
+    # Event-driven: It transforms registry operations into events, allowing other fuzzy
     #   to respond to these changes in an event-driven manner. For example, a logging
     #   module can register as an observer to record all registration/unregistration events,
     #   and a cache management module can clear relevant caches when a type is unregistered.

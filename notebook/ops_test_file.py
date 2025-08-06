@@ -29,7 +29,7 @@ import numpy as np
 from fuzzlab.core.fuzzarray import fuzzarray
 from fuzzlab.core.fuzznums import Fuzznum
 from fuzzlab.core.mixin import get_operation_registry
-from fuzzlab.modules.qrofs.op import register_qrofn_operations
+from fuzzlab.fuzzy.qrofs.op import register_qrofn_operations
 
 
 def run_test(description: str, operation_lambda: callable):

@@ -14,25 +14,29 @@ from .fuzznums import Fuzznum
 
 from .mixin import OperationMixin, get_operation_registry
 
-from .registry import (get_fuzznum_registry,
-                       register_fuzznum,
-                       batch_register_fuzznums,
-                       unregister_fuzznum,
-                       get_fuzznum_registered_mtypes)
+from .registry import (
+    get_fuzznum_registry,
+    register_fuzznum,
+    batch_register_fuzznums,
+    unregister_fuzznum,
+    get_fuzznum_registered_mtypes
+)
 
 from .triangular import OperationTNorm
 
-__all__ = ['FuzznumStrategy',
-           'FuzznumTemplate',
-           'Fuzzarray', 'Fuzznum',
-           'OperationMixin',
-           'OperationTNorm',
-           'operate',
-           'fuzzarray',
-           'get_operation_registry',
-           'get_fuzznum_registry',
-           'register_fuzznum',
-           'batch_register_fuzznums',
-           'unregister_fuzznum',
-           'get_fuzznum_registered_mtypes'
-           ]
+__all__ = [
+    'FuzznumStrategy',
+    'FuzznumTemplate',
+    'Fuzzarray',
+    'Fuzznum',
+    'OperationMixin',
+    'OperationTNorm',
+    'operate',
+    'fuzzarray',
+    'get_operation_registry',
+    'get_fuzznum_registry',
+    'register_fuzznum',
+    'batch_register_fuzznums',
+    'unregister_fuzznum',
+    'get_fuzznum_registered_mtypes'
+]

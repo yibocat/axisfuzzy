@@ -12,6 +12,7 @@ from .api import (get_config,
                   load_config_file,
                   save_config_file,
                   reset_config)
+
 from .config_file import Config
 
 __all__.extend([

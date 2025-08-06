@@ -9,9 +9,12 @@ from .qrofn import QROFNStrategy, QROFNTemplate
 
 from .op import register_qrofn_operations
 
+from . import extend
+
 register_qrofn_operations()
 
 __all__ = [
     'QROFNStrategy',
-    'QROFNTemplate'
+    'QROFNTemplate',
+    'register_qrofn_operations'
 ]
