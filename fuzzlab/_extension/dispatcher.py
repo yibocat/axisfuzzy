@@ -13,9 +13,10 @@ to the correct `mtype`-specific implementation registered in the
 or top-level functions, providing a unified API for users while handling
 the underlying type-based dispatch logic.
 """
-from typing import Callable, Union, Any
+from typing import Callable, Union, Any, Optional
 
 from .registry import get_extend_registry
+from ..config import get_config
 from ..core import Fuzzarray, Fuzznum
 
 
@@ -98,34 +99,32 @@ def create_top_level_dispatcher(name: str) -> Callable:
         >>> # 2. It queries the registry for 'distance' with that mtype.
         >>> # 3. It calls the found implementation, passing fuzz1, fuzz2 and other args.
     """
-    def dispatcher(obj: Any, *args, **kwargs) -> Any:
+    def dispatcher(*args, **kwargs) -> Any:
         """
         The actual dispatcher function that gets injected as a top-level function.
         """
         registry = get_extend_registry()
+        config = get_config()
         mtype = None
 
-        # Attempt to determine mtype from the first argument if it's a Fuzznum/Fuzzarray instance
-        if isinstance(obj, (Fuzznum, Fuzzarray)):
-            mtype = obj.mtype
-        # Otherwise, check if mtype is provided as a keyword argument (common for factory functions)
-        elif 'mtype' in kwargs:
+        mtype_from_obj_str = False
+
+        if 'mtype' in kwargs:
             mtype = kwargs['mtype']
+        elif args and isinstance(args[0], (Fuzznum, Fuzzarray)):
+            mtype = args[0].mtype
+        elif args and isinstance(args[0], str):
+            mtype = args[0]
+            mtype_from_obj_str = True
 
-        # If mtype still cannot be determined, raise an error
         if mtype is None:
-            raise TypeError(f"Cannot determine mtype for function '{name}'. "
-                            f"Provide a Fuzznum/Fuzzarray object as the first argument "
-                            f"or specify the 'mtype' keyword argument.")
+            mtype = config.DEFAULT_MTYPE
 
-        # Get the appropriate implementation from the registry
         implementation = registry.get_implementation(name, mtype)
         if implementation:
-            # Call the found implementation.
-            # For instance-like operations, 'obj' is the first operand.
-            # For factory functions, 'obj' might be the mtype string or a placeholder,
-            # so we pass it along with other args/kwargs.
-            return implementation(obj, *args, **kwargs)
-        # If no implementation is found, raise an error
+            if mtype_from_obj_str:
+                return implementation(*args[1:], **kwargs)
+
+            return implementation(*args, **kwargs)
         raise NotImplementedError(f"Function '{name}' is not implemented for mtype '{mtype}'.")
     return dispatcher

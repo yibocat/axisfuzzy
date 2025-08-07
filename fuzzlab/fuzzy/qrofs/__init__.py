@@ -9,7 +9,7 @@ from .qrofn import QROFNStrategy, QROFNTemplate
 
 from .op import register_qrofn_operations
 
-from . import extend
+from . import _func
 
 register_qrofn_operations()
 

@@ -8,18 +8,24 @@
 FuzzLab: A Python library for fuzzy number and fuzzy array computations.
 """
 
-from .core import *
-from .mixin import *
-from .fuzzy import *
-from .config import *
-from .extend import apply_extensions
-
 __all__ = []
 
+from .config import *
+from .core import *
+from .fuzzy import *
+from .mixin import *
+from .extension import (
+    apply_extensions,
+    get_extension_registry,
+    get_extension_dispatcher,
+    get_extension_injector,
+    batch_extension
+)
+
+__all__.extend(config.__all__)
 __all__.extend(core.__all__)
 __all__.extend(fuzzy.__all__)
-__all__.extend(config.__all__)
-__all__.extend(mixin.__all__)
-__all__.extend(extend.__all__)
+__all__.extend(core.__all__)
+__all__.extend(extension.__all__)
 
 apply_extensions()

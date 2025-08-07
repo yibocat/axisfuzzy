@@ -23,8 +23,8 @@ Classes:
 
 Functions:
     get_fuzznum_registry(): Returns the global singleton instance of `FuzznumRegistry`.
-    register_fuzznum(): A convenience function to register a single fuzzy number type.
-    batch_register_fuzznums(): A convenience function to perform transactional batch registration.
+    register_fuzz(): A convenience function to register a single fuzzy number type.
+    batch_register_fuzz(): A convenience function to perform transactional batch registration.
     unregister_fuzznum(): A convenience function to unregister a fuzzy number type.
     get_strategy(): A convenience function to retrieve a registered strategy class.
     get_template(): A convenience function to retrieve a registered template class.
@@ -351,7 +351,7 @@ class FuzznumRegistry:
     # Decoupling: The registry no longer needs to know who cares about its state changes;
     #   it only needs to call `_notify_observers` when its state changes.
     #   Components that care about these changes (observers) register themselves independently.
-    #   This loose coupling makes the system easier to maintain and extend.
+    #   This loose coupling makes the system easier to maintain and extension.
     # Event-driven: It transforms registry operations into events, allowing other fuzzy
     #   to respond to these changes in an event-driven manner. For example, a logging
     #   module can register as an observer to record all registration/unregistration events,
@@ -956,8 +956,8 @@ def get_fuzznum_registry() -> FuzznumRegistry:
 
 
 # Convenient global functions
-def register_fuzznum(strategy: Optional[Type[FuzznumStrategy]] = None,
-                     template: Optional[Type[FuzznumTemplate]] = None) -> Dict[str, Any]:
+def register_fuzz(strategy: Optional[Type[FuzznumStrategy]] = None,
+                  template: Optional[Type[FuzznumTemplate]] = None) -> Dict[str, Any]:
     """
     Global registration function: Registers a single fuzzy number strategy and/or template.
 
@@ -973,7 +973,7 @@ def register_fuzznum(strategy: Optional[Type[FuzznumStrategy]] = None,
     Examples:
         # >>> from mohupy.core.base import ExampleStrategy, ExampleTemplate
         >>> # Register a new type
-        >>> result = register_fuzznum(strategy=ExampleStrategy, template=ExampleTemplate)
+        >>> result = register_fuzz(strategy=ExampleStrategy, template=ExampleTemplate)
         >>> print(result['mtype'], result['is_complete'])
         my_type True
         >>> # Verify if registered
@@ -983,7 +983,7 @@ def register_fuzznum(strategy: Optional[Type[FuzznumStrategy]] = None,
     return get_fuzznum_registry().register(strategy=strategy, template=template)
 
 
-def batch_register_fuzznums(registrations: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+def batch_register_fuzz(registrations: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """
     Global batch registration function: Performs transactional batch registration
     of multiple fuzzy number types.
@@ -1014,7 +1014,7 @@ def batch_register_fuzznums(registrations: List[Dict[str, Any]]) -> Dict[str, Di
         ... ]
         >>>
         >>> # Execute batch registration
-        >>> results = batch_register_fuzznums(registrations_list)
+        >>> results = batch_register_fuzz(registrations_list)
         >>> print(results['type_a']['is_complete'], results['type_b']['is_complete'])
         (True, True)
         >>> # Verify successful registration

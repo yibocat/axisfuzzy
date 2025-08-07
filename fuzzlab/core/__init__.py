@@ -16,8 +16,8 @@ from .operation import OperationMixin, get_operation_registry
 
 from .registry import (
     get_fuzznum_registry,
-    register_fuzznum,
-    batch_register_fuzznums,
+    register_fuzz,
+    batch_register_fuzz,
     unregister_fuzznum,
     get_fuzznum_registered_mtypes
 )
@@ -35,8 +35,8 @@ __all__ = [
     'fuzzarray',
     'get_operation_registry',
     'get_fuzznum_registry',
-    'register_fuzznum',
-    'batch_register_fuzznums',
+    'register_fuzz',
+    'batch_register_fuzz',
     'unregister_fuzznum',
     'get_fuzznum_registered_mtypes'
 ]
