@@ -576,14 +576,8 @@ class OperationScheduler:
         self._default_t_norm_params: Dict[str, Any] = {}
 
         # Global performance statistics
-        self._performance_stats = {
-            'total_operations': 0,
-            'total_time': 0.0,
-            'operation_counts': defaultdict(lambda: defaultdict(int)),  # {op_name: {op_type: count}}
-            'operation_times': defaultdict(lambda: defaultdict(list)),  # {op_name: {op_type: [times]}}
-            'average_times': defaultdict(lambda: defaultdict(float))  # {op_name: {op_type: avg_time}}
-        }
         self._stats_lock = threading.Lock()
+        self.reset_performance_stats()
 
     def switch_t_norm(self, t_norm_type: str, **params: Any):
         """
@@ -670,12 +664,23 @@ class OperationScheduler:
         with self._stats_lock:
             self._performance_stats['total_operations'] += 1
             self._performance_stats['total_time'] += execution_time
-            self._performance_stats['operation_counts'][op_name][op_type] += 1
-            self._performance_stats['operation_times'][op_name][op_type].append(execution_time)
 
-            # Calculate average time
-            times = self._performance_stats['operation_times'][op_name][op_type]
-            self._performance_stats['average_times'][op_name][op_type] = sum(times) / len(times)
+            counts = self._performance_stats['operation_counts'][op_name]
+            averages = self._performance_stats['average_times'][op_name]
+
+            # Get old values before update
+            old_count = counts[op_type]
+            old_avg = averages[op_type]  # default_dict(float) will return 0.0 if not exists
+
+            # Update count
+            new_count = old_count + 1
+            counts[op_type] = new_count
+
+            # Update average time incrementally. This is crucial for performance.
+            # The previous implementation with sum() over a growing list caused
+            # a linear slowdown in execution time for repeated operations.
+            new_avg = old_avg + (execution_time - old_avg) / new_count
+            averages[op_type] = new_avg
 
     def get_performance_stats(self, time_unit: str = 'us') -> Dict[str, Any]:
         """
@@ -751,7 +756,6 @@ class OperationScheduler:
                 'total_operations': 0,
                 'total_time': 0.0,
                 'operation_counts': defaultdict(lambda: defaultdict(int)),
-                'operation_times': defaultdict(lambda: defaultdict(list)),
                 'average_times': defaultdict(lambda: defaultdict(float))
             }
 

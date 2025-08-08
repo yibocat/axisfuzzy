@@ -14,14 +14,16 @@ number types (`mtype`) and q-rungs (`q`) across all elements. It delegates
 operations to the underlying `Fuzznum` objects and supports broadcasting
 and common array manipulations.
 """
+import time
 from typing import Optional, Union, List, Any
 
 import numpy as np
 
-from fuzzlab.config import get_config
-from fuzzlab.core.fuzznums import Fuzznum
-from fuzzlab.core.operation import get_operation_registry, OperationMixin
-from fuzzlab.core.triangular import OperationTNorm
+from ..config import get_config
+
+from .fuzznums import Fuzznum
+from .operation import get_operation_registry, OperationMixin
+from .triangular import OperationTNorm
 
 
 class Fuzzarray:
@@ -210,15 +212,9 @@ class Fuzzarray:
             return expected_mtype or get_config().DEFAULT_MTYPE
 
         # Find the mtype from the first Fuzznum element.
-        first_fuzznum = None
-        for item in self._data.flat:
-            if isinstance(item, Fuzznum):
-                first_fuzznum = item
-                break
-
-        if first_fuzznum is None:
-            # If no Fuzznum is found (e.g., array contains only None or other non-Fuzznum objects).
-            raise ValueError("Fuzzarray must contain at least one Fuzznum object.")
+        first_fuzznum = self._data.flat[0]
+        if not isinstance(first_fuzznum, Fuzznum):
+            raise TypeError("Fuzzarray can only contain Fuzznum objects.")
 
         detected_mtype = first_fuzznum.mtype
 
@@ -227,14 +223,6 @@ class Fuzzarray:
             raise ValueError(f"mtype mismatch: expected '{expected_mtype}', "
                              f"but found '{detected_mtype}' in initial Fuzznum.")
 
-        # Iterate through all elements to ensure consistency.
-        for index, item in np.ndenumerate(self._data):
-            if not isinstance(item, Fuzznum):
-                raise TypeError(f"All elements in Fuzzarray must be Fuzznum objects, "
-                                f"found {type(item)} at index {index}.")
-            if item.mtype != detected_mtype:
-                raise ValueError(f"All Fuzznums in Fuzzarray must have the same mtype. "
-                                 f"Expected '{detected_mtype}', found '{item.mtype}' at index {index}.")
         return detected_mtype
 
     def _validate_and_set_q(self) -> int:
@@ -253,27 +241,12 @@ class Fuzzarray:
         if self._data.size == 0:
             return 1
 
-        # Find the q-rung from the first Fuzznum element.
-        first_q = None
-        for item in self._data.flat:
-            if isinstance(item, Fuzznum):
-                first_q = item.q
-                break
+        first_element = self._data.flat[0]
+        if not isinstance(first_element, Fuzznum):
+            # This case should ideally be caught by mtype validation, but as a safeguard:
+            raise TypeError("Fuzzarray can only contain Fuzznum objects.")
 
-        if first_q is None:
-            # If no Fuzznum is found.
-            raise ValueError("Fuzzarray must contain at least one Fuzznum object.")
-
-        # Iterate through all elements to ensure consistency.
-        for index, item in np.ndenumerate(self._data):
-            if not isinstance(item, Fuzznum):
-                raise TypeError(f"All elements in Fuzzarray must be Fuzznum objects, "
-                                f"found {type(item)} at index {index}.")
-            if item.q != first_q:
-                raise ValueError(f"All Fuzznums in Fuzzarray must have the same qrung. "
-                                 f"Expected '{first_q}', found '{item.q}' at index {index}.")
-
-        return first_q
+        return first_element.q
 
     @staticmethod
     def _deep_copy_fuzznums(arr: np.ndarray) -> np.ndarray:
@@ -290,13 +263,15 @@ class Fuzzarray:
         Returns:
             np.ndarray: A new NumPy array with deep copies of Fuzznum objects.
         """
-        result = np.empty_like(arr, dtype=object)
-        for index, item in np.ndenumerate(arr):
-            if isinstance(item, Fuzznum):
-                result[index] = item.copy()  # Assuming Fuzznum has a .copy() method.
-            else:
-                result[index] = item  # Copy other types directly (e.g., None, scalars).
-        return result
+        def copy_element(x):
+            return x.copy() if isinstance(x, Fuzznum) else x
+
+        # Use np.frompyfunc to create a fast, universal function (ufunc).
+        # It takes 1 input argument and returns 1 output.
+        vectorized_copy = np.frompyfunc(copy_element, 1, 1)
+
+        # Apply the vectorized function to the entire array.
+        return vectorized_copy(arr)
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -583,11 +558,14 @@ class Fuzzarray:
         else:   # int, float, np.ndarray, or None
             other_data = other  # Use directly.
 
+        start_time = time.perf_counter()
         # Execute the vectorized operation.
         if other_data is not None:
             result_data = vectorized_op(self._data, other_data)
         else:
             result_data = vectorized_op(self._data)
+        end_time = time.perf_counter()
+        print(f"Operation {op_name} took {(end_time - start_time) * 1000} ms.")
 
         # Packaging the result.
         if result_data.size == 0:
@@ -603,13 +581,23 @@ class Fuzzarray:
         first_result = result_data.flat[0]
 
         if isinstance(first_result, dict):
+            start_time = time.perf_counter()
             # If the returned value from the Fuzznum operation is a dictionary (e.g., from `execute_operation`),
             # convert each dictionary back into a Fuzznum object.
+            prototype = Fuzznum(mtype=self.mtype, qrung=self.q)
             convert_func = np.vectorize(
-                lambda d: Fuzznum(mtype=self.mtype, qrung=self.q).create(**d),
+                lambda d: prototype.create(**d) if d is not None else None,
                 otypes=[object])
             result_data = convert_func(result_data)
-            return Fuzzarray(result_data, mtype=self.mtype, copy=False)
+            end_time = time.perf_counter()
+            print(f"Packaging {op_name} took {(end_time - start_time) * 1000} ms.")
+
+            start_time = time.perf_counter()
+            result = Fuzzarray(result_data, mtype=self.mtype, copy=False)
+            end_time = time.perf_counter()
+            print(f"Generate {op_name} took {(end_time - start_time) * 1000} ms.")
+
+            return result
         else:
             # If the result elements are already Fuzznum objects (unlikely for `execute_operation`
             # but possible for other Fuzznum methods), just wrap the array in a new Fuzzarray.
