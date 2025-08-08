@@ -18,10 +18,11 @@ The dispatcher works in conjunction with `fuzzlab.extension.registry.py`
 (to look up implementations) and `fuzzlab.extension.injector.py` (to inject
 these proxy functions into classes or the top-level namespace).
 """
-from typing import Callable, Union
+from typing import Callable
 
 from .registry import get_extension_registry
-from ..core import Fuzznum, Fuzzarray
+from ..config import get_config
+from ..core import Fuzznum, Fuzzarray, get_fuzznum_registry
 
 
 class ExtensionDispatcher:
@@ -145,7 +146,7 @@ class ExtensionDispatcher:
             # fuzzlab.distance(fuzznum_instance, other_fuzznum) would then call function_dispatcher
             ```
         """
-        def function_dispatcher(obj: Union[Fuzznum, Fuzzarray], *args, **kwargs):
+        def function_dispatcher(*args, **kwargs):
             """
             The actual dispatching logic for top-level functions.
 
@@ -153,28 +154,56 @@ class ExtensionDispatcher:
             It expects the first argument to be a Fuzznum/Fuzzarray instance
             to extract its mtype and find the correct extension implementation.
             """
-            # Ensure the first argument is a Fuzznum or Fuzzarray instance.
-            if not isinstance(obj, (Fuzznum, Fuzzarray)):
-                raise TypeError(f"First argument must be Fuzznum or Fuzzarray, got {type(obj).__name__}")
+            # 1. Try to get mtype from kwargs. 'pop' is used to remove it so it
+            #    doesn't get passed to the final implementation, as it's a dispatch key.
+            fuzznum_registry = get_fuzznum_registry()
+            config = get_config()
 
-            # Extract the mtype from the first argument.
-            mtype = getattr(obj, 'mtype', None)
+            mtype = kwargs.pop('mtype', None)
+
+            # 2. If not in kwargs, try to infer from the first argument.
+            if mtype is None and args and isinstance(args[0], (Fuzznum, Fuzzarray)):
+                mtype = getattr(args[0], 'mtype', None)
+
+            if mtype is not None and mtype not in fuzznum_registry.get_registered_mtypes():
+                raise ValueError(f"Invalid fuzzy number type '{mtype}', could not be found in the registry."
+                                 f"Available fuzzy number types: "
+                                 f"{list(fuzznum_registry.get_registered_mtypes().keys())}.")
+
             if mtype is None:
-                raise AttributeError(f"Object {type(obj).__name__} has no 'mtype' attribute")
+                mtype = config.DEFAULT_MTYPE
 
-            # Retrieve the appropriate implementation from the registry.
+            # 3. Retrieve the implementation. mtype can be None here, in which case
+            #    get_function will look for a default implementation.
             implementation = self.registry.get_function(func_name, mtype)
+
             if implementation is None:
-                # Similar error handling as in create_instance_method could be added here
-                # for more detailed debugging information.
-                raise NotImplementedError(f"Function '{func_name}' not implemented for mtype '{mtype}'")
+                # 4. Provide a detailed error message for better debugging.
+                error_msg = f"Function '{func_name}' could not be dispatched. "
+                available_mtypes = list(self.registry._functions.get(func_name, {}).keys())
+                has_default = func_name in self.registry._defaults
+
+                if not available_mtypes and not has_default:
+                    error_msg += f"Function '{func_name}' is not registered at all. "
+                elif mtype:
+                    error_msg += f"Function '{func_name}' not implemented for mtype '{mtype}'. "
+                else:
+                    error_msg += f"Function '{func_name}' requires an explicit 'mtype' argument or a default implementation. "
+
+                if available_mtypes:
+                    error_msg += f" Available specialized mtypes: '{available_mtypes}'."
+                if has_default:
+                    error_msg += " A default implementation exists."
+
+                raise NotImplementedError(error_msg)
 
             # Call the found implementation with the original arguments.
-            return implementation(obj, *args, **kwargs)
+            return implementation(*args, **kwargs)
 
-        # Set __name__ and __doc__ for better introspection and debugging.
+            # Set __name__ and __doc__ for better introspection and debugging.
         function_dispatcher.__name__ = func_name
-        function_dispatcher.__doc__ = f"Dispatched top-level function for {func_name}"
+        function_dispatcher.__doc__ = (f"Dispatched top-level function for '{func_name}'. "
+                                       f"'mtype' is resolved from kwargs or the first argument.")
         return function_dispatcher
 
 
