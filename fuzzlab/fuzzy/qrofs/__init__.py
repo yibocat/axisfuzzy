@@ -10,11 +10,12 @@ from .qrofn import QROFNStrategy, QROFNTemplate
 from .op import register_qrofn_operations
 
 from . import function
+from . import random
 
 register_qrofn_operations()
 
 __all__ = [
     'QROFNStrategy',
     'QROFNTemplate',
-    'register_qrofn_operations'
+    'register_qrofn_operations',
 ]
