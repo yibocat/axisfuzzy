@@ -20,7 +20,7 @@ from ..core import Fuzznum, Fuzzarray
 
 
 def call_extension(func_name: str,
-                   obj: Union[Fuzznum, Fuzzarray],
+                   obj: Union[Fuzznum, Fuzzarray, None],
                    *args,
                    **kwargs):
     """
@@ -73,13 +73,22 @@ def call_extension(func_name: str,
         ```
     """
     registry = get_extension_registry()
-    mtype = getattr(obj, 'mtype', None)
-    if mtype is None:
-        raise AttributeError(f"Object '{type(obj).__name__}' has no 'mtype' attribute")
+
+    if obj is not None:
+        mtype = getattr(obj, 'mtype', None)
+        if mtype is None:
+            raise AttributeError(f"Object '{type(obj).__name__}' has no 'mtype' attribute")
+    else:
+        mtype = kwargs.pop('mtype', None)
+        if mtype is None:
+            raise AttributeError("No 'mtype' provided and 'obj' is None. Cannot determine mtype for extension call.")
 
     implementation = registry.get_function(func_name, mtype)
 
     if implementation is None:
         raise NotImplementedError(f"Extension function '{func_name}' not implemented for mtype '{mtype}'")
 
-    return implementation(obj, *args, **kwargs)
+    if obj is not None:
+        return implementation(obj, *args, **kwargs)
+    else:
+        return implementation(*args, **kwargs)

@@ -9,8 +9,6 @@ from .qrofn import QROFNStrategy, QROFNTemplate
 
 from .op import register_qrofn_operations
 
-from . import _func
-
 from . import function
 
 register_qrofn_operations()

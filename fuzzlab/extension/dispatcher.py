@@ -166,7 +166,7 @@ class ExtensionDispatcher:
                 mtype = getattr(args[0], 'mtype', None)
 
             if mtype is not None and mtype not in fuzznum_registry.get_registered_mtypes():
-                raise ValueError(f"Invalid fuzzy number type '{mtype}', could not be found in the registry."
+                raise ValueError(f"Invalid fuzzy number type '{mtype}', could not be found in the registry. "
                                  f"Available fuzzy number types: "
                                  f"{list(fuzznum_registry.get_registered_mtypes().keys())}.")
 

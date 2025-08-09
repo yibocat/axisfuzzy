@@ -102,7 +102,7 @@ class Fuzznum:
 
     def __init__(self,
                  mtype: Optional[str] = None,
-                 qrung: Optional[int] = None):
+                 q: Optional[int] = None):
         """Initializes a new Fuzznum instance.
 
         This constructor sets up the basic properties of the fuzzy number and
@@ -113,7 +113,7 @@ class Fuzznum:
             mtype (Optional[str]): The membership type of the fuzzy number (e.g., 'qrofn').
                                    If None, it defaults to the `DEFAULT_MTYPE` from the
                                    FuzzLab configuration.
-            qrung (Optional[int]): The q-rung value for the fuzzy number. If None, it
+            q (Optional[int]): The q-rung value for the fuzzy number. If None, it
                                    defaults to 1.
 
         Raises:
@@ -128,19 +128,19 @@ class Fuzznum:
         if mtype is None:
             mtype = config.DEFAULT_MTYPE
 
-        if qrung is None:
-            qrung = 1
+        if q is None:
+            q = 1
 
         if not isinstance(mtype, str):
             raise TypeError(f"mtype must be a string type, got '{type(mtype).__name__}'")
 
-        if not isinstance(qrung, int):
-            raise TypeError(f"qrung must be an integer, got '{type(qrung).__name__}'")
+        if not isinstance(q, int):
+            raise TypeError(f"q must be an integer, got '{type(q).__name__}'")
 
         # Use object.__setattr__ to set these core attributes directly, bypassing
         # the custom __setattr__ to prevent recursion during initialization.
         object.__setattr__(self, 'mtype', mtype)
-        object.__setattr__(self, 'q', qrung)
+        object.__setattr__(self, 'q', q)
 
         try:
             # Perform the main initialization steps: configuring strategy and template.
@@ -721,7 +721,7 @@ class Fuzznum:
             Fuzznum: A newly created and initialized Fuzznum instance.
 
         Examples:
-            >>> fuzz = Fuzznum('qrofn', qrung=2).create(md=0.7, nmd=0.2)
+            >>> fuzz = Fuzznum('qrofn', q=2).create(md=0.7, nmd=0.2)
             >>> print(fuzz.mtype)
             'qrofn'
             >>> print(fuzz.md)
@@ -765,7 +765,7 @@ class Fuzznum:
             RuntimeError: If you attempt to copy an object that has not been fully initialized.
 
         Examples:
-            >>> fuzz1 = Fuzznum('qrofn', qrung=3).create(md=0.7, nmd=0.2)
+            >>> fuzz1 = Fuzznum('qrofn', q=3).create(md=0.7, nmd=0.2)
             >>> fuzz2 = fuzz1.copy()
             >>> fuzz2.md = 0.5 # Modifying a copy does not affect the original instance.
             >>> print(fuzz1.md)
@@ -885,7 +885,7 @@ class Fuzznum:
             AttributeError: If an error occurs while retrieving the attributes of a statement.
 
         Examples:
-            >>> fuzznum = Fuzznum(mtype='qrofn', qrung=3).create(md=0.8, nmd=0.5)
+            >>> fuzznum = Fuzznum(mtype='qrofn', q=3).create(md=0.8, nmd=0.5)
             >>> attrs_dict = fuzznum.get_strategy_attributes_dict()
             >>> print(attrs_dict)
             {'q': 3, 'md': 0.8, 'nmd': 0.5}
@@ -1300,7 +1300,7 @@ class Fuzznum:
             raise ValueError("Invalid state for Fuzznum: 'mtype' key is missing.")
 
         # Manually call __init__ to set up the basic structure
-        self.__init__(mtype=state['mtype'], qrung=state.get('q', 1))
+        self.__init__(mtype=state['mtype'], q=state.get('q', 1))
 
         # Set attributes from the state
         if 'attributes' in state:

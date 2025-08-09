@@ -14,7 +14,7 @@ number types (`mtype`) and q-rungs (`q`) across all elements. It delegates
 operations to the underlying `Fuzznum` objects and supports broadcasting
 and common array manipulations.
 """
-import time
+
 from typing import Optional, Union, List, Any
 
 import numpy as np
@@ -118,7 +118,7 @@ class Fuzzarray:
         # Create a temporary "prototype" Fuzznum instance to discover available members.
         # This prototype is created using the Fuzzarray's determined mtype and q.
         try:
-            prototype_fuzznum = Fuzznum(mtype=self.mtype, qrung=self.q)
+            prototype_fuzznum = Fuzznum(mtype=self.mtype, q=self.q)
         except (ValueError, TypeError):
             # If a prototype cannot be created (e.g., invalid mtype/q), delegation is skipped.
             return
@@ -558,14 +558,11 @@ class Fuzzarray:
         else:   # int, float, np.ndarray, or None
             other_data = other  # Use directly.
 
-        start_time = time.perf_counter()
         # Execute the vectorized operation.
         if other_data is not None:
             result_data = vectorized_op(self._data, other_data)
         else:
             result_data = vectorized_op(self._data)
-        end_time = time.perf_counter()
-        print(f"Operation {op_name} took {(end_time - start_time) * 1000} ms.")
 
         # Packaging the result.
         if result_data.size == 0:
@@ -581,22 +578,14 @@ class Fuzzarray:
         first_result = result_data.flat[0]
 
         if isinstance(first_result, dict):
-            start_time = time.perf_counter()
             # If the returned value from the Fuzznum operation is a dictionary (e.g., from `execute_operation`),
             # convert each dictionary back into a Fuzznum object.
-            prototype = Fuzznum(mtype=self.mtype, qrung=self.q)
+            prototype = Fuzznum(mtype=self.mtype, q=self.q)
             convert_func = np.vectorize(
                 lambda d: prototype.create(**d) if d is not None else None,
                 otypes=[object])
             result_data = convert_func(result_data)
-            end_time = time.perf_counter()
-            print(f"Packaging {op_name} took {(end_time - start_time) * 1000} ms.")
-
-            start_time = time.perf_counter()
             result = Fuzzarray(result_data, mtype=self.mtype, copy=False)
-            end_time = time.perf_counter()
-            print(f"Generate {op_name} took {(end_time - start_time) * 1000} ms.")
-
             return result
         else:
             # If the result elements are already Fuzznum objects (unlikely for `execute_operation`
@@ -850,96 +839,96 @@ class Fuzzarray:
         """
         return self._data.tolist()
 
-    @classmethod
-    def concat(cls, arrays: List['Fuzzarray'], axis: int = 0) -> 'Fuzzarray':
-        """
-        Concatenates a sequence of Fuzzarray instances along a specified axis.
-
-        All Fuzzarrays in the sequence must have the same `mtype` and `q` value.
-        Their shapes must be compatible for concatenation along the given axis.
-
-        Args:
-            arrays (List[Fuzzarray]): A list of Fuzzarray instances to concatenate.
-            axis (int): The axis along which to concatenate the arrays. Defaults to 0.
-
-        Returns:
-            Fuzzarray: A new Fuzzarray resulting from the concatenation.
-
-        Raises:
-            ValueError: If the input list is empty, or if `mtype`, `q`, or shapes
-                        are inconsistent among the input Fuzzarrays.
-            TypeError: If the input list contains non-Fuzzarray instances.
-        """
-        if not arrays:
-            raise ValueError("Cannot concatenate empty list of Fuzzarrays.")
-
-        # Validate mtype and q consistency across all input Fuzzarrays.
-        first_mtype = arrays[0].mtype
-        first_q = arrays[0].q
-        for arr in arrays:
-            if not isinstance(arr, Fuzzarray):
-                raise TypeError(f"All elements in 'arrays' must be Fuzzarray instances, found {type(arr)}.")
-            if arr.mtype != first_mtype or arr.q != first_q:
-                raise ValueError("All Fuzzarrays to concatenate must have the same mtype and qrung.")
-
-        # Extract the underlying NumPy arrays for concatenation.
-        np_arrays = [arr._data for arr in arrays]
-
-        try:
-            # Perform the NumPy concatenation.
-            concatenated_data = np.concatenate(np_arrays, axis=axis)
-        except ValueError as e:
-            # Re-raise ValueError with a more informative message if shapes are incompatible.
-            raise ValueError(f"Shape mismatch for concatenation along axis {axis}: {e}")
-
-        # Create a new Fuzzarray from the concatenated data, preserving mtype and q.
-        return cls(concatenated_data, mtype=first_mtype, copy=False)
-
-    @classmethod
-    def stack(cls, arrays: List['Fuzzarray'], axis: int = 0) -> 'Fuzzarray':
-        """
-        Stacks a sequence of Fuzzarray instances along a new axis.
-
-        All Fuzzarrays in the sequence must have the same `mtype`, `q`, and identical shapes.
-
-        Args:
-            arrays (List[Fuzzarray]): A list of Fuzzarray instances to be stacked.
-            axis (int): The index for inserting the new axis. Defaults to 0.
-
-        Returns:
-            Fuzzarray: A new Fuzzarray resulting from the stacking operation.
-
-        Raises:
-            ValueError: If the input list is empty, or if `mtype`, `q`, or shapes
-                        are inconsistent among the input Fuzzarrays.
-            TypeError: If the input list contains non-Fuzzarray instances.
-        """
-        if not arrays:
-            raise ValueError("Cannot stack empty list of Fuzzarrays.")
-
-        # Validate mtype, q, and shape consistency across all input Fuzzarrays.
-        first_mtype = arrays[0].mtype
-        first_q = arrays[0].q
-        for arr in arrays:
-            if not isinstance(arr, Fuzzarray):
-                raise TypeError(f"All elements in 'arrays' must be Fuzzarray instances, found {type(arr)}.")
-            if arr.mtype != first_mtype or arr.q != first_q:
-                raise ValueError("All Fuzzarrays to stack must have the same mtype and qrung.")
-            if arr.shape != arrays[0].shape:
-                raise ValueError("All Fuzzarrays to stack must have the same shape.")
-
-        # Extract the underlying NumPy arrays for stacking.
-        np_arrays = [arr._data for arr in arrays]
-
-        try:
-            # Perform the NumPy stacking.
-            stacked_data = np.stack(np_arrays, axis=axis)
-        except ValueError as e:
-            # Re-raise ValueError with a more informative message if stacking fails.
-            raise ValueError(f"Shape mismatch for stacking along axis {axis}: {e}")
-
-        # Create a new Fuzzarray from the stacked data, preserving mtype and q.
-        return cls(stacked_data, mtype=first_mtype, copy=False)
+    # @classmethod
+    # def concat(cls, arrays: List['Fuzzarray'], axis: int = 0) -> 'Fuzzarray':
+    #     """
+    #     Concatenates a sequence of Fuzzarray instances along a specified axis.
+    #
+    #     All Fuzzarrays in the sequence must have the same `mtype` and `q` value.
+    #     Their shapes must be compatible for concatenation along the given axis.
+    #
+    #     Args:
+    #         arrays (List[Fuzzarray]): A list of Fuzzarray instances to concatenate.
+    #         axis (int): The axis along which to concatenate the arrays. Defaults to 0.
+    #
+    #     Returns:
+    #         Fuzzarray: A new Fuzzarray resulting from the concatenation.
+    #
+    #     Raises:
+    #         ValueError: If the input list is empty, or if `mtype`, `q`, or shapes
+    #                     are inconsistent among the input Fuzzarrays.
+    #         TypeError: If the input list contains non-Fuzzarray instances.
+    #     """
+    #     if not arrays:
+    #         raise ValueError("Cannot concatenate empty list of Fuzzarrays.")
+    #
+    #     # Validate mtype and q consistency across all input Fuzzarrays.
+    #     first_mtype = arrays[0].mtype
+    #     first_q = arrays[0].q
+    #     for arr in arrays:
+    #         if not isinstance(arr, Fuzzarray):
+    #             raise TypeError(f"All elements in 'arrays' must be Fuzzarray instances, found {type(arr)}.")
+    #         if arr.mtype != first_mtype or arr.q != first_q:
+    #             raise ValueError("All Fuzzarrays to concatenate must have the same mtype and q.")
+    #
+    #     # Extract the underlying NumPy arrays for concatenation.
+    #     np_arrays = [arr._data for arr in arrays]
+    #
+    #     try:
+    #         # Perform the NumPy concatenation.
+    #         concatenated_data = np.concatenate(np_arrays, axis=axis)
+    #     except ValueError as e:
+    #         # Re-raise ValueError with a more informative message if shapes are incompatible.
+    #         raise ValueError(f"Shape mismatch for concatenation along axis {axis}: {e}")
+    #
+    #     # Create a new Fuzzarray from the concatenated data, preserving mtype and q.
+    #     return cls(concatenated_data, mtype=first_mtype, copy=False)
+    #
+    # @classmethod
+    # def stack(cls, arrays: List['Fuzzarray'], axis: int = 0) -> 'Fuzzarray':
+    #     """
+    #     Stacks a sequence of Fuzzarray instances along a new axis.
+    #
+    #     All Fuzzarrays in the sequence must have the same `mtype`, `q`, and identical shapes.
+    #
+    #     Args:
+    #         arrays (List[Fuzzarray]): A list of Fuzzarray instances to be stacked.
+    #         axis (int): The index for inserting the new axis. Defaults to 0.
+    #
+    #     Returns:
+    #         Fuzzarray: A new Fuzzarray resulting from the stacking operation.
+    #
+    #     Raises:
+    #         ValueError: If the input list is empty, or if `mtype`, `q`, or shapes
+    #                     are inconsistent among the input Fuzzarrays.
+    #         TypeError: If the input list contains non-Fuzzarray instances.
+    #     """
+    #     if not arrays:
+    #         raise ValueError("Cannot stack empty list of Fuzzarrays.")
+    #
+    #     # Validate mtype, q, and shape consistency across all input Fuzzarrays.
+    #     first_mtype = arrays[0].mtype
+    #     first_q = arrays[0].q
+    #     for arr in arrays:
+    #         if not isinstance(arr, Fuzzarray):
+    #             raise TypeError(f"All elements in 'arrays' must be Fuzzarray instances, found {type(arr)}.")
+    #         if arr.mtype != first_mtype or arr.q != first_q:
+    #             raise ValueError("All Fuzzarrays to stack must have the same mtype and q.")
+    #         if arr.shape != arrays[0].shape:
+    #             raise ValueError("All Fuzzarrays to stack must have the same shape.")
+    #
+    #     # Extract the underlying NumPy arrays for stacking.
+    #     np_arrays = [arr._data for arr in arrays]
+    #
+    #     try:
+    #         # Perform the NumPy stacking.
+    #         stacked_data = np.stack(np_arrays, axis=axis)
+    #     except ValueError as e:
+    #         # Re-raise ValueError with a more informative message if stacking fails.
+    #         raise ValueError(f"Shape mismatch for stacking along axis {axis}: {e}")
+    #
+    #     # Create a new Fuzzarray from the stacked data, preserving mtype and q.
+    #     return cls(stacked_data, mtype=first_mtype, copy=False)
 
     # ================================ Type Conversion ===============================
 
@@ -1002,8 +991,8 @@ class Fuzzarray:
             >>> from fuzzlab.core.fuzznums import Fuzznum
             >>> from fuzzlab.fuzzy.qrofs.qrofn import QROFNStrategy, QROFNTemplate
             >>> # Assuming QROFNTemplate supports 's' (score) and 'j' (JSON) format specifiers
-            >>> f1 = Fuzznum(mtype='qrofn', qrung=2).create(md=0.8, nmd=0.3)
-            >>> f2 = Fuzznum(mtype='qrofn', qrung=2).create(md=0.6, nmd=0.4)
+            >>> f1 = Fuzznum(mtype='qrofn', q=2).create(md=0.8, nmd=0.3)
+            >>> f2 = Fuzznum(mtype='qrofn', q=2).create(md=0.6, nmd=0.4)
             >>> arr = fuzzarray([f1, f2])
 
             # Block formatting (right-align the entire array within a 50-character width)

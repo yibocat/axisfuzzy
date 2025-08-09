@@ -7,7 +7,7 @@
 
 from .registry import get_mixin_registry
 from .ops import *
-from .func import *
+from .function import *
 
 from ..core import Fuzznum, Fuzzarray
 

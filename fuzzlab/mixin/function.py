@@ -6,17 +6,17 @@
 #  Software: FuzzLab
 
 import copy
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 
 import numpy as np
 
 from .registry import get_mixin_registry
 from ..core import Fuzznum, Fuzzarray
 
-registry = get_mixin_registry()
+mixin = get_mixin_registry()
 
 
-@registry.register(name='reshape', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='reshape', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _reshape_impl(self: Union['Fuzzarray', 'Fuzznum'],
                   *shape: int) -> 'Fuzzarray':
     """
@@ -59,7 +59,7 @@ def _reshape_impl(self: Union['Fuzzarray', 'Fuzznum'],
     return Fuzzarray(reshaped_data, copy=False)
 
 
-@registry.register(name='flatten', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='flatten', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _flatten_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzzarray':
     """
     Return a copy of the array collapsed into one dimension.
@@ -86,7 +86,7 @@ def _flatten_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzzarray':
     return Fuzzarray(flattened_data, copy=False)
 
 
-@registry.register(name='squeeze', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='squeeze', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _squeeze_impl(self: Union['Fuzzarray', 'Fuzznum'],
                   axis: Union[int, Tuple[int, ...]] = None) -> Union['Fuzznum', 'Fuzzarray']:
     """
@@ -124,7 +124,7 @@ def _squeeze_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return Fuzzarray(squeezed_data, copy=False)
 
 
-@registry.register(name='copy', injection_type='top_level_function')
+@mixin.register(name='copy', injection_type='top_level_function')
 def _copy_top_level_impl(obj: Union['Fuzzarray', 'Fuzznum']) -> Union['Fuzzarray', 'Fuzznum']:
     """
     Returns a deep copy of the fuzzy object.
@@ -151,7 +151,7 @@ def _copy_top_level_impl(obj: Union['Fuzzarray', 'Fuzznum']) -> Union['Fuzzarray
         raise TypeError(f"Unsupported type for copy: {type(obj)}. Expected Fuzzarray or Fuzznum.")
 
 
-@registry.register(name='ravel', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='ravel', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _ravel_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzzarray':
     """
     Return a contiguous flattened array.
@@ -186,7 +186,7 @@ def _ravel_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzzarray':
     return Fuzzarray(raveled_data, copy=False)
 
 
-@registry.register(name='transpose', injection_type='top_level_function')
+@mixin.register(name='transpose', injection_type='top_level_function')
 def _transpose_impl(obj: Union['Fuzzarray', 'Fuzznum']) -> Union['Fuzzarray', 'Fuzznum']:
     """
     Returns a view of the fuzzy object with axes transposed.
@@ -208,7 +208,7 @@ def _transpose_impl(obj: Union['Fuzzarray', 'Fuzznum']) -> Union['Fuzzarray', 'F
         raise TypeError(f"Unsupported type for transpose: {type(obj)}")
 
 
-@registry.register(name='broadcast_to', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='broadcast_to', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _broadcast_to_impl(self: Union['Fuzzarray', 'Fuzznum'],
                        *shape: int) -> 'Fuzzarray':
     """
@@ -250,7 +250,7 @@ def _broadcast_to_impl(self: Union['Fuzzarray', 'Fuzznum'],
         raise ValueError(f"Cannot broadcast object with shape {self.shape} to shape {target_shape}: {e}")
 
 
-@registry.register(name='item', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='item', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _item_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzznum':
     """
     Returns the scalar item of the fuzzy object.
@@ -284,7 +284,7 @@ def _item_impl(self: Union['Fuzzarray', 'Fuzznum']) -> 'Fuzznum':
         raise TypeError(f"Unsupported type for item() method: {type(self)}")
 
 
-@registry.register(name='sort', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='sort', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _sort_impl(self: Union['Fuzzarray', 'Fuzznum'],
                axis: int = -1) -> Union['Fuzzarray', 'Fuzznum']:
     """
@@ -306,7 +306,7 @@ def _sort_impl(self: Union['Fuzzarray', 'Fuzznum'],
     return Fuzzarray(sorted_data, copy=False)
 
 
-@registry.register(name='argsort', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='argsort', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _argsort_impl(self: Union['Fuzzarray', 'Fuzznum'],
                   axis: int = -1) -> np.ndarray:
     """
@@ -325,7 +325,7 @@ def _argsort_impl(self: Union['Fuzzarray', 'Fuzznum'],
     return np.argsort(self._data, axis=axis)
 
 
-@registry.register(name='argmax', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='argmax', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _argmax_impl(self: Union['Fuzzarray', 'Fuzznum'],
                  axis: Union[int, Tuple[int, ...]] = None) -> Union[np.integer, int, np.ndarray]:
     """
@@ -349,7 +349,7 @@ def _argmax_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return result.item()
 
 
-@registry.register(name='argmin', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
+@mixin.register(name='argmin', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')
 def _argmin_impl(self: Union['Fuzzarray', 'Fuzznum'],
                  axis: Union[int, Tuple[int, ...]] = None) -> Union[np.integer, int, np.ndarray]:
     """
@@ -371,3 +371,251 @@ def _argmin_impl(self: Union['Fuzzarray', 'Fuzznum'],
         return result.tolist()
     else:
         return result.item()
+
+
+@mixin.register(name='concat', target_classes=['Fuzzarray'], injection_type='both')
+def _concat_impl(self: 'Fuzzarray',
+                 *others: 'Fuzzarray',
+                 axis: int = 0) -> 'Fuzzarray':
+    """
+    将一个或多个 Fuzzarray 沿指定轴拼接到 self 之后。
+
+    此方法将 `self` 作为第一个数组，后跟 `others` 中的所有数组，
+    然后将它们全部拼接成一个新的 Fuzzarray。
+
+    规则:
+      - 所有参与数组的 mtype 和 q 必须与 self 一致。
+      - 除拼接轴（axis）外，所有维度必须匹配。
+
+    Args:
+        self (Fuzzarray): 第一个数组。
+        *others (Fuzzarray): 要拼接到后面的一个或多个 Fuzzarray。
+        axis (int): 拼接所沿的轴，默认为 0。
+
+    Returns:
+        Fuzzarray: 一个包含所有拼接后元素的新 Fuzzarray。
+    """
+    if not isinstance(self, Fuzzarray):
+        raise TypeError("concat: self 必须是 Fuzzarray")
+
+    # 将 self 和 others 组合成一个待处理的数组列表
+    all_arrays = [self] + list(others)
+
+    # 过滤掉空数组，但至少保留 self（如果 self 非空）
+    effective_arrays = [arr for arr in all_arrays if arr.size > 0]
+    if not effective_arrays:
+        return Fuzzarray(np.array([], dtype=object), mtype=self.mtype)  # 如果全部为空，返回空数组
+
+    # 使用第一个有效数组作为引用进行检查
+    ref_array = effective_arrays[0]
+    base_mtype = ref_array.mtype
+    base_q = getattr(ref_array, 'q', None)
+
+    # 检查类型、mtype、q 和形状兼容性
+    for arr in effective_arrays:
+        if not isinstance(arr, Fuzzarray):
+            raise TypeError(f"concat: 只支持 Fuzzarray，但收到了 {type(arr)}")
+        if arr.mtype != base_mtype or getattr(arr, 'q', None) != base_q:
+            raise ValueError("concat: 所有 Fuzzarray 的 mtype 和 q 必须一致。")
+        if arr.ndim != ref_array.ndim:
+            raise ValueError("concat: 所有 Fuzzarray 的维度必须一致。")
+        for i in range(arr.ndim):
+            if i != axis and arr.shape[i] != ref_array.shape[i]:
+                raise ValueError(
+                    f"concat: 形状在非拼接轴上不兼容。期望在轴 {i} 上大小为 {ref_array.shape[i]}，但收到了 {arr.shape[i]}")
+
+    # 提取数据并执行拼接
+    data_to_concat = [arr.data for arr in effective_arrays]
+    new_data = np.concatenate(data_to_concat, axis=axis)
+
+    return Fuzzarray(new_data, mtype=base_mtype, copy=False)
+
+
+@mixin.register(name='stack', target_classes=['Fuzzarray'], injection_type='both')
+def _stack_impl(self: 'Fuzzarray',
+                *others: 'Fuzzarray',
+                axis: int = 0) -> 'Fuzzarray':
+    """
+    将 self 和一个或多个其他 Fuzzarray 沿新轴堆叠。
+
+    此方法将 `self` 作为第一个数组，后跟 `others` 中的所有数组，
+    然后将它们全部堆叠成一个新的、更高维度的 Fuzzarray。
+
+    规则:
+      - 所有参与数组的 mtype、q 和 shape 必须完全一致。
+
+    Args:
+        self (Fuzzarray): 第一个数组。
+        *others (Fuzzarray): 要一起堆叠的一个或多个 Fuzzarray。
+        axis (int): 新轴插入的位置，默认为 0。
+
+    Returns:
+        Fuzzarray: 一个新的、维度增加的 Fuzzarray。
+    """
+    if not isinstance(self, Fuzzarray):
+        raise TypeError("stack: self 必须是 Fuzzarray")
+
+    all_arrays = [self] + list(others)
+
+    # 检查类型、mtype、q 和形状一致性
+    base_mtype = self.mtype
+    base_q = getattr(self, 'q', None)
+    ref_shape = self.shape
+
+    for arr in all_arrays:
+        if not isinstance(arr, Fuzzarray):
+            raise TypeError(f"stack: 只支持 Fuzzarray，但收到了 {type(arr)}")
+        if arr.mtype != base_mtype or getattr(arr, 'q', None) != base_q:
+            raise ValueError("stack: 所有 Fuzzarray 的 mtype 和 q 必须一致。")
+        if arr.shape != ref_shape:
+            raise ValueError(f"stack: 所有 Fuzzarray 的形状必须一致。期望 {ref_shape}，但收到了 {arr.shape}")
+
+    # 提取数据并执行堆叠
+    data_to_stack = [arr.data for arr in all_arrays]
+    new_data = np.stack(data_to_stack, axis=axis)
+
+    return Fuzzarray(new_data, mtype=base_mtype, copy=False)
+
+
+@mixin.register(name='append', target_classes=["Fuzznum", "Fuzzarray"], injection_type='both')
+def _append_impl(self: Union['Fuzznum', 'Fuzzarray'],
+                 item: Union['Fuzznum', 'Fuzzarray', List['Fuzznum']],
+                 axis: int = None,
+                 inplace: bool = False) -> Union['Fuzzarray', None]:
+    """
+    向对象追加元素。
+
+    - 对于 Fuzznum:
+      总是返回一个新的 Fuzzarray，包含原 Fuzznum 和新元素。
+      忽略 `axis` 和 `inplace` 参数。
+
+    - 对于 Fuzzarray:
+      沿指定轴追加元素。
+      如果 `axis` 为 None，则在追加前将数组扁平化。
+      如果 `inplace=True`，则原地修改并返回 None；否则返回新的 Fuzzarray。
+
+    Args:
+        self: Fuzznum 或 Fuzzarray 对象。
+        item: 要追加的 Fuzznum、Fuzzarray 或 Fuzznum 列表。
+        axis (int, optional): 追加操作的轴。如果为 None，则数组被展平。
+        inplace (bool): 如果为 True，则原地修改数组。仅对 Fuzzarray 有效。
+
+    Returns:
+        Fuzzarray 或 None: 根据 inplace 的值返回新数组或 None。
+
+    Raises:
+        ValueError: 如果 mtype、q 或形状不兼容。
+        TypeError: 如果 item 类型不支持。
+    """
+    # --- Fuzznum 的 append 逻辑 ---
+    if isinstance(self, Fuzznum):
+        elements = [self]
+        if isinstance(item, Fuzznum):
+            elements.append(item)
+        elif isinstance(item, Fuzzarray):
+            elements.extend(list(item.flatten().data))
+        elif isinstance(item, list):
+            elements.extend(item)
+        else:
+            raise TypeError(f"append: 不支持的 item 类型 {type(item)}")
+
+        # 检查 mtype 和 q 是否一致
+        mtype = self.mtype
+        q = getattr(self, 'q', None)
+        for fn in elements:
+            if not isinstance(fn, Fuzznum):
+                raise TypeError(f"append: item 列表必须只包含 Fuzznum，但发现了 {type(fn)}")
+            if fn.mtype != mtype or getattr(fn, 'q', None) != q:
+                raise ValueError("append: 所有 Fuzznum 的 mtype 和 q 必须一致。")
+
+        return Fuzzarray(elements, mtype=mtype)
+
+    # --- Fuzzarray 的 append 逻辑 ---
+    if inplace and axis is not None:
+        raise ValueError("append: inplace=True is not supported with axis specified.")
+
+    # 统一将 item 转换为 ndarray
+    if isinstance(item, Fuzznum):
+        if self.mtype != item.mtype or self.q != item.q:
+            raise ValueError("append: Fuzzarray 和 Fuzznum 的 'mtype' 和 'q' 必须一致。")
+        item_data = np.array([item], dtype=object)
+    elif isinstance(item, Fuzzarray):
+        if self.mtype != item.mtype or self.q != item.q:
+            raise ValueError("append: 两个 Fuzzarray 的 'mtype' 和 'q' 必须一致。")
+        item_data = item.data
+    elif isinstance(item, list):
+        # 可以在这里添加对列表中 Fuzznum 的 mtype 和 q 的检查
+        item_data = np.array(item, dtype=object)
+    else:
+        raise TypeError(f"append: 不支持的 item 类型 '{type(item)}' for Fuzzarray。")
+
+    source_data = self.data
+    if axis is None:
+        source_data = source_data.ravel()
+        item_data = item_data.ravel()
+
+    new_data = np.append(source_data, item_data, axis=axis if axis is not None else 0)
+
+    if inplace:
+        self._data = new_data
+        # 如果原数组是多维且 axis=None，需要更新 shape
+        if axis is None and self.ndim > 1:
+            self._data = self._data.reshape(-1)  # 确保是扁平化的
+        return None
+    else:
+        return Fuzzarray(new_data, mtype=self.mtype, copy=False)
+
+
+@mixin.register(name='pop', target_classes=["Fuzznum", "Fuzzarray"], injection_type='both')
+def _pop_impl(self: Union['Fuzznum', 'Fuzzarray'],
+              index: int = -1,
+              inplace: bool = False) -> Union['Fuzznum', tuple['Fuzznum', 'Fuzzarray'], None]:
+    """
+    从一维数组中移除并返回一个元素。
+
+    - 对于 Fuzznum:
+      操作无意义，总是抛出 TypeError。
+
+    - 对于 Fuzzarray:
+      必须是一维数组。
+      如果 `inplace=True`，原地修改并返回被弹出的 Fuzznum。
+      如果 `inplace=False`，返回一个元组 (popped_element, new_array)。
+
+    Args:
+        self: Fuzznum 或 Fuzzarray 对象。
+        index (int): 要移除的元素的索引。
+        inplace (bool): 如果为 True，则原地修改数组。
+
+    Returns:
+        被弹出的 Fuzznum 或 (Fuzznum, Fuzzarray) 元组。
+
+    Raises:
+        TypeError: 如果对 Fuzznum 调用 pop。
+        ValueError: 如果 Fuzzarray 不是一维的。
+        IndexError: 如果索引越界。
+    """
+    if isinstance(self, Fuzznum):
+        raise TypeError("pop: Fuzznum object does not support pop operation.")
+
+    if self.ndim != 1:
+        raise ValueError("pop: Only one-dimensional Fuzzarray is supported.")
+
+    if self.size == 0:
+        raise IndexError("pop from empty Fuzzarray")
+
+    # 取出元素并确保类型
+    popped_item = self.data[index]
+    if isinstance(popped_item, np.ndarray):
+        # 极端情况下（如切片），取第一个
+        popped_item = popped_item.item()
+    # 类型断言
+    assert isinstance(popped_item, Fuzznum), "Fuzzarray.data 元素应为 Fuzznum"
+
+    new_data = np.delete(self.data, index)
+
+    if inplace:
+        self._data = new_data
+        return popped_item
+    else:
+        new_array = Fuzzarray(new_data, mtype=self.mtype, copy=False)
+        return popped_item, new_array

@@ -23,7 +23,7 @@ Classes:
 Example:
     >>> from fuzzlab.core.fuzznums import Fuzznum
     >>> # Create a QROFN instance with q=3, membership degree 0.8, and non-membership degree 0.5
-    >>> qrofn_num = Fuzznum(mtype='qrofn', qrung=3).create(md=0.8, nmd=0.5)
+    >>> qrofn_num = Fuzznum(mtype='qrofn', q=3).create(md=0.8, nmd=0.5)
     >>> print(qrofn_num.report())
     QROFN(md=0.8, nmd=0.5, q=3)
     >>> print(qrofn_num.score)
@@ -129,7 +129,7 @@ class QROFNStrategy(FuzznumStrategy):
 
     def _on_q_change(self, attr_name: str, old_value: Any, new_value: Any) -> None:
         """
-        Callback function triggered when the 'q' (qrung) attribute changes.
+        Callback function triggered when the 'q' (q) attribute changes.
 
         This callback ensures that the fuzzy number constraints are re-checked
         when the q-rung value is updated, as the constraint `md^q + nmd^q <= 1`
