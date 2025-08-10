@@ -5,6 +5,7 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 import threading
+import time
 from typing import Optional, Union, Sequence, Any
 
 import numpy as np
@@ -113,19 +114,22 @@ class RandomGenerator:
         Returns:
             A randomly generated Fuzzarray instance.
         """
-        from fuzzlab.core.fuzzarray import fuzzarray
 
-        # Normalize shape to tuple
         if isinstance(shape, int):
             shape = (shape,)
-
-        # Generate individual Fuzznums and create array
         total_size = np.prod(shape)
-        fuzznums = [self.fuzznum(mtype, **kwargs) for _ in range(total_size)]
 
-        # Reshape to desired shape
+        # 优先尝试批量生成
+        generator_func = self._registry.get_fuzznum_generator(mtype)
+        batch_func = getattr(generator_func, 'batch_generate_fuzznum', None)
+        if batch_func is not None:
+            fuzznums = batch_func(self._rng, total_size, **kwargs)
+        else:
+            # fallback: 逐个生成
+            fuzznums = [self.fuzznum(mtype, **kwargs) for _ in range(total_size)]
+
         data = np.array(fuzznums, dtype=object).reshape(shape)
-        return fuzzarray(data)
+        return Fuzzarray(data, copy=False)
 
     def choice(self,
                a: Union[Sequence, 'Fuzzarray'],

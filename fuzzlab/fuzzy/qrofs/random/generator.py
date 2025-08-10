@@ -10,8 +10,8 @@ from typing import Dict
 
 import numpy as np
 
-from fuzzlab.random.core.base import ParameterizedGenerator
-from fuzzlab.core import Fuzznum
+from ....random.core.base import ParameterizedGenerator
+from ....core import Fuzznum
 
 
 class QROFNRandomGenerator(ParameterizedGenerator):
@@ -37,16 +37,54 @@ class QROFNRandomGenerator(ParameterizedGenerator):
                 - distribution: Sampling distribution (default: 'uniform')
                 - mu_range: Range for membership degree (default: [0, 1])
                 - nu_range: Range for non-membership degree (default: [0, 1])
-                - constraint_method: How to handle q-rung constraint (default: 'reject_sample')
+                - constraint_method: How to handle q-rung constraint (default: 'conditional')
         """
         return {
             'q': 1,
             'distribution': 'uniform',
             'mu_range': [0., 1.],
             'nu_range': [0., 1.],
-            'constraint_method': 'reject_sample',
+            'constraint_method': 'conditional',
             'max_attempts': 1000
         }
+    
+    def batch_generate_fuzznum(self, rng: np.random.Generator, size, **kwargs):
+        """
+        批量生成 size 个 QROFN Fuzznum，返回一维 Fuzznum 列表。
+        """
+        self.validate_parameters(**kwargs)
+        params = self._merge_parameters(**kwargs)
+        q = params['q']
+        mu_range = params['mu_range']
+        nu_range = params['nu_range']
+        distribution = params['distribution']
+        constraint_method = params['constraint_method']
+        max_attempts = params['max_attempts']
+
+        # 只实现最常用的 'conditional' 方法的批量生成
+        if constraint_method != 'conditional':
+            # 其他方法暂时用原有单个生成
+            return [self.generate_fuzznum(rng, **kwargs) for _ in range(size)]
+
+        # 批量生成 μ
+        dist_params = params.copy()
+        dist_params.pop('distribution', None)
+        mus = np.array([
+            self._sample_constrained(rng, distribution, mu_range[0], mu_range[1], **dist_params)
+            for _ in range(size)
+        ])
+        # 批量计算每个 μ 下 ν 的最大取值
+        max_nu_q = 1.0 - mus ** q
+        max_nus = np.where(max_nu_q > 0, max_nu_q ** (1.0 / q), 0.0)
+        effective_nu_max = np.minimum(nu_range[1], max_nus)
+        # 批量生成 ν
+        nus = np.array([
+            self._sample_constrained(rng, distribution, nu_range[0], effective_nu_max[i], **dist_params)
+            if nu_range[0] <= effective_nu_max[i] else nu_range[0]
+            for i in range(size)
+        ])
+        # 批量构造 Fuzznum
+        return [Fuzznum(q=q, mtype='qrofn').create(md=mus[i], nmd=nus[i]) for i in range(size)]
 
     def validate_parameters(self, **kwargs) -> bool:
         """
@@ -110,8 +148,6 @@ class QROFNRandomGenerator(ParameterizedGenerator):
         # Generate μ and ν satisfying the q-rung constraint
         mu, nu = self._generate_constrained_pair(rng, params)
 
-        # Create Fuzznum instance
-        from fuzzlab.core.fuzznums import Fuzznum
         return Fuzznum(q=params['q'], mtype='qrofn').create(md=mu, nmd=nu)
 
     def _generate_constrained_pair(self,
