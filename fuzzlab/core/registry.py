@@ -30,18 +30,15 @@ Functions:
     get_template(): A convenience function to retrieve a registered template class.
     get_fuzznum_registered_mtypes(): A convenience function to get information about all registered types.
 """
-import datetime
-import logging
+
 import threading
+import warnings
 from contextlib import contextmanager
 from typing import Optional, Dict, Any, Type, List, Callable, Tuple
 
-from ..config import get_config
 from .base import FuzznumStrategy, FuzznumTemplate, ExampleStrategy, ExampleTemplate
 
 from .t_backend import FuzzarrayBackend
-
-logger = logging.getLogger(__name__)
 
 
 class FuzznumRegistry:
@@ -117,7 +114,6 @@ class FuzznumRegistry:
         """
         self._in_transaction = None
         if not FuzznumRegistry._initialized:
-
             with FuzznumRegistry._lock:
                 if not FuzznumRegistry._initialized:
                     self._init_registry()
@@ -159,11 +155,6 @@ class FuzznumRegistry:
         # Observer pattern support:
         self._observers: List[Callable[[str, Dict[str, Any]], None]] = []
 
-        config = get_config()
-
-        if config.DEBUG_MODE:
-            logger.debug(f"FuzznumRegistry initialized. ID: {id(self)}")
-
         # Call a private method to load predefined default fuzzy number types.
         self._load_default_fuzznum_types()
 
@@ -175,9 +166,6 @@ class FuzznumRegistry:
         and registers them with the registry. It uses a transaction to ensure
         atomic batch registration.
         """
-        config = get_config()
-        if config.DEBUG_MODE:
-            logger.info("Loading default fuzzy number types...")
 
         # Calls the _get_default_types method to get a list containing tuples
         #   of all default fuzzy number strategy and template classes.
@@ -198,15 +186,14 @@ class FuzznumRegistry:
                         template=template_cls,
                         backend=backend_cls)
 
-                    if config.DEBUG_MODE:
-                        logger.debug(f"Loaded default type: {strategy_cls.mtype}")
                 except Exception as e:
                     # If registration of a default type fails (e.g., mtype definition is incorrect),
                     # a warning message is logged, but it does not prevent other default types from loading
                     # (because it is within a transaction, the final outcome depends on the transaction result).
-                    logger.warning(f"Failed to load default type {strategy_cls.mtype}: {e}")
+                    warnings.warn(f"Failed to load default type {strategy_cls.mtype}: {e}")
 
-    def _get_default_types(self) -> List[Tuple[Type[FuzznumStrategy], Type[FuzznumTemplate], Type[FuzzarrayBackend]]]:
+    @staticmethod
+    def _get_default_types() -> List[Tuple[Type[FuzznumStrategy], Type[FuzznumTemplate], Type[FuzzarrayBackend]]]:
         """
         Retrieves the default fuzzy number type definitions.
 
@@ -277,7 +264,6 @@ class FuzznumRegistry:
 
         except Exception as e:
             # If any exception occurs inside the `with` statement block, it means the transaction failed.
-            logger.warning(f"Transaction failed, rolling back: {e}")
             # Calls the _restore_snapshot method to restore the registry's state to the snapshot
             # created before the transaction began.
             self._restore_snapshot(snapshot)
@@ -285,7 +271,7 @@ class FuzznumRegistry:
             # This is very important as it allows the external caller to be aware of the
             # transaction failure and handle errors accordingly.
             # If not re-raised, the exception would be "swallowed" by this context manager.
-            raise
+            raise e
 
         finally:
             self._in_transaction = False
@@ -430,7 +416,7 @@ class FuzznumRegistry:
                 # during execution, this exception should not prevent other observers from receiving notifications.
                 # Without this `try-except`, a faulty observer could interrupt the entire notification process,
                 # preventing other observers from receiving notifications, thereby affecting system stability and consistency.
-                logger.warning(f"Observer notification failed: {e}")
+                warnings.warn(f"Observer notification failed: {e}")
                 # Logs a warning message indicating which observer notification failed and the reason for the failure,
                 # but allows the notification process to continue without affecting other observers.
 
@@ -472,10 +458,6 @@ class FuzznumRegistry:
         if backend is not None:
             self._validate_backend_class(backend)
 
-        # Extracts the fuzzy number type identifier (mtype) from the provided strategy or template.
-        # This is crucial for registration, as mtype is the unique key for looking up and managing these classes in the registry.
-        mtype = self._extract_mtype(strategy, template, backend)
-
         if strategy is not None and template is not None and backend is not None:
             if strategy.mtype != template.mtype or strategy.mtype != backend.mtype or template.mtype != backend.mtype:
                 raise ValueError(
@@ -484,6 +466,15 @@ class FuzznumRegistry:
                 )
 
         with self._lock:
+            # Determine mtype from any provided component
+            mtype = None
+            if strategy and hasattr(strategy, 'mtype'):
+                mtype = strategy.mtype
+            elif template and hasattr(template, 'mtype'):
+                mtype = template.mtype
+            elif backend and hasattr(backend, 'mtype'):
+                mtype = backend.mtype
+
             # Thread safety: Acquires a registry-level lock.
             # This ensures that modifications to the registry's internal data structures
             # (self.strategies, self.templates) are atomic in a multithreaded environment,
@@ -508,8 +499,7 @@ class FuzznumRegistry:
                     'strategy': existing_strategy and strategy is not None,
                     'template': existing_template and template is not None,
                     'backend': existing_backend and backend is not None
-                },
-                'timestamp': self._get_timestamp()
+                }
             }
 
             try:
@@ -519,30 +509,25 @@ class FuzznumRegistry:
                 # If a name conflict exists, a warning will be issued and the existing entry will be overwritten.
                 if strategy is not None:
                     if existing_strategy:
-                        logger.warning(f"Overwriting existing strategy for mtype '{mtype}'")
                         self._registration_stats['overwrites'] += 1
                     self.strategies[mtype] = strategy
                     result['strategy_registered'] = True
-                    logger.debug(f"Registered strategy: {strategy.__name__} for mtype '{mtype}'")
 
                 if template is not None:
                     if existing_template:
-                        logger.warning(f"Overwriting existing template for mtype '{mtype}'")
                         self._registration_stats['overwrites'] += 1
                     self.templates[mtype] = template
                     result['template_registered'] = True
-                    logger.debug(f"Registered template: {template.__name__} for mtype '{mtype}'")
 
                 if backend is not None:
                     if existing_backend:
-                        logger.warning(f"Overwriting existing backend for mtype '{mtype}'")
                         self._registration_stats['overwrites'] += 1
                     self.backends[mtype] = backend
                     result['back_registered'] = True
-                    logger.debug(f"Registered backend: {backend.__name__} for mtype '{mtype}'")
 
                 # Checks completeness:
-                result['is_complete'] = (mtype in self.strategies and mtype in self.templates and mtype in self.backends)
+                result['is_complete'] = (
+                        mtype in self.strategies and mtype in self.templates and mtype in self.backends)
 
                 # Updates statistics:
                 self._registration_stats['total_registrations'] += 1
@@ -553,14 +538,11 @@ class FuzznumRegistry:
                 # Observers can perform corresponding logic (e.g., logging, cache updates) based on this notification.
                 self._notify_observers('register', result)
 
-                logger.info(f"Successfully registered mtype '{mtype}' (complete: {result['is_complete']})")
-
                 return result
 
             except Exception as e:
                 self._registration_stats['failed_registrations'] += 1
-                logger.error(f"Registration failed for mtype '{mtype}': {e}")
-                raise
+                raise e
 
     @staticmethod
     def _validate_strategy_class(strategy: Type[FuzznumStrategy]) -> None:
@@ -638,46 +620,6 @@ class FuzznumRegistry:
         if not hasattr(backend, 'mtype'):
             raise ValueError(f"Backend class {backend.__name__} must define 'mtype' attribute")
 
-    @staticmethod
-    def _extract_mtype(strategy: Optional[Type[FuzznumStrategy]],
-                       template: Optional[Type[FuzznumTemplate]],
-                       backend: Optional[Type[FuzzarrayBackend]]) -> str:
-        """
-        Extracts the fuzzy number type (mtype) string from a strategy or template class.
-
-        Core logic: This method extracts the `mtype` string from the provided strategy or template class.
-        It prioritizes getting the `mtype` from `strategy`; if `strategy` is None, it gets it from `template`.
-
-        Args:
-            strategy (Optional[Type[FuzznumStrategy]]): The strategy class.
-            template (Optional[Type[FuzznumTemplate]]): The template class.
-
-        Returns:
-            str: The extracted mtype string.
-
-        Raises:
-            ValueError: If both strategy and template are None.
-        """
-        if strategy is not None:
-            return str(strategy.mtype)
-        elif template is not None:
-            return str(template.mtype)
-        elif backend is not None:
-            return str(backend.mtype)
-        else:
-            # If both strategy and template are None, mtype cannot be extracted, raise an error.
-            raise ValueError("Cannot extract mtype: strategy, template and backend are None")
-
-    @staticmethod
-    def _get_timestamp():
-        """
-        Generates a formatted timestamp string.
-
-        Returns:
-            str: The current timestamp in "YYYYMMDDHHMMSS.ffffff" format.
-        """
-        return datetime.datetime.now().strftime("%Y%m%d%H%M%S.%f")
-
     def batch_register(self, registrations: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """
         Performs transactional batch registration of multiple fuzzy number types.
@@ -746,7 +688,6 @@ class FuzznumRegistry:
                     error_info = {
                         'error': str(e),
                         'index': i,
-                        'timestamp': self._get_timestamp()
                     }
                     results[f"error_{i}"] = error_info
                     raise
@@ -791,7 +732,6 @@ class FuzznumRegistry:
                 'template_removed': False,
                 'backend_removed': False,
                 'was_complete': (mtype in self.strategies and mtype in self.templates),
-                'timestamp': self._get_timestamp()
             }
 
             # Removes strategy:
@@ -799,19 +739,16 @@ class FuzznumRegistry:
             if remove_strategy and mtype in self.strategies:
                 del self.strategies[mtype]
                 result['strategy_removed'] = True
-                logger.debug(f"Removed strategy for mtype '{mtype}'")
 
             # Removes template:
             # If `remove_template` is True and a template exists for the `mtype`, it is deleted from `self.templates`.
             if remove_template and mtype in self.templates:
                 del self.templates[mtype]
                 result['template_removed'] = True
-                logger.debug(f"Removed template for mtype '{mtype}'")
 
             if remove_backend and mtype in self.backends:
                 del self.backends[mtype]
                 result['backend_removed'] = True
-                logger.debug(f"Removed backend for mtype '{mtype}'")
 
             # Records history:
             # Adds a copy of the detailed result of this unregistration operation to the registration history list,
@@ -821,12 +758,6 @@ class FuzznumRegistry:
             # Notifies observers:
             # Calls the _notify_observers method to notify all registered observers that a new unregistration event has occurred.
             self._notify_observers('unregister', result)
-
-            logger.info(
-                f"Unregistered mtype '{mtype}' ("
-                f"strategy: {result['strategy_removed']}, "
-                f"template: {result['template_removed']}, "
-                f"backend: {result['backend_removed']})")
 
             return result
 
@@ -1061,7 +992,7 @@ def register_fuzznum(strategy: Optional[Type[FuzznumStrategy]] = None,
         >>> print(result['mtype'], result['is_complete'])
         my_type True
         >>> # Verify if registered
-        >>> print(get_fuzznum_registry().get_fuzznum_registered_mtypes().get('my_type', {}).get('is_complete'))
+        >>> print(get_fuzznum_registry().get_registered_mtypes().get('my_type', {}).get('is_complete'))
         True
     """
     return get_fuzznum_registry().register(
@@ -1103,7 +1034,7 @@ def batch_register_fuzz(registrations: List[Dict[str, Any]]) -> Dict[str, Dict[s
         >>> print(results['type_a']['is_complete'], results['type_b']['is_complete'])
         (True, True)
         >>> # Verify successful registration
-        >>> print(get_fuzznum_registry().get_fuzznum_registered_mtypes().get('type_a', {}).get('is_complete'))
+        >>> print(get_fuzznum_registry().get_registered_mtypes().get('type_a', {}).get('is_complete'))
         True
     """
     return get_fuzznum_registry().batch_register(registrations)
@@ -1132,7 +1063,7 @@ def unregister_fuzznum(mtype: str,
         >>> print(result['mtype'], result['strategy_removed'], result['template_removed'])
         my_type, True, True
         >>> # Verify if unregistered
-        >>> print(get_fuzznum_registry().get_fuzznum_registered_mtypes().get('my_type'))
+        >>> print(get_fuzznum_registry().get_registered_mtypes().get('my_type'))
         None
     """
     return get_fuzznum_registry().unregister(

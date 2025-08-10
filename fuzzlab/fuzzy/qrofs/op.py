@@ -42,11 +42,50 @@ Functions:
     register_qrofn_operations: Registers all QROFN operations with the global registry.
 """
 import warnings
-from typing import List, Any, Dict, Union
+from typing import List, Any, Dict, Union, Optional
 
-from fuzzlab.config import get_config
-from fuzzlab.core.operation import OperationMixin, get_operation_registry
-from fuzzlab.core.triangular import OperationTNorm
+import numpy as np
+
+from ...config import get_config
+from ...core.operation import OperationMixin, get_operation_registry
+from ...core.triangular import OperationTNorm
+from ...core.registry import get_backend
+from ...core.t_fuzzarray import Fuzzarray
+from ...core.fuzznums import Fuzznum
+
+
+def _prepare_operands(
+        fuzzarray_1: Fuzzarray,
+        other: Any) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+    """Helper to get component arrays from operands."""
+    mds1, nmds1 = fuzzarray_1.backend.get_component_arrays()
+
+    if isinstance(other, Fuzzarray):
+        if other.mtype != fuzzarray_1.mtype:
+            raise ValueError(f"Mtype mismatch: {fuzzarray_1.mtype} vs {other.mtype}")
+        if other.q != fuzzarray_1.q:
+            raise ValueError(f"Q parameter mismatch: {fuzzarray_1.q} vs {other.q}")
+
+        if fuzzarray_1.shape != other.shape:
+            # Basic broadcasting check
+            try:
+                mds, _ = other.backend.get_component_arrays()
+                np.broadcast(mds1, mds)
+            except ValueError:
+                raise ValueError(f"Shape mismatch: cannot broadcast {fuzzarray_1.shape} with {other.shape}")
+        mds2, nmds2 = other.backend.get_component_arrays()
+    elif isinstance(other, Fuzznum):
+        if other.mtype != fuzzarray_1.mtype:
+            raise ValueError(f"Mtype mismatch: {fuzzarray_1.mtype} vs {other.mtype}")
+        if other.q != fuzzarray_1.q:
+            raise ValueError(f"Q parameter mismatch: {fuzzarray_1.q} vs {other.q}")
+
+        mds2 = np.full_like(mds1, other.md)
+        nmds2 = np.full_like(nmds1, other.nmd)
+    else:
+        raise TypeError(f"Unsupported operand type for vectorized operation: {type(other)}")
+
+    return mds1, nmds1, mds2, nmds2
 
 
 # --- QROFN Arithmetic Operations ---
@@ -104,6 +143,27 @@ class QROFNAddition(OperationMixin):
 
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        """
+        High-performance vectorized addition for QROFN fuzzy arrays.
+
+        Formula:
+        - md_result = S(md1, md2) = t-conorm of membership degrees
+        - nmd_result = T(nmd1, nmd2) = t-norm of non-membership degrees
+        """
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+
+        # Formula: md = S(md1, md2), nmd = T(nmd1, nmd2)
+        md_res = tnorm.t_conorm(mds1, mds2)
+        nmd_res = tnorm.t_norm(nmds1, nmds2)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNSubtraction(OperationMixin):
@@ -184,6 +244,13 @@ class QROFNSubtraction(OperationMixin):
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
 
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        # TODO: 高维向量减法暂未实现
+        return NotImplemented
+
 
 class QROFNMultiplication(OperationMixin):
     """
@@ -238,6 +305,20 @@ class QROFNMultiplication(OperationMixin):
 
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+
+        # Formula: md = T(md1, md2), nmd = S(nmd1, nmd2)
+        md_res = tnorm.t_norm(mds1, mds2)
+        nmd_res = tnorm.t_conorm(nmds1, nmds2)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNDivision(OperationMixin):
@@ -314,6 +395,13 @@ class QROFNDivision(OperationMixin):
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
 
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        # TODO: 高维向量除法暂未实现
+        return NotImplemented
+
 
 class QROFNPower(OperationMixin):
     """
@@ -365,6 +453,20 @@ class QROFNPower(OperationMixin):
 
         # The q-rung of the result is the same as the input QROFN.
         return {'md': md, 'nmd': nmd, 'q': strategy.q}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray: Fuzzarray,
+                                   operand: Union[int, float],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+
+        mds, nmds = fuzzarray.backend.get_component_arrays()
+
+        md_res = tnorm.f_inv_func(operand * tnorm.f_func(mds))
+        nmd_res = tnorm.g_inv_func(operand * tnorm.g_func(nmds))
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNTimes(OperationMixin):
@@ -419,6 +521,19 @@ class QROFNTimes(OperationMixin):
         # The q-rung of the result is the same as the input QROFN.
         return {'md': md, 'nmd': nmd, 'q': strategy.q}
 
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray: Fuzzarray,
+                                   operand: Union[int, float],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds, nmds = fuzzarray.backend.get_component_arrays()
+
+        md_res = tnorm.f_inv_func(operand * tnorm.f_func(mds))
+        nmd_res = tnorm.g_inv_func(operand * tnorm.g_func(nmds))
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
+        return Fuzzarray(backend=new_backend)
+
 
 class QROFNExponential(OperationMixin):
     """
@@ -471,6 +586,20 @@ class QROFNExponential(OperationMixin):
 
         # The q-rung of the result is the same as the input QROFN.
         return {'md': md, 'nmd': nmd, 'q': strategy.q}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray: Fuzzarray,
+                                   operand: Union[int, float],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
+        mds, nmds = fuzzarray.backend.get_component_arrays()
+
+        md_res = tnorm.f_inv_func(operand * tnorm.f_func(mds))
+        nmd_res = tnorm.g_inv_func(operand * tnorm.g_func(nmds))
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNLogarithmic(OperationMixin):
@@ -525,6 +654,20 @@ class QROFNLogarithmic(OperationMixin):
         # The q-rung of the result is the same as the input QROFN.
         return {'md': md, 'nmd': nmd, 'q': strategy.q}
 
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray: Fuzzarray,
+                                   operand: Union[int, float],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
+        mds, nmds = fuzzarray.backend.get_component_arrays()
+
+        md_res = tnorm.f_inv_func(tnorm.f_func(mds) / operand)
+        nmd_res = tnorm.g_inv_func(tnorm.g_func(nmds) / operand)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
+        return Fuzzarray(backend=new_backend)
+
 
 # --- QROFN Comparison Operations ---
 
@@ -570,8 +713,15 @@ class QROFNGreaterThan(OperationMixin):
             Dict[str, bool]: A dictionary with a 'value' key, indicating whether
                              strategy_1 is strictly greater than strategy_2.
         """
-        # Comparison logic: md_1 > md_2 AND nmd_1 < nmd_2.
-        return {'value': strategy_1.md > strategy_2.md and strategy_1.nmd < strategy_2.nmd}
+        return {'value': strategy_1.md - strategy_1.nmd > strategy_2.md - strategy_2.nmd}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   fuzzarray_2: Fuzzarray,
+                                   tnorm: OperationTNorm) -> np.ndarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, fuzzarray_2)
+
+        return np.where(mds1 - nmds1 > mds2 - nmds2, True, False)
 
 
 class QROFNLessThan(OperationMixin):
@@ -616,8 +766,15 @@ class QROFNLessThan(OperationMixin):
             Dict[str, bool]: A dictionary with a 'value' key, indicating whether
                              strategy_1 is strictly less than strategy_2.
         """
-        # Comparison logic: md_1 < md_2 AND nmd_1 > nmd_2.
-        return {'value': strategy_1.md < strategy_2.md and strategy_1.nmd > strategy_2.nmd}
+        return {'value': strategy_1.md - strategy_1.nmd < strategy_2.md - strategy_2.nmd}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   fuzzarray_2: Fuzzarray,
+                                   tnorm: OperationTNorm) -> np.ndarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, fuzzarray_2)
+
+        return np.where(mds1 - nmds1 < mds2 - nmds2, True, False)
 
 
 class QROFNEquals(OperationMixin):
@@ -663,11 +820,17 @@ class QROFNEquals(OperationMixin):
                              strategy_1 is approximately equal to strategy_2.
         """
         config = get_config()
-        # Equality logic: abs(md_1 - md_2) < epsilon AND abs(nmd_1 - nmd_2) < epsilon.
-        value = (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON
-                 and abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
+        value = abs((strategy_1.md - strategy_1.nmd) - (strategy_2.md - strategy_2.nmd)) < config.DEFAULT_EPSILON
 
         return {'value': value}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   fuzzarray_2: Fuzzarray,
+                                   tnorm: OperationTNorm) -> np.ndarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, fuzzarray_2)
+
+        return np.where(abs((mds1 - nmds1) - (mds2 - nmds2)) < get_config().DEFAULT_EPSILON, True, False)
 
 
 class QROFNGreaterEquals(OperationMixin):
@@ -713,12 +876,18 @@ class QROFNGreaterEquals(OperationMixin):
                              strategy_1 is greater than or equal to strategy_2.
         """
         config = get_config()
-        # Greater than or equal to logic: (md_1 > md_2 AND nmd_1 < nmd_2) OR (md_1 == md_2 AND nmd_1 == nmd_2).
-        value = (strategy_1.md > strategy_2.md and strategy_1.nmd < strategy_2.nmd) or \
-                (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and
-                 abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
+        value = (strategy_1.md - strategy_1.nmd > strategy_2.md - strategy_2.nmd) or \
+            abs((strategy_1.md - strategy_1.nmd) - (strategy_2.md - strategy_2.nmd)) < config.DEFAULT_EPSILON
 
         return {'value': value}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   fuzzarray_2: Fuzzarray,
+                                   tnorm: OperationTNorm) -> np.ndarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, fuzzarray_2)
+
+        return np.where(mds1 - nmds1 >= mds2 - nmds2, True, False)
 
 
 class QROFNLessEquals(OperationMixin):
@@ -764,12 +933,18 @@ class QROFNLessEquals(OperationMixin):
                              strategy_1 is less than or equal to strategy_2.
         """
         config = get_config()
-        # Less than or equal to logic: (md_1 < md_2 AND nmd_1 > nmd_2) OR (md_1 == md_2 AND nmd_1 == nmd_2).
-        value = (strategy_1.md < strategy_2.md and strategy_1.nmd > strategy_2.nmd) or \
-                (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and
-                 abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
+        value = (strategy_1.md - strategy_1.nmd < strategy_2.md - strategy_2.nmd) or \
+            abs((strategy_1.md - strategy_1.nmd) - (strategy_2.md - strategy_2.nmd)) < config.DEFAULT_EPSILON
 
         return {'value': value}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   fuzzarray_2: Fuzzarray,
+                                   tnorm: OperationTNorm) -> np.ndarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, fuzzarray_2)
+
+        return np.where(mds1 - nmds1 <= mds2 - nmds2, True, False)
 
 
 class QROFNNotEquals(OperationMixin):
@@ -815,10 +990,17 @@ class QROFNNotEquals(OperationMixin):
         """
         config = get_config()
         # Not equal to logic: NOT (abs(md_1 - md_2) < epsilon AND abs(nmd_1 - nmd_2) < epsilon).
-        value = not (abs(strategy_1.md - strategy_2.md) < config.DEFAULT_EPSILON and
-                     abs(strategy_1.nmd - strategy_2.nmd) < config.DEFAULT_EPSILON)
+        value = abs((strategy_1.md - strategy_1.nmd) - (strategy_2.md - strategy_2.nmd)) > config.DEFAULT_EPSILON
 
         return {'value': value}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   fuzzarray_2: Fuzzarray,
+                                   tnorm: OperationTNorm) -> np.ndarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, fuzzarray_2)
+
+        return np.where(abs((mds1 - nmds1) - (mds2 - nmds2)) > get_config().DEFAULT_EPSILON, True, False)
 
 
 # --- QROFN Set Operations ---
@@ -877,6 +1059,20 @@ class QROFNIntersection(OperationMixin):
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
 
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+
+        # Formula: md = T(md1, md2), nmd = S(nmd1, nmd2)
+        md_res = tnorm.t_norm(mds1, mds2)
+        nmd_res = tnorm.t_conorm(nmds1, nmds2)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
+
 
 class QROFNUnion(OperationMixin):
     """
@@ -932,6 +1128,20 @@ class QROFNUnion(OperationMixin):
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
 
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+
+        # Formula: md = S(md1, md2), nmd = T(nmd1, nmd2)
+        md_res = tnorm.t_conorm(mds1, mds2)
+        nmd_res = tnorm.t_norm(nmds1, nmds2)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
+
 
 class QROFNComplement(OperationMixin):
     """
@@ -978,6 +1188,20 @@ class QROFNComplement(OperationMixin):
 
         # The q-rung of the result is the same as the input QROFN.
         return {'md': md, 'nmd': nmd, 'q': strategy.q}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds, nmds = fuzzarray_1.backend.get_component_arrays()
+
+        # Formula: md' = nmd, nmd' = md
+        md_res = nmds.copy()
+        nmd_res = mds.copy()
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNImplication(OperationMixin):
@@ -1030,6 +1254,20 @@ class QROFNImplication(OperationMixin):
 
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+
+        # Formula: md = S(nmd1, md2), nmd = T(md1, nmd2)
+        md_res = tnorm.t_conorm(nmds1, mds2)
+        nmd_res = tnorm.t_norm(mds1, nmds2)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNEquivalence(OperationMixin):
@@ -1086,6 +1324,24 @@ class QROFNEquivalence(OperationMixin):
 
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
 
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+
+        # Formula: md = T(S(nmd1, md2), S(nmd2, md1)), nmd = S(T(md1, nmd2), T(md2, nmd1))
+        md_res = tnorm.t_norm(
+            tnorm.t_conorm(nmds1, mds2),
+            tnorm.t_conorm(nmds2, mds1))
+        nmd_res = tnorm.t_conorm(
+            tnorm.t_norm(mds1, nmds2),
+            tnorm.t_norm(mds2, nmds1))
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
+
 
 class QROFNDifference(OperationMixin):
     """
@@ -1136,6 +1392,20 @@ class QROFNDifference(OperationMixin):
 
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+
+        # Formula: md = T(md1, nmd2), nmd = S(nmd1, md2)
+        md_res = tnorm.t_norm(mds1, nmds2)
+        nmd_res = tnorm.t_conorm(nmds1, mds2)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNSymmetricDifference(OperationMixin):
@@ -1195,6 +1465,24 @@ class QROFNSymmetricDifference(OperationMixin):
 
         # The q-rung of the result is the same as the input QROFNs.
         return {'md': md, 'nmd': nmd, 'q': strategy_1.q}
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+
+        # Formula: md = S(T(md1, nmd2), T(nmd1, md2)), nmd = T(S(md1, nmd2), S(nmd1, md2))
+        md_res = tnorm.t_conorm(
+            tnorm.t_norm(mds1, nmds2),
+            tnorm.t_norm(nmds1, mds2))
+        nmd_res = tnorm.t_norm(
+            tnorm.t_conorm(mds1, nmds2),
+            tnorm.t_conorm(nmds1, mds2))
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
 
 
 def register_qrofn_operations():

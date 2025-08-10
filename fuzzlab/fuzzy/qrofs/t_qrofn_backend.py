@@ -49,74 +49,67 @@ class QROFNBackend(FuzzarrayBackend):
         Set data at the given index from a Fuzznum object.
         """
         if fuzznum.mtype != self.mtype:
-            raise ValueError(f"Mtype mismatch: expected '{self.mtype}', got '{fuzznum.mtype}'")
+            raise ValueError(f"Mtype mismatch: expected {self.mtype}, got {fuzznum.mtype}")
 
         if fuzznum.q != self.q:
-            raise ValueError(f"Q parameter mismatch: expected q={self.q}, got q={fuzznum.q}")
+            raise ValueError(f"Q parameter mismatch: expected {self.q}, got {fuzznum.q}")
 
         # 提取 Fuzznum 的数据并设置到对应的数组位置
         self.mds[index] = fuzznum.md
         self.nmds[index] = fuzznum.nmd
 
     def copy(self) -> 'QROFNBackend':
-        """
-        Create a deep copy of this backend.
-        """
-        new_backend = QROFNBackend(shape=self.shape, **self.mtype_kwargs)
+        """Create a deep copy of the backend."""
+        new_backend = QROFNBackend(self.shape, **self.mtype_kwargs)
         new_backend.mds = self.mds.copy()
         new_backend.nmds = self.nmds.copy()
         return new_backend
 
     def slice_view(self, key) -> 'QROFNBackend':
-        """
-        Create a new backend representing a slice of this one.
-        """
-        # 应用切片操作到数组
-        sliced_mds = self.mds[key]
-        sliced_nmds = self.nmds[key]
-
-        # 创建新的后端
-        new_backend = QROFNBackend(shape=sliced_mds.shape, **self.mtype_kwargs)
-        new_backend.mds = sliced_mds
-        new_backend.nmds = sliced_nmds
-
+        """Create a view of the backend with the given slice."""
+        new_shape = self.mds[key].shape
+        new_backend = QROFNBackend(new_shape, **self.mtype_kwargs)
+        new_backend.mds = self.mds[key]
+        new_backend.nmds = self.nmds[key]
         return new_backend
 
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, **mtype_kwargs) -> 'QROFNBackend':
         """
-        Factory method to create a backend directly from NumPy arrays.
-        This is the high-performance path for batch operations.
+        Create a QROFNBackend from existing arrays.
 
         Args:
             mds: Membership degrees array
             nmds: Non-membership degrees array
-            **mtype_kwargs: Mtype-specific parameters
+            **mtype_kwargs: Type-specific parameters (e.g., q)
 
         Returns:
-            A new QROFNBackend instance
+            New QROFNBackend instance
         """
         if mds.shape != nmds.shape:
-            raise ValueError("mds and nmds arrays must have the same shape")
+            raise ValueError(f"Shape mismatch: mds {mds.shape} vs nmds {nmds.shape}")
 
-        backend = cls(shape=mds.shape, **mtype_kwargs)
-        backend.mds = mds.copy() if isinstance(mds, np.ndarray) else np.array(mds)
-        backend.nmds = nmds.copy() if isinstance(nmds, np.ndarray) else np.array(nmds)
-
+        backend = cls(mds.shape, **mtype_kwargs)
+        backend.mds = mds.copy()
+        backend.nmds = nmds.copy()
         return backend
 
     def fill_from_values(self, md_value: float, nmd_value: float):
         """
-        Fill the entire backend with constant values.
-        Useful for creating uniform arrays.
+        Fill all elements with the given md and nmd values.
+
+        Args:
+            md_value: Membership degree value
+            nmd_value: Non-membership degree value
         """
         self.mds.fill(md_value)
         self.nmds.fill(nmd_value)
 
     def get_component_arrays(self) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Get direct access to the underlying arrays.
-        WARNING: Modifying these arrays directly can break consistency.
-        Use only for high-performance read operations.
+        Get the underlying component arrays.
+
+        Returns:
+            Tuple of (mds, nmds) arrays
         """
         return self.mds, self.nmds

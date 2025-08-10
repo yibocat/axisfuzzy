@@ -94,6 +94,28 @@ class FuzzarrayBackend(ABC):
         """
         pass
 
+    @staticmethod
+    def from_arrays(*components, **mtype_kwargs) -> 'FuzzarrayBackend':
+        pass
+
+    def fill_from_values(self, *values: float):
+        """
+        Fill all elements with the given md and nmd values.
+
+        Args:
+            values: Values to fill (should match the number of components for the mtype)
+        """
+        pass
+
+    def get_component_arrays(self) -> tuple:
+        """
+        Get the underlying component arrays.
+
+        Returns:
+            Tuple of arrays
+        """
+        pass
+
     def __repr__(self):
         return f"{self.__class__.__name__}(shape={self.shape}, mtype='{self.mtype}')"
 
