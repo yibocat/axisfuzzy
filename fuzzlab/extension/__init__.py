@@ -14,7 +14,7 @@ functions for different fuzzy number types (`mtype`).
 
 It includes:
 - `registry.py`: Manages the registration of extension functions and their metadata.
-- `decorators.py`: Provides `@extension` and `@batch_extension` for declarative registration.
+- `decorator.py`: Provides `@extension` and `@batch_extension` for declarative registration.
 - `dispatcher.py`: Creates dynamic proxy functions for runtime dispatching based on `mtype`.
 - `injector.py`: Handles the dynamic injection of registered functions into classes and modules.
 - `utils.py`: Offers utility functions like `call_extension` for internal calls between extensions.
@@ -26,7 +26,7 @@ extension system, typically called once during FuzzLab's library loading.
 from .registry import get_extension_registry
 from .dispatcher import get_extension_dispatcher
 from .injector import get_extension_injector
-from .decorators import extension, batch_extension
+from .decorator import extension, batch_extension
 from .utils import call_extension
 
 

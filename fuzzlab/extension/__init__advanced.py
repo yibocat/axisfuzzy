@@ -8,7 +8,7 @@
 from .registry import get_extension_registry
 from .dispatcher import get_extension_dispatcher
 from .injector import get_extension_injector
-from .decorators import extension, batch_extension
+from .decorator import extension, batch_extension
 from .utils import call_extension
 
 from .conditional_ import conditional_extension

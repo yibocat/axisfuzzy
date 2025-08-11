@@ -136,11 +136,118 @@ def qrofn_distance_ext(fuzz_1, fuzz_2,
     target_classes=['Fuzznum'],
     injection_type='top_level_function')
 def qrofn_from_str_ext(fuzznum_str: str, q: int = 1) -> Fuzznum:
-    """
-    Parse strings of the form "<md,nmd>" into q-rung orthopair fuzzy numbers (QROFNs).
-
-    :param fuzznum_str: The string representation of the QROFN.
-    :param q: The q-rung level (default is 1).
-    :return: A Fuzznum object representing the QROFN.
-    """
+    """Convert a string representation of a QROFN Fuzznum to an actual Fuzznum."""
     return factory._qrofn_from_str(fuzznum_str, q)
+
+
+# ========================= Aggregation Operations =========================
+
+
+@extension(
+    name='sum',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+def qrofn_sum_ext(fuzz: Union[Fuzzarray, Fuzznum],
+                  axis: int = None) -> Union[Fuzzarray, Fuzznum]:
+    """Calculate the sum of a QROFN Fuzzarray or Fuzznum along a specified axis."""
+    return factory._qrofn_sum(fuzz, axis=axis)
+
+
+@extension(
+    name='mean',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+def qrofn_mean_ext(fuzz: Union[Fuzzarray, Fuzznum],
+                   axis: int = None) -> Union[Fuzzarray, Fuzznum]:
+    """Calculate the mean of a QROFN Fuzzarray or Fuzznum along a specified axis."""
+    return factory._qrofn_mean(fuzz, axis=axis)
+
+
+@extension(
+    name='max',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+def qrofn_max_ext(fuzz: Union[Fuzzarray, Fuzznum],
+                  axis: int = None) -> Union[Fuzzarray, Fuzznum]:
+    """Calculate the maximum of a QROFN Fuzzarray or Fuzznum along a specified axis."""
+    return factory._qrofn_max(fuzz, axis=axis)
+
+
+@extension(
+    name='min',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+def qrofn_min_ext(fuzz: Union[Fuzzarray, Fuzznum],
+                  axis: int = None) -> Union[Fuzzarray, Fuzznum]:
+    """Calculate the minimum of a QROFN Fuzzarray or Fuzznum along a specified axis."""
+    return factory._qrofn_min(fuzz, axis=axis)
+
+
+@extension(
+    name='prod',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+def qrofn_prod_ext(fuzz: Union[Fuzzarray, Fuzznum],
+                   axis: int = None) -> Union[Fuzzarray, Fuzznum]:
+    """Calculate the product of a QROFN Fuzzarray or Fuzznum along a specified axis."""
+    return factory._qrofn_prod(fuzz, axis=axis)
+
+
+@extension(
+    name='var',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+def qrofn_var_ext(fuzz: Union[Fuzzarray, Fuzznum],
+                  axis: int = None) -> Union[Fuzzarray, Fuzznum]:
+    """Calculate the variance of a QROFN Fuzzarray or Fuzznum along a specified axis."""
+    return factory._qrofn_var(fuzz, axis=axis)
+
+
+@extension(
+    name='std',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+def qrofn_std_ext(fuzz: Union[Fuzzarray, Fuzznum],
+                  axis: int = None) -> Union[Fuzzarray, Fuzznum]:
+    """Calculate the standard deviation of a QROFN Fuzzarray or Fuzznum along a specified axis."""
+    return factory._qrofn_std(fuzz, axis=axis)
+
+
+@extension(
+    name='score',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+@property
+def qrofn_score_ext(fuzz: Union[Fuzzarray, Fuzznum]) -> Union[float, np.ndarray]:
+    """Calculate the score of a QROFN Fuzzarray or Fuzznum."""
+    return factory._qrofn_score(fuzz)
+
+
+@extension(
+    name='acc',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+@property
+def qrofn_acc_ext(fuzz: Union[Fuzzarray, Fuzznum]) -> Union[float, np.ndarray]:
+    """Calculate the accuracy of a QROFN Fuzzarray or Fuzznum."""
+    return factory._qrofn_acc(fuzz)
+
+
+@extension(
+    name='ind',
+    mtype='qrofn',
+    target_classes=['Fuzzarray', 'Fuzznum'],
+)
+@property
+def qrofn_ind_ext(fuzz: Union[Fuzzarray, Fuzznum]) -> Union[float, np.ndarray]:
+    """Calculate the indeterminacy of a QROFN Fuzzarray or Fuzznum."""
+    return factory._qrofn_ind(fuzz)

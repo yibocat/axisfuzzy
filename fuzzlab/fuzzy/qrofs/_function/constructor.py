@@ -6,7 +6,7 @@
 #  Software: FuzzLab
 from typing import Union
 
-from ....core import Fuzznum, Fuzzarray, fuzzarray
+from ....core import Fuzznum, Fuzzarray, _fuzzarray
 from ....extension import extension
 from ....utils import experimental
 

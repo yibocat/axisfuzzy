@@ -57,10 +57,10 @@ def _qrofn_distance(
 
         if indeterminacy:
             distance = (0.5 * (np.abs(mds1 ** q - md2 ** q) ** p_l +
-                          np.abs(nmds1 ** q - nmd2 ** q) ** p_l + pi)) ** (1 / p_l)
+                               np.abs(nmds1 ** q - nmd2 ** q) ** p_l + pi)) ** (1 / p_l)
         else:
             distance = (0.5 * (np.abs(mds1 ** q - md2 ** q) ** p_l +
-                          np.abs(nmds1 ** q - nmd2 ** q) ** p_l)) ** (1 / p_l)
+                               np.abs(nmds1 ** q - nmd2 ** q) ** p_l)) ** (1 / p_l)
         return distance
     elif isinstance(fuzz_1, Fuzznum) and isinstance(fuzz_2, Fuzzarray):
         # Fuzznum vs Fuzzarray - swap and recurse
@@ -68,15 +68,15 @@ def _qrofn_distance(
 
     else:
         # Both are Fuzznums - fallback to original implementation
-        pi1 = fuzz_1.indeterminacy
-        pi2 = fuzz_2.indeterminacy
-        pi = np.abs(pi1**q - pi2**q)**p_l
+        pi1 = fuzz_1.ind
+        pi2 = fuzz_2.ind
+        pi = np.abs(pi1 ** q - pi2 ** q) ** p_l
 
         if indeterminacy:
-            distance = (0.5 * (np.abs(fuzz_1.md**q - fuzz_2.md**q)**p_l +
-                          np.abs(fuzz_1.nmd**q - fuzz_2.nmd**q)**p_l + pi))**(1/p_l)
+            distance = (0.5 * (np.abs(fuzz_1.md ** q - fuzz_2.md ** q) ** p_l +
+                               np.abs(fuzz_1.nmd ** q - fuzz_2.nmd ** q) ** p_l + pi)) ** (1 / p_l)
         else:
-            distance = (0.5 * (np.abs(fuzz_1.md**q - fuzz_2.md**q)**p_l +
-                          np.abs(fuzz_1.nmd**q - fuzz_2.nmd**q)**p_l))**(1/p_l)
+            distance = (0.5 * (np.abs(fuzz_1.md ** q - fuzz_2.md ** q) ** p_l +
+                               np.abs(fuzz_1.nmd ** q - fuzz_2.nmd ** q) ** p_l)) ** (1 / p_l)
 
-        return distance.item() if isinstance(dis, np.floating) else distance
+        return distance.item() if isinstance(distance, np.floating) else distance

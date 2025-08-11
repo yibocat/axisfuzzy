@@ -275,3 +275,22 @@ def get_mixin_registry():
         >>> # Now 'registry' can be used to register functions or trigger injection.
     """
     return _registry
+
+
+def register(name: str,
+             target_classes: Optional[List[str]] = None,
+             injection_type: Literal['instance_function', 'top_level_function', 'both'] = 'both') -> Callable:
+    """
+    Top-level decorator to register a function for dynamic injection.
+
+    This is a convenience wrapper around `get_mixin_registry().register`.
+
+    Args:
+        name (str): The unique name under which the function will be registered.
+        target_classes (Optional[List[str]]): A list of class names for injection.
+        injection_type (Literal): Specifies how the function should be injected.
+
+    Returns:
+        Callable: A decorator for the function implementation.
+    """
+    return get_mixin_registry().register(name, target_classes, injection_type)

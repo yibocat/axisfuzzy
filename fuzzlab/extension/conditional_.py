@@ -32,7 +32,7 @@
 import sys
 from typing import Callable
 
-from .decorators import extension
+from .decorator import extension
 
 
 def conditional_extension(condition: Callable[[], bool]):

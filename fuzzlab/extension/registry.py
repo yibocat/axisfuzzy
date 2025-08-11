@@ -14,7 +14,7 @@ to default implementations, and priority-based selection.
 
 The registry is thread-safe and serves as the central repository for all
 extension metadata and callable functions, which are registered via the
-`@extension` decorator defined in `fuzzlab.extension.decorators.py`.
+`@extension` decorator defined in `fuzzlab.extension.decorator.py`.
 These registered functions are later injected into `Fuzznum` and `Fuzzarray`
 classes or the `fuzzlab` top-level namespace by `fuzzlab.extension.injector.py`.
 """
@@ -70,7 +70,7 @@ class ExtensionRegistry:
        and an `mtype`, with fallback to default if no specialized implementation exists.
     4. Ensure thread-safe operations for registration and retrieval.
 
-    It works in conjunction with `fuzzlab.extension.decorators.py` for registration
+    It works in conjunction with `fuzzlab.extension.decorator.py` for registration
     and `fuzzlab.extension.dispatcher.py` and `fuzzlab.extension.injector.py`
     for function dispatching and injection.
     """
@@ -102,7 +102,7 @@ class ExtensionRegistry:
         Decorator factory to register an external function.
 
         This method is typically called by the `@extension` decorator
-        (from `fuzzlab.extension.decorators.py`) to register a function
+        (from `fuzzlab.extension.decorator.py`) to register a function
         with the registry. It returns a decorator that, when applied to a function,
         stores that function and its metadata.
 

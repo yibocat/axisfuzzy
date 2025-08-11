@@ -22,7 +22,7 @@ import numpy as np
 
 from .registry import get_mixin_registry
 
-from ..core.fuzzarray import Fuzzarray
+from ..core._fuzzarray import Fuzzarray
 from ..core.fuzznums import Fuzznum
 
 # Get the global registry instance

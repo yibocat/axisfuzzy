@@ -52,7 +52,7 @@ import functools
 import time
 from typing import Dict, Any
 
-from .decorators import extension
+from .decorator import extension
 
 
 class ExtensionPerformanceMonitor:
