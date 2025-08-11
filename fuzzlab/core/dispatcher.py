@@ -17,40 +17,6 @@ from typing import Any, Optional
 import numpy as np
 
 
-# def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
-#     """
-#     Central dispatcher for operations between various FuzzLab data types.
-#     """
-#     from .fuzznums import Fuzznum
-#     from .t_fuzzarray import Fuzzarray
-#
-#     # Handle Fuzzarray operations (new SoA implementation)
-#     if isinstance(operand1, Fuzzarray):
-#         return operand1.execute_vectorized_op(op_name, operand2)
-#
-#     # Handle Fuzznum operations
-#     elif isinstance(operand1, Fuzznum):
-#         if operand2 is None:
-#             # Unary operation
-#             return operand1.get_strategy_instance().execute_operation(op_name, None)
-#         elif isinstance(operand2, (Fuzznum, int, float)):
-#             return operand1.get_strategy_instance().execute_operation(op_name, operand2)
-#         elif isinstance(operand2, Fuzzarray):
-#             # Fuzznum op Fuzzarray -> broadcast Fuzznum and use Fuzzarray's implementation
-#             return operand2.execute_vectorized_op(op_name, operand1)
-#         else:
-#             raise TypeError(f"Unsupported operation {op_name} between {type(operand1)} and {type(operand2)}")
-#
-#     # Handle scalar operations (backward compatibility)
-#     elif isinstance(operand1, (int, float)) and isinstance(operand2, Fuzzarray):
-#         # Scalar op Fuzzarray -> use Fuzzarray's implementation with swapped operands if necessary
-#         # For now, delegate to Fuzzarray
-#         return operand2.execute_vectorized_op(op_name, operand1)
-#
-#     else:
-#         raise TypeError(f"Unsupported operation {op_name} with operand types {type(operand1)}, {type(operand2)}")
-
-
 def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
     """Performs an operation between two operands based on their types.
 
@@ -113,9 +79,13 @@ def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
     # Rule 2: Fuzznum <op> Fuzzarray
     # Handles operations where a Fuzznum interacts with a Fuzzarray.
     if isinstance(operand1, Fuzznum) and isinstance(operand2, Fuzzarray):
-        # Broadcast Fuzznum into Fuzzarray to match the shape of operand2.
-        # The rule became Fuzzarray <op> Fuzzarray, then recursively call operate.
-        broadcasted_fuzzarray = fuzzarray(operand1, shape=operand2.shape)
+        # Broadcast Fuzznum to match the shape of operand2.
+        # The operation becomes Fuzzarray <op> Fuzzarray.
+        # We can now directly use the Fuzzarray constructor for this.
+        broadcasted_fuzzarray = Fuzzarray(data=operand1,
+                                          mtype=operand2.mtype,
+                                          shape=operand2.shape,
+                                          q=operand1.q)
         return operate(op_name, broadcasted_fuzzarray, operand2)
 
     # Rule 3: Fuzznum <op> Scalar (int, float)
@@ -140,7 +110,10 @@ def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
         if op_name == 'div':
             op_name = 'tim'
             operand2 = 1 / operand2
-        broadcasted_fuzzarray = fuzzarray(operand1, shape=operand2.shape)
+        broadcasted_fuzzarray = Fuzzarray(data=operand1,
+                                          mtype=operand1.mtype,
+                                          shape=operand2.shape,
+                                          q=operand1.q)
         return operate(op_name, broadcasted_fuzzarray, operand2)
 
     # Rule 5: Fuzzarray <op> Fuzzarray / Fuzznum

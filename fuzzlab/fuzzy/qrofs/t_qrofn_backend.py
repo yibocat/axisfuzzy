@@ -35,8 +35,6 @@ class QROFNBackend(FuzzarrayBackend):
         """
         Create a Fuzznum object from the data at the given index.
         """
-        from ...core.fuzznums import Fuzznum
-
         # 从 NumPy 数组中提取标量值
         md_value = float(self.mds[index])
         nmd_value = float(self.nmds[index])

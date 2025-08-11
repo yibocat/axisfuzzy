@@ -15,6 +15,7 @@ from .operation import get_operation_registry, OperationMixin
 from .triangular import OperationTNorm
 
 
+# TODO: Fuzzarray 现在有个关键的地方在于没有实现 score, accuracy 等基本模糊数的属性
 class Fuzzarray:
     """
     High-performance fuzzy array using Struct of Arrays (SoA) architecture.
@@ -57,26 +58,49 @@ class Fuzzarray:
         if backend_cls is None:
             raise ValueError(f"No backend registered for mtype '{self._mtype}'")
 
-        # Handle different data types
-        if data is None and shape is not None:
-            # Create empty backend with specified shape
+        # Case 1: No data provided, create an empty array of a given shape
+        if data is None:
+            if shape is None:
+                raise ValueError("Shape must be provided when data is None")
             return backend_cls(shape=shape, **self._mtype_kwargs)
 
-        # For now, use a simplified approach - will improve in later phases
+        # Case 2: Data is a single Fuzznum
         if isinstance(data, Fuzznum):
             if shape is None:
-                shape = ()
+                shape = ()  # Scalar Fuzzarray
             backend = backend_cls(shape=shape, **self._mtype_kwargs)
-            if shape == ():
-                backend.set_fuzznum_data((), data)
-            else:
-                # Broadcast single Fuzznum to the shape
-                for idx in np.ndindex(shape):
-                    backend.set_fuzznum_data(idx, data)
+            # Use np.ndindex for efficient iteration over all elements to set data
+            for idx in np.ndindex(shape):
+                backend.set_fuzznum_data(idx, data)
             return backend
 
-        # TODO: Handle list, ndarray of Fuzznum objects
-        raise NotImplementedError("Complex data initialization not yet implemented")
+        # Case 3: Data is a list, tuple, or numpy array
+        if isinstance(data, (list, tuple, np.ndarray)):
+            if not isinstance(data, np.ndarray):
+                # Convert list/tuple to numpy array of objects for consistent handling
+                data = np.array(data, dtype=object)
+
+            if shape is None:
+                shape = data.shape
+            elif data.shape != shape:
+                # If shapes mismatch, try to reshape. This will fail if sizes don't match.
+                try:
+                    data = data.reshape(shape)
+                except ValueError:
+                    raise ValueError(f"Cannot reshape array of size {data.size} into shape {shape}")
+
+            backend = backend_cls(shape=shape, **self._mtype_kwargs)
+
+            # Iterate through the numpy array and populate the backend
+            it = np.nditer(data, flags=['multi_index', 'refs_ok'])
+            for item in it:
+                fuzznum_item = item.item()  # Get the Fuzznum object from the array cell
+                if not isinstance(fuzznum_item, Fuzznum):
+                    raise TypeError(f"All elements in the input data must be Fuzznum objects, found {type(fuzznum_item)}")
+                backend.set_fuzznum_data(it.multi_index, fuzznum_item)
+            return backend
+
+        raise TypeError(f"Unsupported data type for Fuzzarray creation: {type(data)}")
 
     # ========================= Properties =========================
 
