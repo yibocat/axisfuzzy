@@ -62,30 +62,35 @@ def _prepare_operands(
 
     if isinstance(other, Fuzzarray):
         if other.mtype != fuzzarray_1.mtype:
-            raise ValueError(f"Mtype mismatch: {fuzzarray_1.mtype} vs {other.mtype}")
+            raise TypeError(f"Mtype mismatch for operation: '{fuzzarray_1.mtype}' and '{other.mtype}'")
         if other.q != fuzzarray_1.q:
-            raise ValueError(f"Q parameter mismatch: {fuzzarray_1.q} vs {other.q}")
+            raise ValueError(f"Q-rung mismatch for operation: '{fuzzarray_1.q}' and '{other.q}'")
 
-        if fuzzarray_1.shape != other.shape:
-            # Basic broadcasting check
-            try:
-                mds, _ = other.backend.get_component_arrays()
-                np.broadcast(mds1, mds)
-            except ValueError:
-                raise ValueError(f"Shape mismatch: cannot broadcast {fuzzarray_1.shape} with {other.shape}")
         mds2, nmds2 = other.backend.get_component_arrays()
+        # Let NumPy handle broadcasting errors
+        try:
+            return np.broadcast_arrays(mds1, nmds1, mds2, nmds2)
+        except ValueError:
+            raise ValueError(f"Shape mismatch: cannot broadcast shapes {fuzzarray_1.shape} and {other.shape}")
+
     elif isinstance(other, Fuzznum):
         if other.mtype != fuzzarray_1.mtype:
-            raise ValueError(f"Mtype mismatch: {fuzzarray_1.mtype} vs {other.mtype}")
+            raise TypeError(f"Mtype mismatch for operation: "
+                            f"Fuzzarray('{fuzzarray_1.mtype}') and Fuzznum('{other.mtype}')")
         if other.q != fuzzarray_1.q:
-            raise ValueError(f"Q parameter mismatch: {fuzzarray_1.q} vs {other.q}")
+            raise ValueError(f"Q-rung mismatch for operation: "
+                             f"Fuzzarray(q={fuzzarray_1.q}) and Fuzznum(q={other.q})")
 
-        mds2 = np.full_like(mds1, other.md)
-        nmds2 = np.full_like(nmds1, other.nmd)
+        # mds2 = np.full_like(mds1, other.md)
+        # nmds2 = np.full_like(nmds1, other.nmd)
+
+        # Create arrays from Fuzznum and let NumPy broadcast them
+        mds2 = np.full((1,), other.md, dtype=mds1.dtype)
+        nmds2 = np.full((1,), other.nmd, dtype=nmds1.dtype)
     else:
         raise TypeError(f"Unsupported operand type for vectorized operation: {type(other)}")
 
-    return mds1, nmds1, mds2, nmds2
+    return np.broadcast_arrays(mds1, nmds1, mds2, nmds2)
 
 
 # --- QROFN Arithmetic Operations ---
@@ -248,8 +253,47 @@ class QROFNSubtraction(OperationMixin):
                                    fuzzarray_1: Fuzzarray,
                                    other: Optional[Any],
                                    tnorm: OperationTNorm) -> Fuzzarray:
-        # TODO: 高维向量减法暂未实现
-        return NotImplemented
+        if tnorm.norm_type != 'algebraic':
+            warnings.warn(f"The subtraction operation of 'qrofn' is currently only applicable to 'algebraic' t-norm. "
+                          f"Vectorized subtraction will be performed using the 'algebraic' t-norm logic.")
+
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+        q = fuzzarray_1.q
+        epsilon = get_config().DEFAULT_EPSILON
+
+        # Vectorize conditions
+        # Use np.divide to handle potential division by zero safely
+        with np.errstate(divide='ignore', invalid='ignore'):
+            condition_1 = np.divide(nmds1, nmds2)
+            condition_2 = ((1 - mds1 ** q) / (1 - mds2 ** q)) ** (1 / q)
+
+        # Create a boolean mask where the subtraction is valid
+        valid_mask = (
+            (condition_1 >= epsilon) & (condition_1 <= 1 - epsilon) &
+            (condition_2 >= epsilon) & (condition_2 <= 1 - epsilon) &
+            (condition_1 <= condition_2)
+        )
+
+        # Calculate results using vectorized formulas
+        with np.errstate(divide='ignore', invalid='ignore'):
+            md_res_valid = ((mds1 ** q - mds2 ** q) / (1 - mds2 ** q)) ** (1 / q)
+            nmd_res_valid = np.divide(nmds1, nmds2)
+
+        # Initialize result arrays with default values (0, 1)
+        md_res = np.zeros_like(mds1)
+        nmd_res = np.ones_like(nmds1)
+
+        # Use np.where to apply results only where the mask is True
+        np.copyto(md_res, md_res_valid, where=valid_mask)
+        np.copyto(nmd_res, nmd_res_valid, where=valid_mask)
+
+        # Handle NaNs that might result from invalid calculations
+        np.nan_to_num(md_res, copy=False, nan=0.0)
+        np.nan_to_num(nmd_res, copy=False, nan=1.0)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNMultiplication(OperationMixin):
@@ -399,8 +443,46 @@ class QROFNDivision(OperationMixin):
                                    fuzzarray_1: Fuzzarray,
                                    other: Optional[Any],
                                    tnorm: OperationTNorm) -> Fuzzarray:
-        # TODO: 高维向量除法暂未实现
-        return NotImplemented
+        if tnorm.norm_type != 'algebraic':
+            warnings.warn(f"The division operation of 'qrofn' is currently only applicable to 'algebraic' t-norm. "
+                          f"Vectorized division will be performed using the 'algebraic' t-norm logic.")
+
+        mds1, nmds1, mds2, nmds2 = _prepare_operands(fuzzarray_1, other)
+        q = fuzzarray_1.q
+        epsilon = get_config().DEFAULT_EPSILON
+
+        # Vectorize conditions
+        with np.errstate(divide='ignore', invalid='ignore'):
+            condition_1 = np.divide(mds1, mds2)
+            condition_2 = ((1 - nmds1 ** q) / (1 - nmds2 ** q)) ** (1 / q)
+
+        # Create a boolean mask where the division is valid
+        valid_mask = (
+            (condition_1 >= epsilon) & (condition_1 <= 1 - epsilon) &
+            (condition_2 >= epsilon) & (condition_2 <= 1 - epsilon) &
+            (condition_1 <= condition_2)
+        )
+
+        # Calculate results using vectorized formulas
+        with np.errstate(divide='ignore', invalid='ignore'):
+            md_res_valid = np.divide(mds1, mds2)
+            nmd_res_valid = ((nmds1 ** q - nmds2 ** q) / (1 - nmds2 ** q)) ** (1 / q)
+
+        # Initialize result arrays with default values (1, 0)
+        md_res = np.ones_like(mds1)
+        nmd_res = np.zeros_like(nmds1)
+
+        # Use np.where to apply results only where the mask is True
+        np.copyto(md_res, md_res_valid, where=valid_mask)
+        np.copyto(nmd_res, nmd_res_valid, where=valid_mask)
+
+        # Handle NaNs
+        np.nan_to_num(md_res, copy=False, nan=1.0)
+        np.nan_to_num(nmd_res, copy=False, nan=0.0)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(md_res, nmd_res, q=q)
+        return Fuzzarray(backend=new_backend)
 
 
 class QROFNPower(OperationMixin):
