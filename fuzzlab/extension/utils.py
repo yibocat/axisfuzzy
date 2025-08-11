@@ -16,7 +16,8 @@ the injection mechanism.
 from typing import Union
 
 from .registry import get_extension_registry
-from ..core import Fuzznum, Fuzzarray
+from ..core import Fuzznum
+from ..core.t_fuzzarray import Fuzzarray
 
 
 def call_extension(func_name: str,

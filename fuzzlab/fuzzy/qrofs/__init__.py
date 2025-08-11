@@ -6,16 +6,18 @@
 #  Software: FuzzLab
 
 from .qrofn import QROFNStrategy, QROFNTemplate
+from .t_qrofn_backend import QROFNBackend
 
 from .op import register_qrofn_operations
 
-from . import function
+from . import factory
 from . import random
+from . import extension
 
 register_qrofn_operations()
 
 __all__ = [
     'QROFNStrategy',
     'QROFNTemplate',
-    'register_qrofn_operations',
+    'QROFNBackend'
 ]
