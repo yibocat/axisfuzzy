@@ -362,8 +362,8 @@ class OperationTNorm:
             # For a=0, a^q is still 0, and g_base(0) is usually infinity.
             # q-rung pseudo-inverse: g_q_inv(u) = (g_base_inv(u))^(1/q)
             # For u=inf, g_base_inv(inf) is usually 0.
-            self.g_func = lambda a: self._base_g_func_raw(a ** self.q) if a >= 0 else np.inf
-            self.g_inv_func = lambda u: (self._base_g_inv_func_raw(u)) ** (1 / self.q) if u >= 0 else 0.0
+            self.g_func = lambda a: self._base_g_func_raw(a ** self.q)
+            self.g_inv_func = lambda u: (self._base_g_inv_func_raw(u)) ** (1 / self.q)
         else:
             # If q=1 or q-rung is not supported, use the original base generator directly.
             self.g_func = self._base_g_func_raw
@@ -388,7 +388,7 @@ class OperationTNorm:
             # Dual generator f(a) = g((1 - a^q)^(1/q))
             # Ensure 1-a is within the valid domain [0,1], otherwise the result is infinity.
             # Dual pseudo-inverse f_inv(u) = (1 - g_inv(u)^q)^(1/q)
-            self.f_func = lambda a: self.g_func((1 - a ** self.q) ** (1 / self.q)) if 0 <= a <= 1 else np.inf
+            self.f_func = lambda a: self.g_func((1 - a ** self.q) ** (1 / self.q))
             self.f_inv_func = lambda u: (1 - self.g_inv_func(u) ** self.q) ** (1 / self.q)
         else:
             self.f_func = None
@@ -489,13 +489,13 @@ class OperationTNorm:
         self._base_t_conorm_raw = lambda a, b: a + b - a * b
         """Mathematical expression: S(a,b) = a + b - ab"""
 
-        self._base_g_func_raw = lambda a: -np.log(a) if a > get_config().DEFAULT_EPSILON else np.inf
+        self._base_g_func_raw = lambda a: np.where(a > get_config().DEFAULT_EPSILON, -np.log(a), np.inf)
         """Mathematical expression: g(a) = -ln(a)
         The generator g(a) approaches infinity as a approaches 0, and approaches 0 as a approaches 1.
         Here, get_config().DEFAULT_EPSILON is used to handle the log(0) case, avoiding runtime errors.
         """
 
-        self._base_g_inv_func_raw = lambda u: np.exp(-u) if u < 100 else 0.0
+        self._base_g_inv_func_raw = lambda u: np.where(u < 100, np.exp(-u), 0.0)
         """Mathematical expression: g^(-1)(u) = exp(-u)
         The pseudo-inverse g_inv(u) approaches 0 as u approaches infinity, and approaches 1 as u approaches 0.
         Here, an upper limit of 100 is set to prevent exp(-u) from becoming too small, leading to floating-point underflow, and directly returns 0.0.
@@ -515,16 +515,16 @@ class OperationTNorm:
         Initializes the Łukasiewicz t-norm and its dual t-conorm.
         This is an Archimedean t-norm, but not strictly Archimedean.
         """
-        self._base_t_norm_raw = lambda a, b: max(0, a + b - 1)
+        self._base_t_norm_raw = lambda a, b: np.maximum(0, a + b - 1)
         """Mathematical expression: T(a,b) = max(0, a + b - 1)"""
 
-        self._base_t_conorm_raw = lambda a, b: min(1, a + b)
+        self._base_t_conorm_raw = lambda a, b: np.minimum(1, a + b)
         """Mathematical expression: S(a,b) = min(1, a + b)"""
 
         self._base_g_func_raw = lambda a: 1 - a
         """Mathematical expression: g(a) = 1 - a"""
 
-        self._base_g_inv_func_raw = lambda u: max(0, 1 - u)
+        self._base_g_inv_func_raw = lambda u: np.maximum(0, 1 - u)
         """Mathematical expression: g^(-1)(u) = max(0, 1 - u)"""
 
         self.is_archimedean = True
@@ -547,10 +547,10 @@ class OperationTNorm:
         self._base_t_conorm_raw = lambda a, b: (a + b) / (1 + a * b)
         """Mathematical expression: S(a,b) = (a + b)/(1 + a * b)"""
 
-        self._base_g_func_raw = lambda a: np.log((2 - a) / a) if a > get_config().DEFAULT_EPSILON else np.inf
+        self._base_g_func_raw = lambda a: np.where(a > get_config().DEFAULT_EPSILON, np.log((2 - a) / a), np.inf)
         """Mathematical expression: g(a) = ln((2-a)/a)"""
 
-        self._base_g_inv_func_raw = lambda u: 2 / (1 + np.exp(u)) if u < 100 else 0.0
+        self._base_g_inv_func_raw = lambda u: np.where(u < 100, 2 / (1 + np.exp(u)), 0.0)
         """Mathematical expression: g^(-1)(u) = 2 / (1 + exp(u))"""
 
         self.is_archimedean = True
@@ -579,10 +579,11 @@ class OperationTNorm:
         self._base_t_conorm_raw = lambda a, b: (a + b - (2 - gamma) * a * b) / (1 - (1 - gamma) * a * b)
         """Mathematical expression: S(a,b) = (a+b-(2-gamma)*ab)/(1-(1-gamma)*ab)"""
 
-        self._base_g_func_raw = lambda a: np.log((gamma + (1 - gamma) * a) / a) if a > get_config().DEFAULT_EPSILON else np.inf
+        self._base_g_func_raw = lambda a: np.where(a > get_config().DEFAULT_EPSILON,
+                                                   np.log((gamma + (1 - gamma) * a) / a), np.inf)
         """Mathematical expression: g(a) = ln((gamma + (1-gamma)*a)/a)"""
 
-        self._base_g_inv_func_raw = lambda u: gamma / (np.exp(u) - (1 - gamma)) if np.exp(u) > (1 - gamma) else 0.0
+        self._base_g_inv_func_raw = lambda u: np.where(np.exp(u) > (1 - gamma), gamma / (np.exp(u) - (1 - gamma)), 0.0)
         """Mathematical expression: g^(-1)(u) = gamma/(exp(u)-1+gamma)"""
 
         self.is_archimedean = True
@@ -606,10 +607,10 @@ class OperationTNorm:
         if p <= 0:
             raise ValueError("Yager parameter p must be greater than 0")
 
-        self._base_t_norm_raw = lambda a, b: max(0, 1 - ((1 - a) ** p + (1 - b) ** p) ** (1 / p))
+        self._base_t_norm_raw = lambda a, b: np.maximum(0, 1 - ((1 - a) ** p + (1 - b) ** p) ** (1 / p))
         """Mathematical expression: T(a,b) = 1 - min(1, ((1-a)^p + (1-b)^p)^{1/p})"""
 
-        self._base_t_conorm_raw = lambda a, b: min(1, (a ** p + b ** p) ** (1 / p))
+        self._base_t_conorm_raw = lambda a, b: np.minimum(1, (a ** p + b ** p) ** (1 / p))
         """Mathematical expression: S(a,b) = min(1, (a^p + b^p)^{1/p})"""
 
         self._base_g_func_raw = lambda a: (1 - a) ** p
@@ -652,46 +653,47 @@ class OperationTNorm:
             raise ValueError("Schweizer-Sklar parameter p cannot be 0")
 
         if p > 0:
-            self._base_t_norm_raw = lambda a, b: (max(0, a ** (-p) + b ** (-p) - 1)) ** (
-                    -1 / p) if a > get_config().DEFAULT_EPSILON and b > get_config().DEFAULT_EPSILON else 0.0
+            self._base_t_norm_raw = lambda a, b: np.where(
+                (a > get_config().DEFAULT_EPSILON) & (b > get_config().DEFAULT_EPSILON),
+                (np.maximum(0, a ** (-p) + b ** (-p) - 1)) ** (-1 / p), 0.0)
             """Mathematical expression: T(a,b) = (max(0, a^{-p} + b^{-p} - 1))^{-1/p}
             Handles cases where a or b are close to 0, avoiding division by 0 or negative exponent issues.
             """
 
-            self._base_t_conorm_raw = \
-                lambda a, b: (1 - (max(0, (1 - a) ** (-p) + (1 - b) ** (-p) - 1))
-                              ** (-1 / p)) if (1 - a) > get_config().DEFAULT_EPSILON and (1 - b) > get_config().DEFAULT_EPSILON else max(a, b)
+            self._base_t_conorm_raw = lambda a, b: np.where(
+                ((1 - a) > get_config().DEFAULT_EPSILON) & ((1 - b) > get_config().DEFAULT_EPSILON),
+                1 - (np.maximum(0, (1 - a) ** (-p) + (1 - b) ** (-p) - 1)) ** (-1 / p), np.maximum(a, b))
             """Mathematical expression: S(a,b) = 1 - (max(0, (1-a)^{-p} + (1-b)^{-p} - 1))^{-1/p}
             Handles cases where 1-a or 1-b are close to 0.
             """
 
-            self._base_g_func_raw = lambda a: a ** (-p) - 1 if a > get_config().DEFAULT_EPSILON else np.inf
+            self._base_g_func_raw = lambda a: np.where(a > get_config().DEFAULT_EPSILON, a ** (-p) - 1, np.inf)
             """Mathematical expression: g(a) = a^{-p} - 1"""
 
-            self._base_g_inv_func_raw = lambda u: (u + 1) ** (-1 / p) if u > -1 else 0.0
+            self._base_g_inv_func_raw = lambda u: np.where(u > -1, (u + 1) ** (-1 / p), 0.0)
             """Mathematical expression: g^(-1)(u) = (u + 1)^{-1/p}"""
 
         else:  # p < 0
             # When p < 0, the formula form is slightly different to ensure correct function behavior.
-            self._base_t_norm_raw = lambda a, b: (a ** (-p) + b ** (-p) - 1) ** (
-                    -1 / p) if a < 1.0 - get_config().DEFAULT_EPSILON and b < 1.0 - get_config().DEFAULT_EPSILON else min(a, b)
+            self._base_t_norm_raw = lambda a, b: np.where(
+                (a < 1.0 - get_config().DEFAULT_EPSILON) & (b < 1.0 - get_config().DEFAULT_EPSILON),
+                (a ** (-p) + b ** (-p) - 1) ** (-1 / p), np.minimum(a, b))
             """Mathematical expression: T(a,b) = (a^{-p} + b^{-p} - 1)^{-1/p}
             Handles cases where a or b are close to 1.
             """
 
-            self._base_t_conorm_raw = lambda a, b: 1 - ((1 - a) **
-                                                        (-p) + (1 - b) ** (-p) - 1) ** (-1 / p) if ((1 - a)
-                                                                                                    < 1.0 - get_config().DEFAULT_EPSILON and (
-                                                                                                            1 - b) < 1.0 - get_config().DEFAULT_EPSILON) else max(
-                a, b)
+            self._base_t_conorm_raw = lambda a, b: np.where(
+                ((1 - a) < 1.0 - get_config().DEFAULT_EPSILON) & ((1 - b) < 1.0 - get_config().DEFAULT_EPSILON),
+                1 - ((1 - a) ** (-p) + (1 - b) ** (-p) - 1) ** (-1 / p), np.maximum(a, b))
             """Mathematical expression: S(a,b) = 1 - ((1-a)^{-p} + (1-b)^{-p} - 1)^{-1/p}
             Handles cases where 1-a or 1-b are close to 1.
             """
 
-            self._base_g_func_raw = lambda a: (1 - a) ** (-p) - 1 if a < 1.0 - get_config().DEFAULT_EPSILON else np.inf
+            self._base_g_func_raw = lambda a: np.where(a < 1.0 - get_config().DEFAULT_EPSILON, (1 - a) ** (-p) - 1,
+                                                       np.inf)
             """Mathematical expression: g(a) = (1 - a)^{-p} - 1"""
 
-            self._base_g_inv_func_raw = lambda u: 1 - (u + 1) ** (-1 / p) if u > -1 else 0.0
+            self._base_g_inv_func_raw = lambda u: np.where(u > -1, 1 - (u + 1) ** (-1 / p), 0.0)
             """Mathematical expression: g^(-1)(u) = 1 - (u + 1)^{-1/p}"""
 
         self.is_archimedean = True
@@ -717,69 +719,80 @@ class OperationTNorm:
         # Dombi t-norm original formula
         def dombi_tnorm(a, b):
             # Boundary condition handling: T(a,0)=0, T(0,b)=0
-            if a <= get_config().DEFAULT_EPSILON or b <= get_config().DEFAULT_EPSILON:
-                return 0.0
-            # Boundary condition handling: T(a,1)=a, T(1,b)=b
-            if abs(a - 1.0) < get_config().DEFAULT_EPSILON:
-                return b
-            if abs(b - 1.0) < get_config().DEFAULT_EPSILON:
-                return a
+            res = np.zeros_like(a, dtype=float)
 
-            # Avoid floating point errors when (1-x)/x or x/(1-x) approach infinity or 0,
-            # leading to issues with p-th power.
-            # Use np.power for safe power calculation.
-            term_a = np.power((1.0 - a) / a, p)
-            term_b = np.power((1.0 - b) / b, p)
+            # Condition for main formula
+            mask = (a > get_config().DEFAULT_EPSILON) & (b > get_config().DEFAULT_EPSILON)
 
-            # Ensure denominator is not zero, although it usually won't be after handling
-            # cases where a,b are close to 0 or 1.
+            # Handle T(a,1)=a, T(1,b)=b
+            mask_a1 = np.abs(a - 1.0) < get_config().DEFAULT_EPSILON
+            mask_b1 = np.abs(b - 1.0) < get_config().DEFAULT_EPSILON
+
+            res[mask_a1] = b[mask_a1]
+            res[mask_b1] = a[mask_b1]
+
+            # Apply main formula where applicable
+            calc_mask = mask & ~mask_a1 & ~mask_b1
+
+            a_calc, b_calc = a[calc_mask], b[calc_mask]
+
+            term_a = np.power((1.0 - a_calc) / a_calc, p)
+            term_b = np.power((1.0 - b_calc) / b_calc, p)
+
             denominator_term = np.power(term_a + term_b, 1 / p)
-            if denominator_term < get_config().DEFAULT_EPSILON:  # Avoid division by zero
-                return 1.0  # At this point, (1+denominator_term) approaches 1, and the result approaches 1.
+            res[calc_mask] = 1 / (1 + denominator_term)
 
-            return 1 / (1 + denominator_term)
+            return res
 
         # Dombi t-conorm original formula
         def dombi_tconorm(a, b):
-            # Boundary condition handling: S(a,0)=a, S(0,b)=b
-            if abs(a - 0.0) < get_config().DEFAULT_EPSILON:
-                return b
-            if abs(b - 0.0) < get_config().DEFAULT_EPSILON:
-                return a
-            # Boundary condition handling: S(a,1)=1, S(1,b)=1
-            if abs(a - 1.0) < get_config().DEFAULT_EPSILON or abs(b - 1.0) < get_config().DEFAULT_EPSILON:
-                return 1.0
+            res = np.zeros_like(a, dtype=float)
 
-            # Avoid floating point errors when (1-x)/x or x/(1-x) approach infinity or 0,
-            # leading to issues with p-th power.
-            # Note: Here it's (x/(1-x))^p, opposite to the generator.
-            term_a = np.power(a / (1.0 - a), p)
-            term_b = np.power(b / (1.0 - b), p)
+            # S(a,0)=a, S(0,b)=b
+            mask_a0 = np.abs(a) < get_config().DEFAULT_EPSILON
+            mask_b0 = np.abs(b) < get_config().DEFAULT_EPSILON
+            res[mask_a0] = b[mask_a0]
+            res[mask_b0] = a[mask_b0]
 
-            # Ensure denominator is not zero.
+            # S(a,1)=1, S(1,b)=1
+            mask_a1 = np.abs(a - 1.0) < get_config().DEFAULT_EPSILON
+            mask_b1 = np.abs(b - 1.0) < get_config().DEFAULT_EPSILON
+            res[mask_a1] = 1.0
+            res[mask_b1] = 1.0
+
+            # Main formula
+            calc_mask = ~mask_a0 & ~mask_b0 & ~mask_a1 & ~mask_b1
+            a_calc, b_calc = a[calc_mask], b[calc_mask]
+
+            term_a = np.power(a_calc / (1.0 - a_calc), p)
+            term_b = np.power(b_calc / (1.0 - b_calc), p)
+
             denominator_term = np.power(term_a + term_b, -1 / p)
-            if denominator_term < get_config().DEFAULT_EPSILON:  # Avoid division by zero
-                return 1.0  # At this point, (1+denominator_term) approaches 1, and the result approaches 1.
+            res[calc_mask] = 1 / (1 + denominator_term)
 
-            return 1 / (1 + denominator_term)
+            return res
 
         # Corrected definitions for generator and pseudo-inverse to conform to mathematical definitions at boundaries.
         # Generator g(a) = ((1-a)/a)^p
         def dombi_g_func(a):
-            if abs(a - 0.0) < get_config().DEFAULT_EPSILON:  # a approaches 0
-                return np.inf
-            if abs(a - 1.0) < get_config().DEFAULT_EPSILON:  # a approaches 1
-                return 0.0
-            return np.power((1.0 - a) / a, p)
+            return np.where(
+                np.abs(a - 1.0) < get_config().DEFAULT_EPSILON, 0.0,
+                np.where(
+                    np.abs(a - 0.0) < get_config().DEFAULT_EPSILON, np.inf,
+                    np.power((1.0 - a) / a, p)
+                )
+            )
 
         # Pseudo-inverse g_inv(u) = 1 / (1 + u^(1/p))
         def dombi_g_inv_func(u):
-            if abs(u - 0.0) < get_config().DEFAULT_EPSILON:  # u approaches 0
-                return 1.0
             # When u approaches infinity, u^(1/p) approaches infinity, 1 + u^(1/p) approaches infinity, and the result approaches 0.
-            if np.isinf(u):
-                return 0.0
-            return 1.0 / (1.0 + np.power(u, 1.0 / p))
+            return np.where(
+                np.isinf(u), 0.0,
+                np.where(
+                    np.abs(u - 0.0) < get_config().DEFAULT_EPSILON, 1.0,
+                    1.0 / (1.0 + np.power(u, 1.0 / p))
+                )
+            )
 
         self._base_t_norm_raw = dombi_tnorm
         """Mathematical expression: T(a,b) = 1/(1+(((1-a)/a)^p+((1-b)/b)^p)^{1/p})"""
@@ -816,23 +829,22 @@ class OperationTNorm:
         if p <= 0:
             raise ValueError("Aczel-Alsina parameter p must be greater than 0")
 
-        self._base_t_norm_raw = lambda a, b: np.exp(
-            -(((-np.log(a)) ** p + (-np.log(b)) ** p) ** (1 / p))) if a > get_config().DEFAULT_EPSILON and b > get_config().DEFAULT_EPSILON else 0.0
+        self._base_t_norm_raw = lambda a, b: np.where((a > get_config().DEFAULT_EPSILON) & (b > get_config().DEFAULT_EPSILON),
+                                                      np.exp(-(((-np.log(a)) ** p + (-np.log(b)) ** p) ** (1 / p))), 0.0)
         """Mathematical expression: T(a,b) = exp(-(((-ln a)^p + (-ln b)^p)^{1/p}))
         Handles cases where a or b are close to 0, avoiding log(0) or negative power issues.
         """
 
-        self._base_t_conorm_raw = lambda a, b: 1 - np.exp(
-            -(((-np.log(1 - a)) ** p + (-np.log(1 - b)) ** p) ** (1 / p))) if (1 - a) > get_config().DEFAULT_EPSILON and (
-                1 - b) > get_config().DEFAULT_EPSILON else max(a, b)
+        self._base_t_conorm_raw = lambda a, b: np.where(((1 - a) > get_config().DEFAULT_EPSILON) & ((1 - b) > get_config().DEFAULT_EPSILON),
+                                                        1 - np.exp(-(((-np.log(1 - a)) ** p + (-np.log(1 - b)) ** p) ** (1 / p))), np.maximum(a, b))
         """Mathematical expression: S(a,b) = 1 - exp(-(((-ln(1-a))^p + (-ln(1-b))^p)^{1/p}))
         Handles cases where 1-a or 1-b are close to 0.
         """
 
-        self._base_g_func_raw = lambda a: (-np.log(a)) ** p if a > get_config().DEFAULT_EPSILON else np.inf
+        self._base_g_func_raw = lambda a: np.where(a > get_config().DEFAULT_EPSILON, (-np.log(a)) ** p, np.inf)
         """Mathematical expression: g(a) = (-ln a)^p"""
 
-        self._base_g_inv_func_raw = lambda u: np.exp(-(u ** (1 / p))) if u >= 0 else 1.0
+        self._base_g_inv_func_raw = lambda u: np.where(u >= 0, np.exp(-(u ** (1 / p))), 1.0)
         """Mathematical expression: g^(-1)(u) = exp(-u^{1/p})"""
 
         self.is_archimedean = True
@@ -860,36 +872,30 @@ class OperationTNorm:
 
         def frank_tnorm(a, b):
             if s == np.inf:  # When s approaches infinity, Frank product degenerates to Minimum product.
-                return min(a, b)
+                return np.minimum(a, b)
             # Avoid log(0) or division by 0.
             if abs(s - 1) < get_config().DEFAULT_EPSILON:
-                return min(a, b)  # Degenerates to Minimum when s=1.
+                return np.minimum(a, b)  # Degenerates to Minimum when s=1.
             val_a = s ** a - 1
             val_b = s ** b - 1
             denominator = s - 1
-            if denominator == 0:
-                return min(a, b)  # Theoretically s!=1, but just in case.
+
             # Calculate the argument for log, ensuring it's greater than 0.
             arg_log = 1 + (val_a * val_b) / denominator
-            if arg_log <= 0:
-                return 0.0  # Avoid log of negative number.
-            return np.log(arg_log) / np.log(s)
+            return np.where(arg_log <= 0, 0.0, np.log(arg_log) / np.log(s))
 
         def frank_tconorm(a, b):
             if s == np.inf:  # When s approaches infinity, Frank conorm degenerates to Maximum conorm.
-                return max(a, b)
+                return np.maximum(a, b)
             if abs(s - 1) < get_config().DEFAULT_EPSILON:
-                return max(a, b)  # Degenerates to Maximum when s=1.
+                return np.maximum(a, b)  # Degenerates to Maximum when s=1.
             val_1_a = s ** (1 - a) - 1
             val_1_b = s ** (1 - b) - 1
             denominator = s - 1
-            if denominator == 0:
-                return max(a, b)
+
             # Calculate the argument for log, ensuring it's greater than 0.
             arg_log = 1 + (val_1_a * val_1_b) / denominator
-            if arg_log <= 0:
-                return 1.0  # Avoid log of negative number.
-            return 1 - np.log(arg_log) / np.log(s)
+            return np.where(arg_log <= 0, 1.0, 1 - np.log(arg_log) / np.log(s))
 
         self._base_t_norm_raw = frank_tnorm
         """Mathematical expression: T(a,b) = log_s(1 + ((s^a - 1)(s^b - 1))/(s - 1))"""
@@ -897,10 +903,10 @@ class OperationTNorm:
         self._base_t_conorm_raw = frank_tconorm
         """Mathematical expression: S(a,b) = 1 - log_s(1 + ((s^{1-a} - 1)(s^{1-b} - 1))/(s - 1))"""
 
-        self._base_g_func_raw = lambda a: -np.log((s ** a - 1) / (s - 1)) if a > get_config().DEFAULT_EPSILON else np.inf
+        self._base_g_func_raw = lambda a: np.where(a > get_config().DEFAULT_EPSILON, -np.log((s ** a - 1) / (s - 1)), np.inf)
         """Mathematical expression: g(a) = -log_s((s^a - 1)/(s - 1))"""
 
-        self._base_g_inv_func_raw = lambda u: np.log(1 + (s - 1) * np.exp(-u)) / np.log(s) if u < 100 else 0.0
+        self._base_g_inv_func_raw = lambda u: np.where(u < 100, np.log(1 + (s - 1) * np.exp(-u)) / np.log(s), 0.0)
         """Mathematical expression: g^(-1)(u) = log_s(1 + (s - 1) exp(-u))"""
 
         self.is_archimedean = True
@@ -917,10 +923,10 @@ class OperationTNorm:
         Initializes the Minimum t-norm and its dual Maximum t-conorm.
         This is a non-Archimedean t-norm, and also the strongest t-norm.
         """
-        self._base_t_norm_raw = lambda a, b: min(a, b)
+        self._base_t_norm_raw = lambda a, b: np.minimum(a, b)
         """Mathematical expression: T(a,b) = min(a,b)"""
 
-        self._base_t_conorm_raw = lambda a, b: max(a, b)
+        self._base_t_conorm_raw = lambda a, b: np.maximum(a, b)
         """Mathematical expression: S(a,b) = max(a,b)"""
 
         self._base_g_func_raw = None  # Non-Archimedean t-norms do not have generators.
@@ -942,16 +948,10 @@ class OperationTNorm:
         """
 
         def nilpotent_tnorm(a, b):
-            if a + b > 1:
-                return min(a, b)
-            else:
-                return 0.0
+            return np.where(a + b > 1, np.minimum(a, b), 0.0)
 
         def nilpotent_tconorm(a, b):
-            if a + b < 1:
-                return max(a, b)
-            else:
-                return 1.0
+            return np.where(a + b < 1, np.maximum(a, b), 1.0)
 
         self._base_t_norm_raw = nilpotent_tnorm
         """Mathematical expression: T(a,b) = min(a,b) if a+b>1; 0 otherwise"""
@@ -978,20 +978,12 @@ class OperationTNorm:
         """
 
         def drastic_tnorm(a, b):
-            if abs(b - 1.0) < get_config().DEFAULT_EPSILON:  # b=1
-                return a
-            elif abs(a - 1.0) < get_config().DEFAULT_EPSILON:  # a=1
-                return b
-            else:
-                return 0.0
+            return np.where(np.abs(b - 1.0) < get_config().DEFAULT_EPSILON, a,
+                            np.where(np.abs(a - 1.0) < get_config().DEFAULT_EPSILON, b, 0.0))
 
         def drastic_tconorm(a, b):
-            if abs(b - 0.0) < get_config().DEFAULT_EPSILON:  # b=0
-                return a
-            elif abs(a - 0.0) < get_config().DEFAULT_EPSILON:  # a=0
-                return b
-            else:
-                return 1.0
+            return np.where(np.abs(b - 0.0) < get_config().DEFAULT_EPSILON, a,
+                            np.where(np.abs(a - 0.0) < get_config().DEFAULT_EPSILON, b, 1.0))
 
         self._base_t_norm_raw = drastic_tnorm
         """Mathematical expression: T(a,b) = a if b=1; b if a=1; 0 otherwise"""
@@ -1147,7 +1139,9 @@ class OperationTNorm:
         -   Includes error handling to prevent numerical issues during generator calculation.
         """
         if self.g_func is None or self.g_inv_func is None:
-            warnings.warn(f"({self.norm_type}, q={self.q}).Generator or pseudo-inverse is undefined, skipping generator property verification.", RuntimeWarning)
+            warnings.warn(
+                f"({self.norm_type}, q={self.q}).Generator or pseudo-inverse is undefined, skipping generator property verification.",
+                RuntimeWarning)
             return False
 
         test_values = [0.1, 0.3, 0.5, 0.7, 0.9]
