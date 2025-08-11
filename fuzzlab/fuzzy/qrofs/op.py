@@ -50,7 +50,7 @@ from ...config import get_config
 from ...core.operation import OperationMixin, get_operation_registry
 from ...core.triangular import OperationTNorm
 from ...core.registry import get_backend
-from ...core.t_fuzzarray import Fuzzarray
+from ...core.fuzzarray import Fuzzarray
 from ...core.fuzznums import Fuzznum
 
 

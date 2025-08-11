@@ -11,7 +11,7 @@ from .dispatcher import operate
 
 # from .fuzzarray import Fuzzarray, fuzzarray
 from .fuzznums import Fuzznum
-from .t_fuzzarray import Fuzzarray, fuzzarray
+from .fuzzarray import Fuzzarray, fuzzarray
 
 from .operation import OperationMixin, get_operation_registry
 

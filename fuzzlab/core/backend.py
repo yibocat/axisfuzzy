@@ -9,6 +9,7 @@ from typing import Any, Tuple
 
 import numpy as np
 
+
 # from .fuzznums import Fuzznum
 
 
@@ -25,17 +26,12 @@ class FuzzarrayBackend(ABC):
     # 每个具体的后端都必须定义其对应的 mtype
     mtype: str = "unknown"
 
-    def __init__(self, shape: Tuple[int, ...], **mtype_kwargs):
-        """
-        Initialize the backend with given shape and mtype-specific parameters.
-
-        Args:
-            shape: Shape of the fuzzy array
-            **mtype_kwargs: Mtype-specific parameters (e.g., q for qrofn)
-        """
+    def __init__(self, shape: Tuple[int, ...], q: int = 1, **kwargs):
         self.shape = shape
         self.size = int(np.prod(shape))
-        self.mtype_kwargs = mtype_kwargs
+        self.q = q
+
+        self.kwargs = kwargs
 
         # 子类需要在这里初始化具体的 NumPy 数组
         self._initialize_arrays()
@@ -95,7 +91,7 @@ class FuzzarrayBackend(ABC):
         pass
 
     @staticmethod
-    def from_arrays(*components, **mtype_kwargs) -> 'FuzzarrayBackend':
+    def from_arrays(*components, **kwargs) -> 'FuzzarrayBackend':
         pass
 
     def fill_from_values(self, *values: float):

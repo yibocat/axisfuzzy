@@ -9,7 +9,7 @@ from typing import Any, Tuple
 import numpy as np
 
 from ...core import Fuzznum
-from ...core.t_backend import FuzzarrayBackend
+from ...core.backend import FuzzarrayBackend
 
 
 class QROFNBackend(FuzzarrayBackend):
@@ -24,8 +24,6 @@ class QROFNBackend(FuzzarrayBackend):
 
     def _initialize_arrays(self):
         """Initialize mds and nmds arrays for QROFN data."""
-        # 获取 q 参数，默认值为 1
-        self.q = self.mtype_kwargs.get('q', 1)
 
         # 初始化两个核心数组：membership degrees 和 non-membership degrees
         self.mds = np.zeros(self.shape, dtype=np.float64)
@@ -58,7 +56,7 @@ class QROFNBackend(FuzzarrayBackend):
 
     def copy(self) -> 'QROFNBackend':
         """Create a deep copy of the backend."""
-        new_backend = QROFNBackend(self.shape, **self.mtype_kwargs)
+        new_backend = QROFNBackend(self.shape, self.q, **self.kwargs)
         new_backend.mds = self.mds.copy()
         new_backend.nmds = self.nmds.copy()
         return new_backend
@@ -66,20 +64,21 @@ class QROFNBackend(FuzzarrayBackend):
     def slice_view(self, key) -> 'QROFNBackend':
         """Create a view of the backend with the given slice."""
         new_shape = self.mds[key].shape
-        new_backend = QROFNBackend(new_shape, **self.mtype_kwargs)
+        new_backend = QROFNBackend(new_shape, self.q, **self.kwargs)
         new_backend.mds = self.mds[key]
         new_backend.nmds = self.nmds[key]
         return new_backend
 
     @classmethod
-    def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, **mtype_kwargs) -> 'QROFNBackend':
+    def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROFNBackend':
         """
         Create a QROFNBackend from existing arrays.
 
         Args:
             mds: Membership degrees array
             nmds: Non-membership degrees array
-            **mtype_kwargs: Type-specific parameters (e.g., q)
+            q: q-rung parameter
+            **kwargs: Type-specific parameters
 
         Returns:
             New QROFNBackend instance
@@ -87,7 +86,7 @@ class QROFNBackend(FuzzarrayBackend):
         if mds.shape != nmds.shape:
             raise ValueError(f"Shape mismatch: mds {mds.shape} vs nmds {nmds.shape}")
 
-        backend = cls(mds.shape, **mtype_kwargs)
+        backend = cls(mds.shape, q, **kwargs)
         backend.mds = mds.copy()
         backend.nmds = nmds.copy()
         return backend

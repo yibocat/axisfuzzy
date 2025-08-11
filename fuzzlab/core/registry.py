@@ -38,7 +38,7 @@ from typing import Optional, Dict, Any, Type, List, Callable, Tuple
 
 from .base import FuzznumStrategy, FuzznumTemplate, ExampleStrategy, ExampleTemplate
 
-from .t_backend import FuzzarrayBackend
+from .backend import FuzzarrayBackend
 
 
 class FuzznumRegistry:
@@ -210,7 +210,7 @@ class FuzznumRegistry:
         """
 
         from fuzzlab.fuzzy.qrofs.qrofn import QROFNStrategy, QROFNTemplate
-        from fuzzlab.fuzzy.qrofs.t_qrofn_backend import QROFNBackend
+        from fuzzlab.fuzzy.qrofs.backend import QROFNBackend
 
         return [
             (QROFNStrategy, QROFNTemplate, QROFNBackend),
@@ -230,7 +230,7 @@ class FuzznumRegistry:
         """
         Context manager for registry transactions.
 
-        Usage:
+        Example:
             with registry.transaction():
                 registry.register(strategy1, template1)
                 registry.register(strategy2, template2)

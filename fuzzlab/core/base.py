@@ -536,6 +536,8 @@ class FuzznumStrategy(ABC):
         return validation_result
 
 
+# TODO: FuzznumTemplate 的几乎所有功能已经单独实现, 该类可以被移除或重构。
+#  目前保留是为了兼容旧的模板实现方式, 未来可能会因 Fuzznum 的重构而剔除
 class FuzznumTemplate(ABC):
     """Abstract base class for fuzzy number templates.
 

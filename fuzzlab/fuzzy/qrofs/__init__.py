@@ -6,7 +6,7 @@
 #  Software: FuzzLab
 
 from .qrofn import QROFNStrategy, QROFNTemplate
-from .t_qrofn_backend import QROFNBackend
+from .backend import QROFNBackend
 
 from .op import register_qrofn_operations
 

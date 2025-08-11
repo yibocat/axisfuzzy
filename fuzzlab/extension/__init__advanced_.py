@@ -9,12 +9,12 @@ from .registry import get_extension_registry
 from .dispatcher import get_extension_dispatcher
 from .injector import get_extension_injector
 from .decorator import extension, batch_extension
-from .utils import call_extension
+# from .utils import call_extension
 
-from .conditional_ import conditional_extension
-from .performance_ import monitored_extension, get_extension_performance_monitor
-from .plugins_ import get_extension_plugin_manager
-from .validation_ import get_extension_validator
+from ._conditional_ import conditional_extension
+from ._performance_ import monitored_extension, get_extension_performance_monitor
+from ._plugins_ import get_extension_plugin_manager
+from ._validation_ import get_extension_validator
 
 
 def apply_extensions():
@@ -70,5 +70,5 @@ __all__ = [
     'batch_extension',
     'monitored_extension',
     'apply_extensions',
-    'call_extension'
+    # 'call_extension'
 ]

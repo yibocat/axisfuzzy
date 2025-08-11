@@ -58,7 +58,7 @@ def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
     # Dynamically import the required classes to avoid circular imports.
     # These imports are placed here to prevent circular dependencies at module load time.
     from .fuzznums import Fuzznum
-    from .t_fuzzarray import Fuzzarray, fuzzarray
+    from .fuzzarray import Fuzzarray
 
     # --- Type Dispatch Logic ---
     # This is a simplified dispatch table, which can be optimized using more complex

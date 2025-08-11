@@ -4,12 +4,12 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-from typing import Optional, Union, List, Any, Tuple, Iterator
+from typing import Optional, Union, Any, Tuple, Iterator, Dict
 import numpy as np
 
 from ..config import get_config
 from .fuzznums import Fuzznum
-from .t_backend import FuzzarrayBackend
+from .backend import FuzzarrayBackend
 from .registry import get_fuzznum_registry
 from .operation import get_operation_registry, OperationMixin
 from .triangular import OperationTNorm
@@ -25,8 +25,9 @@ class Fuzzarray:
                  data: Optional[Union[np.ndarray, list, tuple, Fuzznum]] = None,
                  backend: Optional[FuzzarrayBackend] = None,
                  mtype: Optional[str] = None,
+                 q: int = None,
                  shape: Optional[Tuple[int, ...]] = None,
-                 **mtype_kwargs):
+                 **kwargs):
         """
         Initialize Fuzzarray with either data or existing backend.
 
@@ -41,14 +42,14 @@ class Fuzzarray:
         if backend is not None:
             self._backend = backend
             self._mtype = backend.mtype
-            self._mtype_kwargs = backend.mtype_kwargs
+            self._q = backend.q
+            self._kwargs = backend.kwargs
             return
         else:
             # Construct from data
-            if mtype is None:
-                mtype = get_config().DEFAULT_MTYPE
-            self._mtype = mtype
-            self._mtype_kwargs = mtype_kwargs
+            self._mtype = get_config().DEFAULT_MTYPE if mtype is None else mtype
+            self._q = q if q is not None else 1
+            self._kwargs = kwargs
             self._backend = self._create_backend_from_data(data, shape)
 
     def _create_backend_from_data(self, data, shape: Optional[Tuple[int, ...]]) -> FuzzarrayBackend:
@@ -62,13 +63,14 @@ class Fuzzarray:
         if data is None:
             if shape is None:
                 raise ValueError("Shape must be provided when data is None")
-            return backend_cls(shape=shape, **self._mtype_kwargs)
+            # return backend_cls(shape=shape, **self._kwargs)
+            return backend_cls(shape=shape, q=self._q, **self._kwargs)
 
         # Case 2: Data is a single Fuzznum
         if isinstance(data, Fuzznum):
             if shape is None:
                 shape = ()  # Scalar Fuzzarray
-            backend = backend_cls(shape=shape, **self._mtype_kwargs)
+            backend = backend_cls(shape=shape, q=data.q, **self._kwargs)
             # Use np.ndindex for efficient iteration over all elements to set data
             for idx in np.ndindex(shape):
                 backend.set_fuzznum_data(idx, data)
@@ -89,11 +91,13 @@ class Fuzzarray:
                 except ValueError:
                     raise ValueError(f"Cannot reshape array of size {data.size} into shape {shape}")
 
-            backend = backend_cls(shape=shape, **self._mtype_kwargs)
+            self._q = data.flatten()[0].q if isinstance(data.flatten()[0], Fuzznum) else self._q
+            backend = backend_cls(shape=shape, q=self._q, **self._kwargs)
 
             # Iterate through the numpy array and populate the backend
             it = np.nditer(data, flags=['multi_index', 'refs_ok'])
             for item in it:
+                # TODO: 这里的 Fuzznum 没有 item() 方法
                 fuzznum_item = item.item()  # Get the Fuzznum object from the array cell
                 if not isinstance(fuzznum_item, Fuzznum):
                     raise TypeError(f"All elements in the input data must be Fuzznum objects, found {type(fuzznum_item)}")
@@ -132,17 +136,17 @@ class Fuzzarray:
     @property
     def q(self) -> Optional[int]:
         """Q-rung parameter (if applicable)."""
-        return self._mtype_kwargs.get('q')
+        return self._q
+
+    @property
+    def kwargs(self) -> Dict[str, Any]:
+        """Additional parameters for the fuzzy type."""
+        return self._kwargs
 
     @property
     def dtype(self):
         """Data type (always object for compatibility)."""
         return object
-
-    @property
-    def T(self):
-        # TODO: 实现转置功能
-        return None
 
     # ========================= Indexing & Access =========================
 
@@ -186,24 +190,21 @@ class Fuzzarray:
         else:
             raise TypeError(f"Can only assign Fuzznum or Fuzzarray objects, got {type(value)}")
 
+    # TODO: 实现删除操作
     def __delitem__(self, key):
-        # TODO: 实现删除操作
         raise NotImplementedError("Fuzzarray does not support item deletion.")
 
+    # TODO: 实现包含检查, 已实现代码是否合理?
     def __contains__(self, item) -> bool:
         """检查元素是否在数组中"""
-        # TODO: 实现包含检查, 已实现代码是否合理?
-        ...
-        # if isinstance(item, Fuzznum):
-        #     if item.mtype != self._mtype or item.q != self.q:
-        #         return False
-        #     # 检查是否存在于后端
-        #     for idx in np.ndindex(self.shape):
-        #         if self._backend.get_fuzznum_view(idx) == item:
-        #             return True
-        #     return False
-        # return False
+        pass
 
+    # 这个方法用于迭代 Fuzzarray 的元素。
+    # 注意：如果 Fuzzarray 是 0 维的，这个方法会抛出 TypeError。
+    # 迭代器返回 Fuzznum 对象。
+    # 如果 Fuzzarray 是多维的，它会迭代第一个维度
+    # 的所有元素，并返回每个元素的 Fuzznum 视图。
+    # TODO: 是否要修复这个功能?
     def __iter__(self) -> Iterator:
         """Iterate over the fuzzy array."""
         if self.ndim == 0:
@@ -263,15 +264,15 @@ class Fuzzarray:
         # For now, use numpy vectorize as fallback
         # TODO: Optimize this in later phases
 
-        def element_op(idx):
-            elem1 = self._backend.get_fuzznum_view(idx)
+        def element_op(index):
+            elem1 = self._backend.get_fuzznum_view(index)
             if other is None:
                 # Unary operation
                 result_dict = elem1.get_strategy_instance().execute_operation(
                     operation.get_operation_name(), None)
             else:
                 if isinstance(other, Fuzzarray):
-                    elem2 = other._backend.get_fuzznum_view(idx)
+                    elem2 = other._backend.get_fuzznum_view(index)
                     result_dict = elem1.get_strategy_instance().execute_operation(
                         operation.get_operation_name(), elem2.get_strategy_instance())
                 elif isinstance(other, Fuzznum):
@@ -299,7 +300,7 @@ class Fuzzarray:
             new_backend = self._backend.copy()
             from .fuzznums import Fuzznum
             for idx, result in zip(np.ndindex(self.shape), results):
-                new_fuzznum = Fuzznum(mtype=self.mtype, **self._mtype_kwargs).create(**result)
+                new_fuzznum = Fuzznum(mtype=self.mtype, **self._kwargs).create(**result)
                 new_backend.set_fuzznum_data(idx, new_fuzznum)
             return Fuzzarray(backend=new_backend)
 
@@ -436,11 +437,11 @@ class Fuzzarray:
         return Fuzzarray(backend=copied_backend)
 
     def __repr__(self) -> str:
-        """字符串表示"""
+        # TODO: 目前的 repr 方法并没有实现 shape 的数据展示
+        #  我们要实现类似 numpy 的展示方式
         if self.size == 0:
             return f"Fuzzarray([], mtype='{self.mtype}', shape={self.shape})"
 
-        # 对于小数组，展示部分内容
         if self.size <= 15:
             elements = []
             for idx in np.ndindex(self.shape):
@@ -453,7 +454,8 @@ class Fuzzarray:
         return f"Fuzzarray([{content}], mtype='{self.mtype}', q={self.q}, shape={self.shape})"
 
     def __str__(self) -> str:
-        """用户友好的字符串表示"""
+        """String representation of the Fuzzarray."""
+        # TODO: 可以尝试使用仅高维数组的形式来展现 str
         return self.__repr__()
 
     # TODO: 实现特殊方法

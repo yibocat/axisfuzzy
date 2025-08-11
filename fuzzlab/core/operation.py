@@ -33,8 +33,8 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import List, Any, Dict, Union, Optional
 
-from fuzzlab.config import get_config
-from fuzzlab.core.triangular import OperationTNorm
+from ..config import get_config
+from .triangular import OperationTNorm
 
 
 class OperationMixin(ABC):

@@ -8,7 +8,7 @@ from typing import Union, Tuple, Optional, List
 
 import numpy as np
 
-from ..core.t_fuzzarray import Fuzzarray
+from ..core.fuzzarray import Fuzzarray
 from ..core.fuzznums import Fuzznum
 
 
@@ -40,7 +40,7 @@ def _reshape_factory(obj: Union[Fuzznum, Fuzzarray], *shape: int) -> Fuzzarray:
 
     # Create new backend from reshaped components
     backend_cls = obj.backend.__class__
-    new_backend = backend_cls.from_arrays(*reshaped_components, **obj._mtype_kwargs)
+    new_backend = backend_cls.from_arrays(*reshaped_components, q=obj.q)
 
     return Fuzzarray(backend=new_backend)
 
@@ -58,7 +58,7 @@ def _flatten_factory(obj: Union[Fuzznum, Fuzzarray]) -> Fuzzarray:
 
     # Create new backend from flattened components
     backend_cls = obj.backend.__class__
-    new_backend = backend_cls.from_arrays(*flattened_components, **obj._mtype_kwargs)
+    new_backend = backend_cls.from_arrays(*flattened_components, q=obj.q)
 
     return Fuzzarray(backend=new_backend)
 
@@ -85,14 +85,16 @@ def _squeeze_factory(obj: Union[Fuzznum, Fuzzarray],
     else:
         # Create new backend from squeezed components
         backend_cls = obj.backend.__class__
-        new_backend = backend_cls.from_arrays(*squeezed_components, **obj._mtype_kwargs)
+        new_backend = backend_cls.from_arrays(*squeezed_components, q=obj.q)
         return Fuzzarray(backend=new_backend)
 
 
-# TODO: 该方法主要用于实现顶层函数,因为其 copy 实例方法以实现
 def _copy_factory(obj: Union[Fuzznum, Fuzzarray]) -> Union[Fuzznum, Fuzzarray]:
     """
     Returns a deep copy of the fuzzy object.
+
+    This method is mainly used to implement top-level functions,
+    as it copies instance methods to achieve this.
     """
     if isinstance(obj, Fuzznum):
         return obj.copy()
@@ -135,7 +137,7 @@ def _transpose_factory(obj: Union[Fuzzarray, Fuzznum], *axes) -> Union[Fuzzarray
 
     # Create new backend from transposed components
     backend_cls = obj.backend.__class__
-    new_backend = backend_cls.from_arrays(*transposed_components, **obj._mtype_kwargs)
+    new_backend = backend_cls.from_arrays(*transposed_components, q=obj.q)
 
     return Fuzzarray(backend=new_backend)
 
@@ -164,7 +166,7 @@ def _broadcast_to_factory(obj: Union[Fuzzarray, Fuzznum], *shape: int) -> Fuzzar
 
     # Create new backend from broadcasted components
     backend_cls = obj.backend.__class__
-    new_backend = backend_cls.from_arrays(*broadcasted_components, **obj._mtype_kwargs)
+    new_backend = backend_cls.from_arrays(*broadcasted_components, q=obj.q)
     return Fuzzarray(backend=new_backend)
 
 
@@ -203,14 +205,14 @@ def _concat_factory(obj: Fuzzarray, *others: Fuzzarray, axis: int = 0) -> Fuzzar
     effective_arrays = [arr for arr in all_arrays if arr.size > 0]
     if not effective_arrays:
         # Return empty array with same mtype
-        return Fuzzarray(data=None, shape=(0,), mtype=obj.mtype, **obj._mtype_kwargs)
+        return Fuzzarray(data=None, shape=(0,), mtype=obj.mtype, q=obj.q)
 
     # Check compatibility
     ref_array = effective_arrays[0]
     for arr in effective_arrays:
         if not isinstance(arr, Fuzzarray):
             raise TypeError(f"concat: all arguments must be Fuzzarray, got {type(arr)}")
-        if arr.mtype != ref_array.mtype or arr._mtype_kwargs != ref_array._mtype_kwargs:
+        if arr.mtype != ref_array.mtype or arr.q != ref_array.q:
             raise ValueError("concat: all Fuzzarrays must have the same mtype and parameters")
 
     # Get component arrays from all arrays
@@ -225,7 +227,7 @@ def _concat_factory(obj: Fuzzarray, *others: Fuzzarray, axis: int = 0) -> Fuzzar
 
     # Create new backend
     backend_cls = ref_array.backend.__class__
-    new_backend = backend_cls.from_arrays(*new_components, **ref_array._mtype_kwargs)
+    new_backend = backend_cls.from_arrays(*new_components, q=ref_array.q)
 
     return Fuzzarray(backend=new_backend)
 
@@ -241,13 +243,13 @@ def _stack_factory(obj: Fuzzarray, *others: Fuzzarray, axis: int = 0) -> Fuzzarr
 
     # Check compatibility
     ref_mtype = obj.mtype
-    ref_kwargs = obj._mtype_kwargs
+    ref_q = obj.q
     ref_shape = obj.shape
 
     for arr in all_arrays:
         if not isinstance(arr, Fuzzarray):
             raise TypeError(f"stack: all arguments must be Fuzzarray, got {type(arr)}")
-        if arr.mtype != ref_mtype or arr._mtype_kwargs != ref_kwargs:
+        if arr.mtype != ref_mtype or arr.q != ref_q:
             raise ValueError("stack: all Fuzzarrays must have the same mtype and parameters")
         if arr.shape != ref_shape:
             raise ValueError(f"stack: all Fuzzarrays must have the same shape, expected {ref_shape}, got {arr.shape}")
@@ -264,7 +266,7 @@ def _stack_factory(obj: Fuzzarray, *others: Fuzzarray, axis: int = 0) -> Fuzzarr
 
     # Create new backend
     backend_cls = obj.backend.__class__
-    new_backend = backend_cls.from_arrays(*new_components, **obj._mtype_kwargs)
+    new_backend = backend_cls.from_arrays(*new_components, q=obj.q)
 
     return Fuzzarray(backend=new_backend)
 
@@ -293,14 +295,15 @@ def _append_factory(obj: Union[Fuzznum, Fuzzarray],
 
         # Check compatibility
         mtype = obj.mtype
-        mtype_kwargs = getattr(obj, '_mtype_kwargs', {})
+        q = obj.q
+        kwargs = getattr(obj, 'kwargs', {})
         for fn in elements:
             if not isinstance(fn, Fuzznum):
                 raise TypeError(f"append: all elements must be Fuzznum, got {type(fn)}")
             if fn.mtype != mtype:
                 raise ValueError("append: all Fuzznums must have the same mtype")
 
-        return Fuzzarray(data=elements, mtype=mtype, **mtype_kwargs)
+        return Fuzzarray(data=elements, mtype=mtype, q=q, **kwargs)
 
     # Handle Fuzzarray case
     if inplace and axis is not None:
@@ -316,7 +319,7 @@ def _append_factory(obj: Union[Fuzznum, Fuzzarray],
             raise ValueError("append: mtype mismatch")
         item_array = item
     elif isinstance(item, list):
-        item_array = Fuzzarray(data=item, mtype=obj.mtype, **obj._mtype_kwargs)
+        item_array = Fuzzarray(data=item, mtype=obj.mtype, q=obj.q)
     else:
         raise TypeError(f"append: unsupported item type {type(item)}")
 
@@ -331,7 +334,7 @@ def _append_factory(obj: Union[Fuzznum, Fuzzarray],
 
     if inplace:
         # Replace obj's backend with result's backend
-        obj._backend = result._backend
+        obj._backend = result.backend
         return None
     else:
         return result
@@ -363,18 +366,18 @@ def _pop_factory(obj: Union[Fuzznum, Fuzzarray],
 
     if len(indices) == 0:
         # Result is empty array
-        new_array = Fuzzarray(data=None, shape=(0,), mtype=obj.mtype, **obj._mtype_kwargs)
+        new_array = Fuzzarray(data=None, shape=(0,), mtype=obj.mtype, q=obj.q)
     else:
         # Create new array with remaining elements
         components = obj.backend.get_component_arrays()
         new_components = [comp[indices] for comp in components]
 
         backend_cls = obj.backend.__class__
-        new_backend = backend_cls.from_arrays(*new_components, **obj._mtype_kwargs)
+        new_backend = backend_cls.from_arrays(*new_components, q=obj.q)
         new_array = Fuzzarray(backend=new_backend)
 
     if inplace:
-        obj._backend = new_array._backend
+        obj._backend = new_array.backend
         return popped_item
     else:
         return popped_item, new_array

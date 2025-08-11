@@ -10,7 +10,7 @@ import json
 import numpy as np
 
 from ....core.registry import get_backend
-from ....core.t_fuzzarray import Fuzzarray
+from ....core.fuzzarray import Fuzzarray
 
 
 def _qrofn_to_csv(arr: Fuzzarray, path: str, **kwargs) -> None:

@@ -4,16 +4,18 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 
 from ....core.registry import get_backend
 from ....core.fuzznums import Fuzznum
-from ....core.t_fuzzarray import Fuzzarray
+from ....core.fuzzarray import Fuzzarray
 
 
-def _qrofn_empty(shape: Tuple[int, ...], q: int) -> Union[Fuzzarray, Fuzznum]:
+def _qrofn_empty(shape: Optional[Tuple[int, ...]] = None,
+                 q: Optional[int] = None) -> Union[Fuzzarray, Fuzznum]:
 
-    if not shape:
+    q = 1 if q is None else q
+    if shape is None:
         return Fuzznum(mtype='qrofn', q=q).create(md=0., nmd=0.)
 
     backend_cls = get_backend('qrofn')
@@ -21,8 +23,11 @@ def _qrofn_empty(shape: Tuple[int, ...], q: int) -> Union[Fuzzarray, Fuzznum]:
     return Fuzzarray(backend=backend)
 
 
-def _qrofn_poss(shape: Tuple[int, ...], q: int) -> Union[Fuzzarray, Fuzznum]:
-    if not shape:
+def _qrofn_poss(shape: Optional[Tuple[int, ...]] = None,
+                q: Optional[int] = None) -> Union[Fuzzarray, Fuzznum]:
+
+    q = 1 if q is None else q
+    if shape is None:
         return Fuzznum(mtype='qrofn', q=q).create(md=1.0, nmd=0.0)
 
     backend_cls = get_backend('qrofn')
@@ -31,8 +36,11 @@ def _qrofn_poss(shape: Tuple[int, ...], q: int) -> Union[Fuzzarray, Fuzznum]:
     return Fuzzarray(backend=backend)
 
 
-def _qrofn_negs(shape: Tuple[int, ...], q: int) -> Union[Fuzzarray, Fuzznum]:
-    if not shape:
+def _qrofn_negs(shape: Optional[Tuple[int, ...]] = None,
+                q: Optional[int] = None) -> Union[Fuzzarray, Fuzznum]:
+
+    q = 1 if q is None else q
+    if shape is None:
         return Fuzznum(mtype='qrofn', q=q).create(md=0.0, nmd=1.0)
 
     backend_cls = get_backend('qrofn')
@@ -41,7 +49,14 @@ def _qrofn_negs(shape: Tuple[int, ...], q: int) -> Union[Fuzzarray, Fuzznum]:
     return Fuzzarray(backend=backend)
 
 
-def _qrofn_full(shape: Tuple[int, ...], fill_value: Fuzznum, q: int) -> Fuzzarray:
+def _qrofn_full(fill_value: Fuzznum,
+                shape: Tuple[int, ...],
+                q: Optional[int] = None) -> Fuzzarray:
+
+    q = 1 if q is None else q
+
+    if not shape or shape is None:
+        raise ValueError("shape must be a non-empty tuple of integers.")
     if not isinstance(fill_value, Fuzznum) or fill_value.mtype != 'qrofn':
         raise TypeError("fill_value must be a QROFN Fuzznum.")
     if fill_value.q != q:
@@ -53,60 +68,60 @@ def _qrofn_full(shape: Tuple[int, ...], fill_value: Fuzznum, q: int) -> Fuzzarra
     return Fuzzarray(backend=backend)
 
 
-def _qrofn_empty_like(fuzznum: Union[Fuzznum, Fuzzarray]) -> Union[Fuzznum, Fuzzarray]:
-    if not isinstance(fuzznum, (Fuzznum, Fuzzarray)):
-        raise TypeError('fuzznum must be an instance of Fuzznum or Fuzzarray')
+def _qrofn_empty_like(obj: Union[Fuzznum, Fuzzarray]) -> Union[Fuzznum, Fuzzarray]:
+    if not isinstance(obj, (Fuzznum, Fuzzarray)):
+        raise TypeError('obj must be an instance of Fuzznum or Fuzzarray')
 
-    if isinstance(fuzznum, Fuzzarray):
-        shape = fuzznum.shape
-        q = fuzznum.q
+    if isinstance(obj, Fuzzarray):
+        shape = obj.shape
+        q = obj.q
     else:
         shape = ()
-        q = fuzznum.q
+        q = obj.q
 
     return _qrofn_empty(shape=shape, q=q)
 
 
-def _qrofn_poss_like(fuzznum: Union[Fuzznum, Fuzzarray]) -> Union[Fuzznum, Fuzzarray]:
-    if not isinstance(fuzznum, (Fuzznum, Fuzzarray)):
-        raise TypeError('fuzznum must be an instance of Fuzznum or Fuzzarray')
+def _qrofn_poss_like(obj: Union[Fuzznum, Fuzzarray]) -> Union[Fuzznum, Fuzzarray]:
+    if not isinstance(obj, (Fuzznum, Fuzzarray)):
+        raise TypeError('obj must be an instance of Fuzznum or Fuzzarray')
 
-    if isinstance(fuzznum, Fuzzarray):
-        shape = fuzznum.shape
-        q = fuzznum.q
+    if isinstance(obj, Fuzzarray):
+        shape = obj.shape
+        q = obj.q
     else:
         shape = ()
-        q = fuzznum.q
+        q = obj.q
 
     return _qrofn_poss(shape=shape, q=q)
 
 
-def _qrofn_negs_like(fuzznum: Union[Fuzznum, Fuzzarray]) -> Union[Fuzznum, Fuzzarray]:
-    if not isinstance(fuzznum, (Fuzznum, Fuzzarray)):
-        raise TypeError('fuzznum must be an instance of Fuzznum or Fuzzarray')
+def _qrofn_negs_like(obj: Union[Fuzznum, Fuzzarray]) -> Union[Fuzznum, Fuzzarray]:
+    if not isinstance(obj, (Fuzznum, Fuzzarray)):
+        raise TypeError('obj must be an instance of Fuzznum or Fuzzarray')
 
-    if isinstance(fuzznum, Fuzzarray):
-        shape = fuzznum.shape
-        q = fuzznum.q
+    if isinstance(obj, Fuzzarray):
+        shape = obj.shape
+        q = obj.q
     else:
         shape = ()
-        q = fuzznum.q
+        q = obj.q
 
     return _qrofn_negs(shape=shape, q=q)
 
 
-def _qrofn_full_like(fuzznum: Union[Fuzznum, Fuzzarray], fill_value: Fuzznum) -> Fuzzarray:
-    if not isinstance(fuzznum, (Fuzznum, Fuzzarray)):
-        raise TypeError('fuzznum must be an instance of Fuzznum or Fuzzarray')
+def _qrofn_full_like(fill_value: Fuzznum, obj: Union[Fuzznum, Fuzzarray]) -> Fuzzarray:
+    if not isinstance(obj, (Fuzznum, Fuzzarray)):
+        raise TypeError('obj must be an instance of Fuzznum or Fuzzarray')
 
     if not isinstance(fill_value, Fuzznum) or fill_value.mtype != 'qrofn':
         raise TypeError("fill_value must be a QROFN Fuzznum.")
 
-    if isinstance(fuzznum, Fuzzarray):
-        shape = fuzznum.shape
-        q = fuzznum.q
+    if isinstance(obj, Fuzzarray):
+        shape = obj.shape
+        q = obj.q
     else:
         shape = ()
-        q = fuzznum.q
+        q = obj.q
 
     return _qrofn_full(shape=shape, fill_value=fill_value, q=q)

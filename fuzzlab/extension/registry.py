@@ -64,11 +64,11 @@ class ExtensionRegistry:
     Central registry for managing FuzzLab's external extension functions.
 
     This class provides mechanisms to:
-    1. Register specialized function implementations based on `mtype`.
-    2. Register and manage default function implementations.
-    3. Retrieve the most appropriate function implementation given a function name
-       and an `mtype`, with fallback to default if no specialized implementation exists.
-    4. Ensure thread-safe operations for registration and retrieval.
+        1. Register specialized function implementations based on `mtype`.
+        2. Register and manage default function implementations.
+        3. Retrieve the most appropriate function implementation given a function name
+           and an `mtype`, with fallback to default if no specialized implementation exists.
+        4. Ensure thread-safe operations for registration and retrieval.
 
     It works in conjunction with `fuzzlab.extension.decorator.py` for registration
     and `fuzzlab.extension.dispatcher.py` and `fuzzlab.extension.injector.py`
@@ -185,8 +185,9 @@ class ExtensionRegistry:
                         existing_priority = self._defaults[name][1].priority
                         # Prevent re-registration with lower or equal priority.
                         if priority <= existing_priority:
-                            raise ValueError(
-                                f"Default implementation for '{name}' already exists with higher or equal priority ({existing_priority}). Cannot register new with priority {priority}.")
+                            raise ValueError(f"Default implementation for '{name}' already exists with higher "
+                                             f"or equal priority ({existing_priority}). "
+                                             f"Cannot register new with priority {priority}.")
                     # Store the function and its metadata.
                     self._defaults[name] = (func, metadata)
                 else:
@@ -199,8 +200,9 @@ class ExtensionRegistry:
                         existing_priority = self._functions[name][mtype][1].priority
                         # Prevent re-registration with lower or equal priority for the same mtype.
                         if priority <= existing_priority:
-                            raise ValueError(
-                                f"Implementation for '{name}' with mtype '{mtype}' already exists with higher or equal priority ({existing_priority}). Cannot register new with priority {priority}.")
+                            raise ValueError(f"Implementation for '{name}' with mtype '{mtype}' already exists with higher "
+                                             f"or equal priority ({existing_priority}). "
+                                             f"Cannot register new with priority {priority}.")
 
                     # Store the function and its metadata for the specific mtype.
                     self._functions[name][mtype] = (func, metadata)

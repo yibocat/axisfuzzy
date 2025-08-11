@@ -9,7 +9,7 @@ from typing import Union
 import numpy as np
 
 from ....core import Fuzznum
-from ....core.t_fuzzarray import Fuzzarray
+from ....core.fuzzarray import Fuzzarray
 
 
 def _qrofn_distance(
