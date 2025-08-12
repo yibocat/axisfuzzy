@@ -5,18 +5,19 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 
-from .base import FuzznumStrategy, FuzznumTemplate
+from .base import FuzznumStrategy
 
 from .dispatcher import operate
 
-# from .fuzzarray import Fuzzarray, fuzzarray
 from .fuzznums import Fuzznum
 from .fuzzarray import Fuzzarray, fuzzarray
+from .backend import FuzzarrayBackend
 
 from .operation import OperationMixin, get_operation_registry
 
 from .registry import (
     get_fuzznum_registry,
+    get_backend,
     register_fuzznum,
     batch_register_fuzz,
     unregister_fuzznum,
@@ -27,15 +28,16 @@ from .triangular import OperationTNorm
 
 __all__ = [
     'FuzznumStrategy',
-    'FuzznumTemplate',
     'Fuzzarray',
     'Fuzznum',
+    'FuzzarrayBackend',
     'OperationMixin',
     'OperationTNorm',
     'operate',
     'fuzzarray',
     'get_operation_registry',
     'get_fuzznum_registry',
+    'get_backend',
     'register_fuzznum',
     'batch_register_fuzz',
     'unregister_fuzznum',

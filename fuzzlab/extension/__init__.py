@@ -17,7 +17,7 @@ It includes:
 - `decorator.py`: Provides `@extension` and `@batch_extension` for declarative registration.
 - `dispatcher.py`: Creates dynamic proxy functions for runtime dispatching based on `mtype`.
 - `injector.py`: Handles the dynamic injection of registered functions into classes and modules.
-- `_utils.py`: Offers utility functions like `call_extension` for internal calls between extensions.
+- `_utils_.py`: Offers utility functions like `call_extension` for internal calls between extensions.
 
 The `apply_extensions()` function is the entry point to activate the entire
 extension system, typically called once during FuzzLab's library loading.

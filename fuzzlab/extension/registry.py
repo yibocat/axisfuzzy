@@ -19,10 +19,11 @@ These registered functions are later injected into `Fuzznum` and `Fuzzarray`
 classes or the `fuzzlab` top-level namespace by `fuzzlab.extension.injector.py`.
 """
 
-from dataclasses import dataclass
-from typing import Optional, List, Literal, Dict, Tuple, Callable, Any, Union
 import threading
 import datetime
+
+from dataclasses import dataclass
+from typing import Optional, List, Literal, Dict, Tuple, Callable, Any, Union
 
 
 @dataclass

@@ -8,8 +8,7 @@ from typing import Union
 
 import numpy as np
 
-from ....core import Fuzznum
-from ....core.fuzzarray import Fuzzarray
+from ....core import Fuzznum, Fuzzarray
 
 
 def _qrofn_distance(

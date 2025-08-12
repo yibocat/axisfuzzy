@@ -10,7 +10,7 @@ from typing import Any, Tuple
 import numpy as np
 
 
-# from .fuzznums import Fuzznum
+# from ._fuzznum_t import Fuzznum
 
 
 class FuzzarrayBackend(ABC):

@@ -8,8 +8,7 @@ from typing import Any, Tuple
 
 import numpy as np
 
-from ...core import Fuzznum
-from ...core.backend import FuzzarrayBackend
+from ...core import Fuzznum, FuzzarrayBackend
 
 
 class QROFNBackend(FuzzarrayBackend):

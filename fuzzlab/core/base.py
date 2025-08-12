@@ -1,79 +1,21 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
 #  Python: 3.10.9
-#  Date: 2025/7/30 23:50
+#  Date: 2025/8/12 17:22
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-"""
-This module defines the base classes for fuzzy number strategies and templates
-within the FuzzLab framework.
 
-It provides an extensible architecture for defining various types of fuzzy numbers
-(e.g., intuitionistic fuzzy numbers, Pythagorean fuzzy numbers) and their
-associated operations and representations.
-
-Classes:
-    FuzznumStrategy: An abstract base class defining the core behavior and
-                     attributes for different fuzzy number types. It includes
-                     mechanisms for attribute validation, change callbacks,
-                     operation execution, and caching.
-    FuzznumTemplate: An abstract base class for defining how fuzzy numbers are
-                     represented (e.g., string representation, detailed reports)
-                     and providing cached computational properties.
-
-Example Usage (for subclasses):
-    # See ExampleStrategy and ExampleTemplate for concrete implementations.
-"""
-import collections
 import json
-import weakref
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Optional, Set, Dict, Callable, Any, Union, List
 
-from fuzzlab.config import get_config
-from fuzzlab.core.cache import LruCache
-from fuzzlab.core.operation import get_operation_registry
-from fuzzlab.core.triangular import OperationTNorm
+from .cache import LruCache
+from .triangular import OperationTNorm
+from .operation import get_operation_registry
+from ..config import get_config
 
 
 class FuzznumStrategy(ABC):
-    """Abstract base class for defining fuzzy number strategies.
-
-    This class provides a foundational structure for various types of fuzzy numbers,
-    managing their core attributes, validation rules, change notifications,
-    and operation execution. It implements a robust attribute management system
-    with strict mode enforcement, attribute-level validation, and change callbacks.
-
-    Attributes:
-        mtype (str): The membership type identifier for the fuzzy number.
-                     Defaults to `get_config().DEFAULT_MTYPE`. This attribute
-                     is class-level and defines the type of fuzzy number
-                     (e.g., "intuitionistic", "pythagorean").
-        q (Optional[int]): The q-rung value for the fuzzy number, if applicable.
-                           For non-q-rung fuzzy numbers, it can be set to 1 or None.
-                           This attribute is validated to be an integer between 1 and 100.
-        _declared_attributes (Set[str]): A class-level set that stores the names
-                                         of all attributes explicitly declared
-                                         in the class and its subclasses. Used
-                                         for strict attribute mode and serialization.
-        _op_cache (LruCache): An LRU cache instance used to store results of
-                              expensive fuzzy number operations, improving performance.
-        _attribute_validators (Dict[str, Callable[[Any], bool]]): A dictionary
-                                                                  mapping attribute names
-                                                                  to validation functions.
-                                                                  Each function takes
-                                                                  an attribute value
-                                                                  and returns True if valid.
-        _change_callbacks (Dict[str, Callable[[str, Any, Any], None]]): A dictionary
-                                                                        mapping attribute
-                                                                        names to callback
-                                                                        functions. Each
-                                                                        function is called
-                                                                        after an attribute
-                                                                        changes, receiving
-                                                                        the attribute name,
-                                                                        old value, and new value.
-    """
 
     mtype: str = get_config().DEFAULT_MTYPE
     q: Optional[int] = None
@@ -83,18 +25,18 @@ class FuzznumStrategy(ABC):
     _attribute_validators: Dict[str, Callable[[Any], bool]] = {}
     _change_callbacks: Dict[str, Callable[[str, Any, Any], None]] = {}
 
-    def __init__(self, qrung: Optional[int] = None):
+    def __init__(self, q: Optional[int] = None):
         """Initializes a FuzznumStrategy instance.
 
         Args:
-            qrung (Optional[int]): The q-rung value for this specific fuzzy number instance.
+            q (Optional[int]): The q-rung value for this specific fuzzy number instance.
                                    If None, it will be initialized based on default or
                                    subclass-specific logic.
         """
         # Set 'q' attribute directly using object.__setattr__ to bypass custom __setattr__
         # during initialization, preventing potential recursion or validation issues
         # before the object is fully set up.
-        object.__setattr__(self, 'q', qrung)
+        object.__setattr__(self, 'q', q)
 
         # Initialize the operation cache for this instance.
         # Using object.__setattr__ ensures that each instance gets its own cache,
@@ -126,38 +68,33 @@ class FuzznumStrategy(ABC):
         self._validate()
 
     def __init_subclass__(cls, **kwargs):
-        """Automatically collects declared attributes for subclasses.
-
-        This method is called automatically when a class inherits from FuzznumStrategy.
-        It populates the `_declared_attributes` set for each subclass, which is then
-        used by `__setattr__` for strict attribute mode and by `get_declared_attributes`
-        for introspection and serialization.
-
-        Args:
-            **kwargs: Arbitrary keyword arguments passed during subclass creation.
-        """
-        # Call the __init_subclass__ method of the parent class (ABC) to ensure
-        # proper initialization across the inheritance hierarchy.
+        """Hook for subclasses to declare their own attributes."""
         super().__init_subclass__(**kwargs)
 
-        # Initialize the _declared_attributes set for the current subclass (cls).
-        # This set is class-level, meaning all instances of this subclass will share
-        # the same list of declared attributes.
-        cls._declared_attributes = set()
+        # 1. Inherit declared attributes from parent strategies
+        base_attrs = set()
+        for base in cls.__bases__:
+            if issubclass(base, FuzznumStrategy):
+                base_attrs.update(getattr(base, '_declared_attributes', set()))
 
-        # Iterate through all attributes and methods of the current class.
-        for attr_name in dir(cls):
-            # Exclude private attributes (starting with '_'), as they are typically
-            # internal implementation details and should not be directly accessed or modified externally.
-            # Ensure the attribute actually exists on the class.
-            # Exclude callable objects (methods) as we are only interested in data attributes.
-            if (not attr_name.startswith('_') and
-                    hasattr(cls, attr_name) and
-                    not callable(getattr(cls, attr_name))):
-                # Add the qualified attribute name to the _declared_attributes set.
-                # This set will be used for strict mode checks in __setattr__ and for
-                # attribute serialization (e.g., in to_dict/from_dict methods).
-                cls._declared_attributes.add(attr_name)
+        # 2. Collect attributes defined in the current class
+        current_class_attrs = set()
+        # 2a. Add attributes from type annotations (for instance state)
+        current_class_attrs.update(
+            attr for attr in cls.__annotations__ if not attr.startswith('_')
+        )
+        # 2b. Add attributes from class-level assignments (like mtype, q)
+        # We inspect __dict__ to only get attributes from the current class
+        for attr_name, attr_value in cls.__dict__.items():
+            if not attr_name.startswith('_') and not callable(attr_value):
+                current_class_attrs.add(attr_name)
+
+        # 3. Combine inherited and current class attributes
+        cls._declared_attributes = base_attrs.union(current_class_attrs)
+
+        # 4. Initialize other necessary structures for the new subclass
+        cls._attribute_validators = {}
+        cls._change_callbacks = {}
 
     def __setattr__(self, name: str, value: Any) -> None:
         """Custom attribute setter method.
@@ -191,14 +128,19 @@ class FuzznumStrategy(ABC):
         # (which contains attributes explicitly defined in the class or its subclasses),
         # an AttributeError is raised. This prevents accidental creation of new attributes
         # and helps maintain a well-defined object schema.
-        config = get_config()
-        if (hasattr(config, 'STRICT_ATTRIBUTE_MODE') and
-                config.STRICT_ATTRIBUTE_MODE and
-                name not in self._declared_attributes):
+        if name not in self._declared_attributes:
             raise AttributeError(
                 f"Attribute '{name}' not declared in {self.__class__.__name__}. "
                 f"Declared attributes: {sorted(self._declared_attributes)}"
             )
+
+        # if (hasattr(config, 'STRICT_ATTRIBUTE_MODE') and
+        #         config.STRICT_ATTRIBUTE_MODE and
+        #         name not in self._declared_attributes):
+        #     raise AttributeError(
+        #         f"Attribute '{name}' not declared in {self.__class__.__name__}. "
+        #         f"Declared attributes: {sorted(self._declared_attributes)}"
+        #     )
 
         # Get the old value of the attribute before it's changed.
         # This old value is passed to change callback functions.
@@ -535,442 +477,38 @@ class FuzznumStrategy(ABC):
 
         return validation_result
 
+    # ======================== Representation & Properties ========================
 
-# TODO: FuzznumTemplate 的几乎所有功能已经单独实现, 该类可以被移除或重构。
-#  目前保留是为了兼容旧的模板实现方式, 未来可能会因 Fuzznum 的重构而剔除
-class FuzznumTemplate(ABC):
-    """Abstract base class for fuzzy number templates.
-
-    This class defines the interface for how fuzzy numbers are represented
-    and provides auxiliary functionalities, such as cached computational properties.
-    Subclasses are responsible for implementing specific representations
-    (e.g., string, report) and any derived properties.
-
-    Attributes:
-        mtype (str): The membership type identifier for the fuzzy number
-                     this template is associated with. Defaults to
-                     `get_config().DEFAULT_MTYPE`.
-        _instance_ref (weakref.ref): A weak reference to the associated
-                                     `Fuzznum` instance. This prevents
-                                     circular references and allows the
-                                     `Fuzznum` instance to be garbage
-                                     collected when no other strong
-                                     references exist.
-        _instance_id (int): The unique ID (memory address) of the associated
-                            `Fuzznum` instance at the time of template creation.
-                            Used for debugging and identifying the original instance.
-        _is_valid (bool): A flag indicating whether the template is still valid.
-                          It becomes False if the associated `Fuzznum` instance
-                          is garbage collected.
-        _max_cache_size (int): The maximum number of items to store in the
-                               internal template cache. Configurable via
-                               `TEMPLATE_CACHE_SIZE` in the global config.
-        _template_cache (collections.OrderedDict): An ordered dictionary used
-                                                   as an LRU cache for storing
-                                                   computed template values
-                                                   (e.g., report strings, scores).
-        _cache_enabled (bool): A flag indicating whether caching is currently enabled.
-    """
-
-    mtype: str = get_config().DEFAULT_MTYPE
-
-    def __init__(self, instance: Any):
-        """Initializes a FuzznumTemplate instance.
-
-        Args:
-            instance (Any): The `Fuzznum` instance that this template will represent.
-                            This should be a concrete instance of a fuzzy number.
-
-        Raises:
-            ValueError: If the provided `instance` is None.
-        """
-        if instance is None:
-            raise ValueError("Template instance cannot be None.")
-
-        # Create a weak reference to the provided `instance` (typically a Fuzznum instance).
-        # This prevents the template from keeping the Fuzznum instance alive if it's
-        # no longer referenced elsewhere, avoiding memory leaks due to circular references.
-        # The `_on_instance_cleanup` method will be called when the instance is garbage collected.
-        self._instance_ref = weakref.ref(instance, self._on_instance_cleanup)
-
-        # Store the unique identifier (memory address) of the associated instance.
-        # This can be useful for debugging and tracking.
-        self._instance_id = id(instance)
-
-        # Initialize a boolean flag indicating whether the current template instance is still valid.
-        # This flag will be set to False if the associated Fuzznum instance is garbage collected.
-        self._is_valid = True
-
-        # Get configuration settings for caching.
-        config = get_config()
-        # Set the maximum cache size, defaulting to 256 if not specified in config.
-        self._max_cache_size = getattr(config, 'TEMPLATE_CACHE_SIZE', 256)
-        # Initialize an OrderedDict to serve as an LRU cache for template computation results.
-        # OrderedDict maintains insertion order, allowing easy removal of the least recently used item.
-        self._template_cache: collections.OrderedDict = collections.OrderedDict()
-
-        # Set the initial cache enabled status based on the global configuration.
-        self._cache_enabled = config.ENABLE_CACHE
-
-    def _on_instance_cleanup(self, ref: weakref.ref) -> None:
-        """Callback method executed when the associated Fuzznum instance is garbage collected.
-
-        This method is registered with the weak reference and is automatically called
-        when the object it points to is no longer strongly referenced. It marks the
-        template as invalid and clears its cache.
-
-        Args:
-            ref (weakref.ref): The weak reference object that triggered the callback.
-        """
-        self._is_valid = False  # Mark the template as invalid.
-        self._template_cache.clear()  # Clear any cached results, as they are now stale.
-
-    @property
-    def instance(self) -> Any:
-        """Provides access to the associated Fuzznum instance.
-
-        This property ensures that the associated Fuzznum instance is still valid
-        and accessible before returning it. It raises a RuntimeError if the instance
-        has been garbage collected.
-
-        Returns:
-            Any: The associated Fuzznum instance.
-
-        Raises:
-            RuntimeError: If the associated Fuzznum instance has been garbage collected
-                          and the template is no longer valid.
-        """
-        # First, check the `_is_valid` flag. If it's already False, it means the
-        # associated instance has already been collected, so raise an error immediately.
-        if not self._is_valid:
-            raise RuntimeError(
-                f"Template for mtype '{self.mtype}' is no longer valid. "
-                f"Associated Fuzznum instance (id: {self._instance_id}) has been garbage collected."
-            )
-
-        # Attempt to retrieve the strong reference from the weak reference.
-        instance = self._instance_ref()
-
-        # If the weak reference returns None, it means the Fuzznum instance was
-        # garbage collected since the last check.
-        if instance is None:
-            self._is_valid = False  # Mark the template as invalid.
-            raise RuntimeError(
-                f"Template for mtype '{self.mtype}' has lost its Fuzznum instance "
-                f"(id: {self._instance_id}). Instance has been garbage collected."
-            )
-
-        return instance
-
-    def is_template_valid(self) -> bool:
-        """Checks if the template is still valid and its associated Fuzznum instance exists.
-
-        Returns:
-            bool: True if the template is valid and its associated instance is still alive,
-                  False otherwise.
-        """
-        # If the internal `_is_valid` flag is already False, the template is definitely invalid.
-        if not self._is_valid:
-            return False
-
-        # Attempt to get the strong reference from the weak reference.
-        instance = self._instance_ref()
-
-        # If the instance is None, it means the associated object has been garbage collected.
-        if instance is None:
-            self._is_valid = False  # Update the internal flag.
-            return False
-
-        return True
-
-    def get_cached_value(self, key: str, compute_func: Optional[Callable[[], Any]] = None) -> Any:
-        """Retrieves a cached value, computing and caching it if it doesn't exist.
-
-        This method is designed to cache results of expensive computations related
-        to the fuzzy number's representation or properties (e.g., score functions,
-        report strings). If caching is disabled, it directly computes the value.
-
-        Args:
-            key (str): The unique key for the cached value.
-            compute_func (Optional[Callable[[], Any]]): A callable (function or lambda)
-                                                        that computes the value if it's
-                                                        not found in the cache. This
-                                                        function should take no arguments.
-
-        Returns:
-            Any: The cached value or the newly computed value. Returns None if the
-                 key is not found and no `compute_func` is provided.
-        """
-        # If caching is disabled, directly execute the compute function (if provided)
-        # and do not perform any caching operations.
-        if not self._cache_enabled:
-            return compute_func() if compute_func else None
-
-        # Check if the value for the given `key` already exists in the cache.
-        if key in self._template_cache:
-            # If found, move the item to the end of the OrderedDict to mark it as recently used (LRU logic).
-            self._template_cache.move_to_end(key)
-            return self._template_cache[key]
-
-        # If the value is not in the cache and a `compute_func` is provided:
-        if compute_func:
-            # Call the `compute_func` to calculate the value.
-            value = compute_func()
-            # Store the computed value in the cache.
-            self._template_cache[key] = value
-            # Check if the cache size exceeds the maximum allowed size.
-            if len(self._template_cache) > self._max_cache_size:
-                # If it does, remove the least recently used item (the first item in OrderedDict).
-                self._template_cache.popitem(last=False)
-            return value
-
-        # If the key is not found and no compute function is provided, return None.
-        return None
-
-    def clear_cache(self) -> None:
-        """Clears all entries from the template's internal cache."""
-        self._template_cache.clear()
-
-    def enable_cache(self) -> None:
-        """Enables caching for this template."""
-        self._cache_enabled = True
-
-    def disable_cache(self) -> None:
-        """Disables caching for this template and clears any existing cached values."""
-        self._cache_enabled = False
-        self.clear_cache()
-
+    @abstractmethod
     def report(self) -> str:
-        """Generates a detailed report string for the fuzzy number.
-
-        This method must be implemented by subclasses to provide a specific
-        formatted string representation of the fuzzy number's properties.
-
-        Raises:
-            NotImplementedError: This method is abstract and must be implemented by subclasses.
         """
-        raise NotImplementedError("report method must be implemented by subclasses")
+        Returns a detailed string representation of the fuzzy number.
+        This should be implemented by subclasses.
+        """
+        raise NotImplementedError
 
+    @abstractmethod
     def str(self) -> str:
-        """Generates a concise string representation of the fuzzy number.
-
-        This method must be implemented by subclasses to provide a specific
-        short string representation, typically used for `print()` or `str()` calls.
-
-        Raises:
-            NotImplementedError: This method is abstract and must be implemented by subclasses.
         """
-        raise NotImplementedError("str method must be implemented by subclasses")
-
-    def get_template_info(self) -> Dict[str, Any]:
-        """Retrieves information about the template's current state and cache.
-
-        Returns:
-            Dict[str, Any]: A dictionary containing various pieces of information, including:
-                            - 'mtype' (str): The fuzzy number type associated with this template.
-                            - 'is_valid' (bool): Whether the template is still valid (associated instance exists).
-                            - 'instance_id' (int): The unique ID of the associated Fuzznum instance.
-                            - 'cache_enabled' (bool): Whether caching is enabled.
-                            - 'cache_size' (int): The number of items currently in the cache.
-                            - 'cache_keys' (List[str] or str): A list of cache keys, or a summary string
-                                                               if there are too many keys.
+        Returns a concise string representation of the fuzzy number.
+        By default, it delegates to `report()`. Subclasses can override this.
         """
-        return {
-            'mtype': self.mtype,  # The fuzzy number type associated with this template.
-            'is_valid': self._is_valid,  # Whether the template is still valid (associated instance exists).
-            'instance_id': self._instance_id,  # The unique ID of the associated Fuzznum instance.
-            'cache_enabled': self._cache_enabled,  # Whether caching is enabled.
-            'cache_size': len(self._template_cache),  # The number of items currently in the cache.
-            'cache_keys': list(self._template_cache.keys())
-            # Display cache keys as a list if there are fewer than 10, otherwise show a summary string.
-            if len(self._template_cache) < 10 else f"{len(self._template_cache)} items"
-        }
-
-    def __format__(self, format_spec):
-        """
-        Custom string formatting for Fuzznum instances.
-
-        This method provides a default implementation for formatting that can be
-        overridden by subclasses for more specific behavior. By default, it applies
-        the format specification to the standard string representation of the object.
-
-        Args:
-            format_spec (str): The format specification string.
-
-        Returns:
-            str: The formatted string representation.
-        """
-        return format(self.str(), format_spec)
+        return NotImplemented
 
 
-# ======================== Improved Example Implementations ========================
-# These example implementations are for demonstration purposes and are not
-# directly involved in the core initialization or operation processes.
-
-class ExampleStrategy(FuzznumStrategy):
-    """An example fuzzy number strategy class demonstrating attribute definition, validation, and callbacks.
-
-    This class inherits from `FuzznumStrategy` and specifically implements the core
-    attributes `md` (membership degree) and `nmd` (non-membership degree) for a
-    hypothetical fuzzy number type. It showcases how to leverage the base class's
-    mechanisms to:
-        - Set value range validators for `md` and `nmd`.
-        - Trigger callbacks when `md` or `nmd` change, checking basic fuzzy number
-          constraints (e.g., `md + nmd <= 1`).
-        - Extend the base validation logic in the `_validate` method to enforce
-          the sum of `md` and `nmd`.
-
-    Attributes:
-        mtype (str): The fuzzy number type identifier for this strategy, fixed as "example_fuzznum".
-        md (Optional[float]): The membership degree, an optional float representing
-                              the extent to which an element belongs to the fuzzy set.
-                              Its value should be in the range [0, 1].
-        nmd (Optional[float]): The non-membership degree, an optional float representing
-                               the extent to which an element does not belong to the fuzzy set.
-                               Its value should be in the range [0, 1].
-    """
-    mtype = "example_fuzznum"
-    md: Optional[float] = None
-    nmd: Optional[float] = None
-
-    def __init__(self):
-        """Initializes an ExampleStrategy instance.
-
-        In this constructor, the parent class's initialization method is called,
-        and validators and change callbacks are registered for the `md` and `nmd` attributes.
-        """
-        super().__init__()
-        # Call the parent class (FuzznumStrategy)'s initialization method.
-        # This will initialize instance-specific attributes and add the validator for the 'q' attribute.
-
-        # Add attribute validators for 'md' and 'nmd'.
-        # The validator ensures that 'md' is either None or a float/int within the [0, 1] range.
-        self.add_attribute_validator('md', lambda x: x is None or (isinstance(x, (int, float)) and 0 <= x <= 1))
-        # The validator ensures that 'nmd' is either None or a float/int within the [0, 1] range.
-        self.add_attribute_validator('nmd', lambda x: x is None or (isinstance(x, (int, float)) and 0 <= x <= 1))
-
-        # Add change callbacks for 'md' and 'nmd'.
-        # When the 'md' attribute's value changes, the `_on_membership_change` method is registered as a callback.
-        self.add_change_callback('md', self._on_membership_change)
-        # When the 'nmd' attribute's value changes, the `_on_membership_change` method is registered as a callback.
-        self.add_change_callback('nmd', self._on_membership_change)
-
-    def _on_membership_change(self, attr_name: str, old_value: Any, new_value: Any) -> None:
-        """Callback function triggered when membership or non-membership degrees change.
-
-        This callback is invoked when the `md` or `nmd` attribute is set. It checks
-        the fuzzy number constraint `md + nmd <= 1`. If the constraint is violated,
-        it raises a `ValueError`, which triggers the rollback logic in
-        `FuzznumStrategy.__setattr__`.
-
-        Args:
-            attr_name (str): The name of the attribute that changed ('md' or 'nmd').
-            old_value (Any): The old value of the attribute.
-            new_value (Any): The new value of the attribute.
-        """
-        # Only proceed with the check if the new value is not None and both 'md' and 'nmd'
-        # attributes exist on the instance. This prevents incomplete checks during object initialization.
-        if new_value is not None and hasattr(self, 'md') and hasattr(self, 'nmd'):
-            # Only perform the fuzzy number constraint check if both 'md' and 'nmd' have been assigned (are not None).
-            if self.md is not None and self.nmd is not None:
-                # Check the fuzzy number constraint: typically, the sum of membership (md)
-                # and non-membership (nmd) degrees should not exceed 1.
-                if self.md + self.nmd > 1:
-                    # **Critical change: Changed from warnings.warn to raise ValueError.**
-                    # Raising a ValueError here will cause `FuzznumStrategy.__setattr__`
-                    # to catch it and potentially roll back the attribute change,
-                    # ensuring that invalid states are not set.
-                    raise ValueError(f"md + nmd = {self.md + self.nmd} > 1, violates fuzzy number constraints")
-
-    def _validate(self) -> None:
-        """Extends the strategy's validation method to include a check on the sum of membership and non-membership degrees.
-
-        This method builds upon the parent class's `_validate` method by adding
-        a specific check for the combined constraint of `md` and `nmd`. If the
-        sum `md + nmd` is greater than 1, a `ValueError` is raised.
-        """
-        super()._validate()
-        # Call the `_validate` method of the parent class (FuzznumStrategy)
-        # to perform its default validation logic (e.g., for `mtype`).
-
-        # Check the constraint for membership and non-membership degrees: `md + nmd` must not exceed 1.
-        # This combined constraint check is only performed if both 'md' and 'nmd' have been assigned (are not None).
-        if (self.md is not None and self.nmd is not None and
-                self.md + self.nmd > 1):
-            # If the sum of md and nmd is greater than 1, raise a ValueError,
-            # indicating that the fuzzy number's state is invalid.
-            raise ValueError(f"md + nmd = {self.md + self.nmd} must not exceed 1")
 
 
-class ExampleTemplate(FuzznumTemplate):
-    """An improved example fuzzy number template implementation.
 
-    This class demonstrates how to generate string representations, detailed reports,
-    and add custom computational methods for a fuzzy number. It inherits from
-    `FuzznumTemplate` and provides specific representation logic for fuzzy numbers
-    of type "example_fuzznum". It leverages the base class's caching mechanism to:
-        - Generate a concise string representation (`str`).
-        - Generate a detailed report string (`report`).
-        - Compute a custom score function (`score`).
-    All these computed results are cached to improve performance on repeated access.
 
-    Attributes:
-        mtype (str): The fuzzy number type identifier for this template, fixed as "example_fuzznum".
-    """
 
-    mtype = "example_fuzznum"
 
-    def report(self) -> str:
-        """Generates a detailed report string for the fuzzy number.
 
-        This method utilizes the caching mechanism of `FuzznumTemplate` to generate
-        a detailed report containing all key parameters of the fuzzy number.
-        The report includes membership degree (`md`), non-membership degree (`nmd`),
-        and q-rung (`q`).
 
-        Returns:
-            str: A detailed fuzzy number report string, e.g., "ExampleFuzz(md=0.8, nmd=0.1, q=2)".
-        """
-        return self.get_cached_value(
-            'report',  # Cache key for the report string.
-            # Lambda function to compute the report string if not cached.
-            # It safely accesses the associated Fuzznum instance's attributes via `self.instance`.
-            lambda: f"ExampleFuzz(md={self.instance.md}, nmd={self.instance.nmd}, q={self.instance.q})"
-        )
 
-    def str(self) -> str:
-        """Generates a concise string representation of the fuzzy number.
 
-        This method utilizes the caching mechanism of `FuzznumTemplate` to generate
-        a brief string representation of the fuzzy number. It is typically used
-        for `print()` or `str()` calls.
 
-        Returns:
-            str: A concise fuzzy number string representation, e.g., "<0.8,0.1>_q=2".
-        """
-        return self.get_cached_value(
-            'str',  # Cache key for the concise string representation.
-            # Lambda function to compute the concise string representation if not cached.
-            # It safely accesses the associated Fuzznum instance's attributes via `self.instance`.
-            lambda: f"<{self.instance.md},{self.instance.nmd}>_q={self.instance.q}"
-        )
 
-    def score(self) -> float:
-        """Computes the score function of the fuzzy number.
 
-        This method calculates the score of the fuzzy number, defined as the
-        difference between the membership degree and the non-membership degree (`md - nmd`).
-        It utilizes the caching mechanism of `FuzznumTemplate` to avoid redundant computations.
-        If `md` or `nmd` are None, they are treated as 0 in the calculation.
 
-        Returns:
-            float: The computed score of the fuzzy number.
-        """
-        return self.get_cached_value(
-            'score',  # Cache key for the score.
-            # Lambda function to compute the score if not cached.
-            # `(self.instance.md or 0)` ensures that if `md` is None, it defaults to 0,
-            # preventing a TypeError during arithmetic operations.
-            lambda: (self.instance.md or 0) - (self.instance.nmd or 0)
-        )
-    
+
+

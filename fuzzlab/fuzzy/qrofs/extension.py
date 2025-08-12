@@ -12,8 +12,7 @@ from . import factory
 
 from ...extension import extension
 
-from ...core.fuzznums import Fuzznum
-from ...core.fuzzarray import Fuzzarray
+from ...core import Fuzznum, Fuzzarray
 
 
 # ========================= constructor =========================

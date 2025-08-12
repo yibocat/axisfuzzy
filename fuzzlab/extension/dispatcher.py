@@ -22,8 +22,7 @@ from typing import Callable
 
 from .registry import get_extension_registry
 from ..config import get_config
-from ..core import Fuzznum, get_fuzznum_registry
-from ..core.fuzzarray import Fuzzarray
+from ..core import Fuzznum, get_fuzznum_registry, Fuzzarray
 
 
 class ExtensionDispatcher:

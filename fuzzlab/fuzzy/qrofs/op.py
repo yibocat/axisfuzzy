@@ -47,11 +47,15 @@ from typing import List, Any, Dict, Union, Optional
 import numpy as np
 
 from ...config import get_config
-from ...core.operation import OperationMixin, get_operation_registry
-from ...core.triangular import OperationTNorm
-from ...core.registry import get_backend
-from ...core.fuzzarray import Fuzzarray
-from ...core.fuzznums import Fuzznum
+
+from ...core import (
+    Fuzznum,
+    Fuzzarray,
+    get_backend,
+    OperationTNorm,
+    OperationMixin,
+    get_operation_registry
+)
 
 
 def _prepare_operands(

@@ -40,8 +40,7 @@
 from .registry import get_mixin_registry
 from . import register  # This triggers the registration of all structural operations
 
-from ..core.fuzznums import Fuzznum
-from ..core.fuzzarray import Fuzzarray
+from ..core import Fuzznum, Fuzzarray
 
 
 def _apply_functions():

@@ -6,9 +6,7 @@
 #  Software: FuzzLab
 from typing import Tuple, Union, Optional
 
-from ....core.registry import get_backend
-from ....core.fuzznums import Fuzznum
-from ....core.fuzzarray import Fuzzarray
+from ....core import Fuzznum, Fuzzarray, get_backend
 
 
 def _qrofn_empty(shape: Optional[Tuple[int, ...]] = None,

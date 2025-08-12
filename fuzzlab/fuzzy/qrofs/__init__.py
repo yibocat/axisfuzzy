@@ -5,7 +5,7 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 
-from .qrofn import QROFNStrategy, QROFNTemplate
+from .qrofn import QROFNStrategy
 from .backend import QROFNBackend
 
 from .op import register_qrofn_operations
@@ -18,6 +18,5 @@ register_qrofn_operations()
 
 __all__ = [
     'QROFNStrategy',
-    'QROFNTemplate',
     'QROFNBackend'
 ]

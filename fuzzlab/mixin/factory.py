@@ -8,12 +8,9 @@ from typing import Union, Tuple, Optional, List
 
 import numpy as np
 
-from ..core.fuzzarray import Fuzzarray
-from ..core.fuzznums import Fuzznum
+from ..core import Fuzzarray, Fuzznum
 
 
-# reshape, flatten, squeeze, copy, ravel, transpose, broadcast_to, item,
-# concat, stack, append, pop
 # ========================= Core Structural Operations =========================
 
 def _reshape_factory(obj: Union[Fuzznum, Fuzzarray], *shape: int) -> Fuzzarray:

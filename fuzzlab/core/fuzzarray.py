@@ -15,7 +15,6 @@ from .operation import get_operation_registry, OperationMixin
 from .triangular import OperationTNorm
 
 
-# TODO: Fuzzarray 现在有个关键的地方在于没有实现 score, accuracy 等基本模糊数的属性
 class Fuzzarray:
     """
     High-performance fuzzy array using Struct of Arrays (SoA) architecture.

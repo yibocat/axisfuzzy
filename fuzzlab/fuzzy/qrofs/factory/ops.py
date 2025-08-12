@@ -8,10 +8,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
-from ....core import OperationTNorm
-from ....core import get_operation_registry
-from ....core import Fuzznum
-from ....core.fuzzarray import Fuzzarray
+from ....core import OperationTNorm, get_operation_registry, Fuzznum, Fuzzarray
 
 
 def _qrofn_sum(arr: Union[Fuzznum, Fuzzarray],
