@@ -12,8 +12,6 @@ __all__ = []
 
 from .config import *
 from .core import *
-from .fuzzy import *
-from .mixin import *
 from .extension import (
     apply_extensions,
     get_extension_registry,
@@ -21,6 +19,9 @@ from .extension import (
     get_extension_injector,
     batch_extension
 )
+from .fuzzy import *
+from .mixin import *
+from . import random
 
 __all__.extend(config.__all__)
 __all__.extend(core.__all__)

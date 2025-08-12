@@ -6,7 +6,7 @@
 #  Software: FuzzLab
 
 from .generator import QROFNRandomGenerator, qrofn_random_generator
-from ....random.core import register_random_generator
+from ...._random.core import register_random_generator
 
 __all__ = [
     'QROFNRandomGenerator',

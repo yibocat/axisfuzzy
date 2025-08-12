@@ -40,7 +40,7 @@ def extension(name: str,
     a declarative way to define extension properties.
 
     Args:
-        name: The name of the extension function (e.g., 'distance', 'random').
+        name: The name of the extension function (e.g., 'distance', '_random').
         mtype: The specific fuzzy number type (e.g., 'qrofn', 'ivfn') this
             implementation is for. If `None`, this function is considered
             a general or default implementation.
@@ -99,13 +99,13 @@ def extension(name: str,
         # In fuzzlab/fuzzy/qrofs/_func.py
         from fuzzlab.extension import extension
         from fuzzlab.core import Fuzznum
-        import random
+        import _random
 
         @extension('random_qrofn', mtype='qrofn', injection_type='top_level_function')
         def create_random_qrofn(mu: float = 0.5, nu: float = 0.5, q: int = 2) -> Fuzznum:
-            # Creates a random QROFN instance
-            md = random.uniform(0, mu)
-            nmd = random.uniform(0, nu)
+            # Creates a _random QROFN instance
+            md = _random.uniform(0, mu)
+            nmd = _random.uniform(0, nu)
             return Fuzznum(md=md, nmd=nmd, q=q, mtype='qrofn')
         ```
     """

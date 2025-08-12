@@ -31,7 +31,7 @@ class FunctionMetadata:
     Dataclass to store metadata for a registered extension function.
 
     Attributes:
-        name: The name of the extension function (e.g., 'distance', 'random').
+        name: The name of the extension function (e.g., 'distance', '_random').
         mtype: The specific fuzzy number type (e.g., 'qrofn', 'ivfn') this
             implementation is for. `None` indicates a general or default
             implementation.
@@ -107,7 +107,7 @@ class ExtensionRegistry:
         stores that function and its metadata.
 
         Args:
-            name: The name of the extension function (e.g., 'distance', 'random').
+            name: The name of the extension function (e.g., 'distance', '_random').
             mtype: The specific fuzzy number type (e.g., 'qrofn', 'ivfn') this
                 implementation is for. `None` indicates a general or default
                 implementation.
@@ -317,7 +317,7 @@ class ExtensionRegistry:
                         "injection_type": "instance_method"
                     }
                 },
-                "random": {
+                "_random": {
                     "implementations": {
                         "qrofn": {
                             "priority": 0,

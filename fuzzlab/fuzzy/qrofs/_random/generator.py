@@ -10,7 +10,7 @@ from typing import Dict
 
 import numpy as np
 
-from ....random.core.base import ParameterizedGenerator
+from ...._random.core.base import ParameterizedGenerator
 from ....core import Fuzznum
 
 
@@ -18,7 +18,7 @@ class QROFNRandomGenerator(ParameterizedGenerator):
     """
     Random generator for Q-Rung Orthopair Fuzzy Numbers.
 
-    This generator creates random QROFN instances with customizable
+    This generator creates _random QROFN instances with customizable
     membership and non-membership degrees that satisfy the q-rung constraint:
     μ^q + ν^q ≤ 1, where q ≥ 1.
     """
@@ -29,7 +29,7 @@ class QROFNRandomGenerator(ParameterizedGenerator):
 
     def get_default_parameters(self) -> dict:
         """
-        Get default parameters for QROFN random generation.
+        Get default parameters for QROFN _random generation.
 
         Returns:
             Dictionary with default parameters:
@@ -132,10 +132,10 @@ class QROFNRandomGenerator(ParameterizedGenerator):
 
     def generate_fuzznum(self, rng: np.random.Generator, **kwargs) -> 'Fuzznum':
         """
-        Generate a random QROFN Fuzznum.
+        Generate a _random QROFN Fuzznum.
 
         Args:
-            rng: NumPy random generator instance.
+            rng: NumPy _random generator instance.
             **kwargs: Generation parameters.
 
         Returns:
@@ -281,13 +281,13 @@ class QROFNRandomGenerator(ParameterizedGenerator):
 # Generator function for registration
 def qrofn_random_generator(rng: np.random.Generator, **kwargs) -> 'Fuzznum':
     """
-    Generator function for QROFN random generation.
+    Generator function for QROFN _random generation.
 
     This function serves as the bridge between the RandomRegistry and
     the QROFNRandomGenerator class.
 
     Args:
-        rng: NumPy random generator instance.
+        rng: NumPy _random generator instance.
         **kwargs: Generation parameters.
 
     Returns:
