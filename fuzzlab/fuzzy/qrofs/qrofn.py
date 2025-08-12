@@ -50,21 +50,23 @@ class QROFNStrategy(FuzznumStrategy):
         super()._validate()
         self._fuzz_constraint()
 
-    def report(self) -> str:
-        if self.md is None and self.nmd is None:
+    @classmethod
+    def format_from_components(cls, md: float, nmd: float) -> str:
+        """
+        A class method to format a q-rung orthopair fuzzy number from its raw components.
+        """
+        if md is None and nmd is None:
             return "<>"
         precision = get_config().DEFAULT_PRECISION
-        md = round(self.md, precision)
-        nmd = round(self.nmd, precision)
-        return f"<{md},{nmd}>"
+        md_str = f"{round(md, precision)}"
+        nmd_str = f"{round(nmd, precision)}"
+        return f"<{md_str},{nmd_str}>"
+
+    def report(self) -> str:
+        return self.format_from_components(self.md, self.nmd)
 
     def str(self) -> str:
-        if self.md is None and self.nmd is None:
-            return "<>"
-        precision = get_config().DEFAULT_PRECISION
-        md = round(self.md, precision)
-        nmd = round(self.nmd, precision)
-        return f"<{md},{nmd}>"
+        return self.format_from_components(self.md, self.nmd)
 
     def __format__(self, format_spec: str) -> str:
         """Provides custom formatting for the example fuzzy number.

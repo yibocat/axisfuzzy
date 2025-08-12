@@ -63,4 +63,6 @@ def _apply_functions():
 _apply_functions()
 
 
-__all__ = [] + get_mixin_registry().get_top_level_function_names()
+__all__ = [
+    'get_mixin_registry',
+] + get_mixin_registry().get_top_level_function_names()

@@ -37,6 +37,10 @@ class Fuzzarray:
             shape: Target shape for data
             **mtype_kwargs: Type-specific parameters (e.g., q for qrofn)
         """
+
+        # This attribute will hold a reference to the original array if this is a transpose
+        self._transposed_of: Optional['Fuzzarray'] = None
+
         # Direct backend assignment - fast path
         if backend is not None:
             self._backend = backend
@@ -261,7 +265,6 @@ class Fuzzarray:
         This is a temporary bridge until all operations are optimized.
         """
         # For now, use numpy vectorize as fallback
-        # TODO: Optimize this in later phases
 
         def element_op(index):
             elem1 = self._backend.get_fuzznum_view(index)
@@ -432,30 +435,43 @@ class Fuzzarray:
 
     def copy(self) -> 'Fuzzarray':
         """Create a deep copy"""
+        # The copy method in the backend already creates new data arrays.
         copied_backend = self._backend.copy()
+        # The new Fuzzarray is a standalone object, so it has no _transposed_of reference.
         return Fuzzarray(backend=copied_backend)
 
     def __repr__(self) -> str:
-        # TODO: 目前的 repr 方法并没有实现 shape 的数据展示
-        #  我们要实现类似 numpy 的展示方式
         if self.size == 0:
-            return f"Fuzzarray([], mtype='{self.mtype}', shape={self.shape})"
+            return f"Fuzzarray([], mtype='{self.mtype}', q={self.q}, shape={self.shape})"
 
-        if self.size <= 15:
-            elements = []
-            for idx in np.ndindex(self.shape):
-                fuzznum = self._backend.get_fuzznum_view(idx)
-                elements.append(str(fuzznum))
-            content = ', '.join(elements)
-        else:
-            content = f"... {self.size} elements ..."
+        # 从后端获取格式化好的字符串元素数组
+        formatted_elements = self._backend.format_elements()
 
-        return f"Fuzzarray([{content}], mtype='{self.mtype}', q={self.q}, shape={self.shape})"
+        # 使用自定义 formatter 来避免在每个元素周围添加引号
+        array_str = np.array2string(
+            formatted_elements,
+            separator=' ',
+            formatter={'str_kind': lambda x: x},    # type: ignore
+            prefix='Fuzzarray('
+        )
+
+        # 组合成最终的 repr 字符串
+        return f"Fuzzarray({array_str}, mtype='{self.mtype}', q={self.q}, shape={self.shape})"
 
     def __str__(self) -> str:
         """String representation of the Fuzzarray."""
-        # TODO: 可以尝试使用仅高维数组的形式来展现 str
-        return self.__repr__()
+        if self.size == 0:
+            return "[]"
+
+        # 从后端获取格式化好的字符串元素数组
+        formatted_elements = self._backend.format_elements()
+
+        # 使用与 repr 相同的格式化技巧，但不加 Fuzzarray(...) 的外壳
+        return np.array2string(
+            formatted_elements,
+            separator=' ',
+            formatter={'str_kind': lambda x: x}     # type: ignore
+        )
 
     # TODO: 实现特殊方法
     def __bool__(self) -> bool: ...

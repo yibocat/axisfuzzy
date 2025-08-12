@@ -52,7 +52,7 @@ def _transpose_impl(obj, *axes):
     return _transpose_factory(obj, *axes)
 
 
-@register(name='T', target_classes=["Fuzzarray"], injection_type='instance_function')
+@register(name='T', target_classes=["Fuzzarray", "Fuzznum"], injection_type='instance_function')
 @property
 def _T_impl(self):
     """Returns a view of the fuzzy array with axes transposed."""

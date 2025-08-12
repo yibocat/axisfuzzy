@@ -10,6 +10,8 @@ import numpy as np
 
 from ...core import Fuzznum, FuzzarrayBackend
 
+from .qrofn import QROFNStrategy
+
 
 class QROFNBackend(FuzzarrayBackend):
     """
@@ -67,6 +69,15 @@ class QROFNBackend(FuzzarrayBackend):
         new_backend.mds = self.mds[key]
         new_backend.nmds = self.nmds[key]
         return new_backend
+
+    def format_elements(self) -> np.ndarray:
+        """
+        Generates a NumPy array of formatted strings for each QROFN element.
+        """
+        # Use np.vectorize to apply the formatting function element-wise
+        # This is highly efficient as it operates on the numpy arrays directly.
+        formatter = np.vectorize(QROFNStrategy.format_from_components)
+        return formatter(self.mds, self.nmds)
 
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROFNBackend':

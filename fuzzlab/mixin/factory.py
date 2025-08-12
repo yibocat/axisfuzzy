@@ -122,6 +122,10 @@ def _transpose_factory(obj: Union[Fuzzarray, Fuzznum], *axes) -> Union[Fuzzarray
     if not isinstance(obj, Fuzzarray):
         raise TypeError(f"Unsupported type for transpose: {type(obj)}")
 
+    # Check if we are transposing an already transposed array
+    if obj._transposed_of is not None and not axes:
+        return obj._transposed_of
+
     # Handle different ways axes can be passed
     if len(axes) == 0:
         axes = None
@@ -136,7 +140,13 @@ def _transpose_factory(obj: Union[Fuzzarray, Fuzznum], *axes) -> Union[Fuzzarray
     backend_cls = obj.backend.__class__
     new_backend = backend_cls.from_arrays(*transposed_components, q=obj.q)
 
-    return Fuzzarray(backend=new_backend)
+    new_array = Fuzzarray(backend=new_backend)
+
+    # If it's a simple transpose (no custom axes), set the back-reference
+    if axes is None:
+        new_array._transposed_of = obj
+
+    return new_array
 
 
 def _broadcast_to_factory(obj: Union[Fuzzarray, Fuzznum], *shape: int) -> Fuzzarray:

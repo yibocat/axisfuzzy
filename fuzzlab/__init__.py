@@ -25,8 +25,8 @@ from . import random
 
 __all__.extend(config.__all__)
 __all__.extend(core.__all__)
-__all__.extend(fuzzy.__all__)
-__all__.extend(core.__all__)
 __all__.extend(extension.__all__)
+__all__.extend(fuzzy.__all__)
+__all__.extend(mixin.__all__)
 
 apply_extensions()

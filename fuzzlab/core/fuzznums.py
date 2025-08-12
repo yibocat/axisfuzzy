@@ -379,10 +379,10 @@ class Fuzznum:
     def size(self) -> int:
         return 1
 
-    # TODO: 可以删除掉了
-    @property
-    def T(self) -> 'Fuzznum':
-        return copy.deepcopy(self)
+    # # TODO: 可以删除掉了
+    # @property
+    # def T(self) -> 'Fuzznum':
+    #     return copy.deepcopy(self)
 
     # ================== Specific calculation method (operator overloading) ===============
 

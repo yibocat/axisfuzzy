@@ -494,21 +494,3 @@ class FuzznumStrategy(ABC):
         By default, it delegates to `report()`. Subclasses can override this.
         """
         return NotImplemented
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

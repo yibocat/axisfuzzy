@@ -91,7 +91,10 @@ def _qrofn_max(arr: Union[Fuzznum, Fuzzarray],
     if axis is None:
         # TODO: 这里的 .flatten 方法可能有问题, Fuzzarray 并没实现该方法
         #  在 Mixin 中实现该方法, 通过内部调用该方法
-        return arr.flatten()[indices]
+
+        from ....mixin.factory import _flatten_factory
+        return _flatten_factory(arr)[indices]
+
     else:
         # This is a simplified implementation for single-axis max.
         # A fully robust multi-axis implementation is more complex.
