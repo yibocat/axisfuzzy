@@ -63,8 +63,13 @@ class QROFNStrategy(FuzznumStrategy):
             import json
             return json.dumps({'mtype': cls.mtype, 'md': md, 'nmd': nmd, 'q': q})
         # 'r' 当前等同默认
-        md_str = f"{round(md, precision)}"
-        nmd_str = f"{round(nmd, precision)}"
+
+        def strip_trailing_zeros(x: float) -> str:
+            s = f"{x:.{precision}f}".rstrip('0').rstrip('.')
+            return s if s else "0"
+
+        md_str = strip_trailing_zeros(md)
+        nmd_str = strip_trailing_zeros(nmd)
         return f"<{md_str},{nmd_str}>"
 
     def report(self) -> str:

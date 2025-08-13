@@ -35,7 +35,7 @@ class Fuzzarray:
             backend: Pre-constructed FuzzarrayBackend instance
             mtype: Fuzzy number type (e.g., 'qrofn')
             shape: Target shape for data
-            **mtype_kwargs: Type-specific parameters (e.g., q for qrofn)
+            **kwargs: Type-specific parameters
         """
 
         # This attribute will hold a reference to the original array if this is a transpose
@@ -100,9 +100,7 @@ class Fuzzarray:
             # Iterate through the numpy array and populate the backend
             it = np.nditer(data, flags=['multi_index', 'refs_ok'])
             for item in it:
-                from ..mixin.factory import _item_factory
-                # TODO: 这里有问题, 导入数据是 np.ndarray 不支持
-                fuzznum_item = _item_factory(item)
+                fuzznum_item = item.item()      # type: ignore
                 if not isinstance(fuzznum_item, Fuzznum):
                     raise TypeError(f"All elements in the input data must be Fuzznum objects, found {type(fuzznum_item)}")
                 backend.set_fuzznum_data(it.multi_index, fuzznum_item)

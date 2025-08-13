@@ -77,33 +77,39 @@ class QROFNBackend(FuzzarrayBackend):
         默认 / 'c' 使用向量化字符串操作 (np.char.*)，避免 np.vectorize。
         特殊格式 'p','j','r'（少用）回退逐元素。
         """
-        precision = get_config().DEFAULT_PRECISION  # 若需放到 config，可直接引用
-        # 特殊格式少量使用，回退简单循环
+        precision = get_config().DEFAULT_PRECISION
         if format_spec in ('p', 'j', 'r'):
             out = np.empty(self.shape, dtype=object)
             it = np.nditer(self.mds, flags=['multi_index'])
             while not it.finished:
                 idx = it.multi_index
-                md = float(self.mds[idx]); nmd = float(self.nmds[idx])
+                md = float(self.mds[idx])
+                nmd = float(self.nmds[idx])
                 out[idx] = QROFNStrategy.format_from_components(md, nmd, format_spec, self.q)
                 it.iternext()
             return out
 
         # 批量数值格式化
         fmt = f"%.{precision}f"
-        md_strs = np.char.mod(fmt, self.mds)
-        nmd_strs = np.char.mod(fmt, self.nmds)
+        md_strs = np.char.mod(fmt, np.round(self.mds, precision))
+        nmd_strs = np.char.mod(fmt, np.round(self.nmds, precision))
 
+        def _trim(arr: np.ndarray) -> np.ndarray:
+            # 去掉尾部 0
+            trimmed = np.char.rstrip(np.char.rstrip(arr, '0'), '.')
+            # 若全部被去掉（例如 "0.0000"）则恢复为 "0"
+            return np.where(trimmed == '', '0', trimmed)
 
-        # 紧凑：<0.1234,0.5678>
+        md_trimmed = _trim(md_strs)
+        nmd_trimmed = _trim(nmd_strs)
+
         combined = np.char.add(
             np.char.add(
-                np.char.add("<", md_strs),
-                np.char.add(",", nmd_strs)
+                np.char.add("<", md_trimmed),
+                np.char.add(",", nmd_trimmed)
             ),
             ">"
         )
-
         return combined.astype(object)
 
     @classmethod
