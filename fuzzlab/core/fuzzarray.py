@@ -101,6 +101,7 @@ class Fuzzarray:
             it = np.nditer(data, flags=['multi_index', 'refs_ok'])
             for item in it:
                 from ..mixin.factory import _item_factory
+                # TODO: 这里有问题, 导入数据是 np.ndarray 不支持
                 fuzznum_item = _item_factory(item)
                 if not isinstance(fuzznum_item, Fuzznum):
                     raise TypeError(f"All elements in the input data must be Fuzznum objects, found {type(fuzznum_item)}")

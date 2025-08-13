@@ -24,6 +24,8 @@ from .registry import (
     get_fuzznum_registered_mtypes
 )
 
+# from .triangular import OperationTNorm
+
 from .triangular import OperationTNorm
 
 __all__ = [

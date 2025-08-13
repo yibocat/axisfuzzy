@@ -23,7 +23,7 @@ from ..config import get_config
 
 from .fuzznums import Fuzznum
 from .operation import get_operation_registry, OperationMixin
-from .triangular import OperationTNorm
+from ._triangular import OperationTNorm
 
 
 class Fuzzarray:
