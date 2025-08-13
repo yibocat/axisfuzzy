@@ -1056,7 +1056,6 @@ class Fuzznum:
         """
         return 1
 
-    # TODO: 可以删除掉了
     @property
     def T(self) -> 'Fuzznum':
         return copy.deepcopy(self)

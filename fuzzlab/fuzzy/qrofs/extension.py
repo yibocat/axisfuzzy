@@ -223,8 +223,7 @@ def qrofn_std_ext(fuzz: Union[Fuzzarray, Fuzznum],
     name='score',
     mtype='qrofn',
     target_classes=['Fuzzarray', 'Fuzznum'],
-)
-@property
+    injection_type='instance_property')
 def qrofn_score_ext(fuzz: Union[Fuzzarray, Fuzznum]) -> Union[float, np.ndarray]:
     """Calculate the score of a QROFN Fuzzarray or Fuzznum."""
     return factory._qrofn_score(fuzz)
@@ -234,8 +233,7 @@ def qrofn_score_ext(fuzz: Union[Fuzzarray, Fuzznum]) -> Union[float, np.ndarray]
     name='acc',
     mtype='qrofn',
     target_classes=['Fuzzarray', 'Fuzznum'],
-)
-@property
+    injection_type='instance_property')
 def qrofn_acc_ext(fuzz: Union[Fuzzarray, Fuzznum]) -> Union[float, np.ndarray]:
     """Calculate the accuracy of a QROFN Fuzzarray or Fuzznum."""
     return factory._qrofn_acc(fuzz)
@@ -245,8 +243,7 @@ def qrofn_acc_ext(fuzz: Union[Fuzzarray, Fuzznum]) -> Union[float, np.ndarray]:
     name='ind',
     mtype='qrofn',
     target_classes=['Fuzzarray', 'Fuzznum'],
-)
-@property
+    injection_type='instance_property')
 def qrofn_ind_ext(fuzz: Union[Fuzzarray, Fuzznum]) -> Union[float, np.ndarray]:
     """Calculate the indeterminacy of a QROFN Fuzzarray or Fuzznum."""
     return factory._qrofn_ind(fuzz)

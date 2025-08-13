@@ -206,6 +206,72 @@ class ExtensionDispatcher:
                                        f"'mtype' is resolved from kwargs or the first argument.")
         return function_dispatcher
 
+    def create_instance_property(self, func_name: str) -> property:
+        """
+        Creates a dispatching property suitable for an instance property.
+
+        This function returns a property object that, when accessed on
+        a `Fuzznum` or `Fuzzarray` instance, will extract the instance's
+        `mtype` and use it to find and call the correct registered
+        extension implementation.
+
+        Args:
+            func_name: The name of the extension function to dispatch (e.g., 'score').
+
+        Returns:
+            A property object that acts as a proxy for the actual extension implementation.
+
+        Raises:
+            AttributeError: If the object lacks a 'mtype' attribute.
+            NotImplementedError: If no implementation for the given `func_name` and `mtype`
+                                 (or a suitable default) is found in the registry.
+
+        Examples:
+            ```python
+            # This method is typically called by ExtensionInjector
+            # to create properties like Fuzznum.score.
+            dispatcher = get_extension_dispatcher()
+            score_property = dispatcher.create_instance_property('score')
+
+            # Later, this 'score_property' would be set as Fuzznum.score
+            # fuzznum_instance.score would then call the property getter
+            ```
+        """
+        def property_getter(obj):
+            """
+            The actual dispatching logic for instance properties.
+
+            This function is dynamically attached to Fuzznum/Fuzzarray instances
+            as a property getter. It extracts the mtype from `obj` and uses it
+            to find the correct extension implementation.
+            """
+            mtype = getattr(obj, 'mtype', None)
+            if mtype is None:
+                raise AttributeError(f"Object {type(obj).__name__} has no 'mtype' attribute")
+
+            # Retrieve the appropriate implementation from the registry.
+            implementation = self.registry.get_function(func_name, mtype)
+            if implementation is None:
+                # Provide detailed error message for better debugging.
+                available_mtypes = list(self.registry._functions.get(func_name, {}).keys())
+                has_default = func_name in self.registry._defaults
+
+                error_msg = f"Property '{func_name}' not implemented for mtype '{mtype}'"
+                if available_mtypes:
+                    error_msg += f". Available for: {available_mtypes}"
+                if has_default:
+                    error_msg += ". Default implementation available but failed to load or was not applicable."
+
+                raise NotImplementedError(error_msg)
+
+            # Call the found implementation with the object as the only argument.
+            return implementation(obj)
+
+        # Create and return a property object, setting the docstring directly.
+        # The name of the property is set when it's attached to the class.
+        prop = property(fget=property_getter, doc=f"Dispatched property for {func_name}")
+        return prop
+
 
 # Global singleton instance of ExtensionDispatcher.
 _dispatcher = ExtensionDispatcher()

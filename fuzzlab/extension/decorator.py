@@ -27,7 +27,11 @@ from .registry import get_extension_registry
 def extension(name: str,
               mtype: Optional[str] = None,
               target_classes: Union[str, List[str]] = None,
-              injection_type: Literal['instance_method', 'top_level_function', 'both'] = 'both',
+              injection_type: Literal[
+                  'instance_method',
+                  'top_level_function',
+                  'instance_property',
+                  'both'] = 'both',
               is_default: bool = False,
               priority: int = 0,
               **kwargs):

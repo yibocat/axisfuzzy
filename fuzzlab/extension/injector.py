@@ -129,6 +129,15 @@ class ExtensionInjector:
                     if not hasattr(cls, func_name):
                         setattr(cls, func_name, method_dispatcher)
 
+        # Inject as an instance property if required by any registration.
+        if 'instance_property' in injection_types:
+            property_dispatcher = self.dispatcher.create_instance_property(func_name)
+            for class_name in target_classes:
+                if class_name in class_map:
+                    cls = class_map[class_name]
+                    if not hasattr(cls, func_name):
+                        setattr(cls, func_name, property_dispatcher)
+
         # Inject as a top-level function if required by any registration.
         if any(it in ['top_level_function', 'both'] for it in injection_types):
             # Create a single top-level function dispatcher for this function name.

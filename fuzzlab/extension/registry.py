@@ -54,7 +54,11 @@ class FunctionMetadata:
     name: str
     mtype: Optional[str]
     target_classes: List[str]
-    injection_type: Literal['instance_method', 'top_level_function', 'both']
+    injection_type: Literal[
+        'instance_method',
+        'instance_property',
+        'top_level_function',
+        'both']
     is_default: bool = False
     priority: int = 0
     description: str = ""
@@ -95,7 +99,11 @@ class ExtensionRegistry:
                  name: str,
                  mtype: Optional[str] = None,
                  target_classes: Union[str, List[str]] = None,
-                 injection_type: Literal['instance_method', 'top_level_function', 'both'] = 'both',
+                 injection_type: Literal[
+                     'instance_method',
+                     'instance_property',
+                     'top_level_function',
+                     'both'] = 'both',
                  is_default: bool = False,
                  priority: int = 0,
                  **kwargs) -> Callable:

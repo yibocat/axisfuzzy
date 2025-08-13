@@ -621,6 +621,7 @@ class QROFNTimes(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+# TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
 class QROFNExponential(OperationMixin):
     """
     Implements the exponential operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -664,7 +665,6 @@ class QROFNExponential(OperationMixin):
             Dict[str, Any]: A dictionary containing the 'md', 'nmd', and 'q'
                             of the resulting QROFN.
         """
-        # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
         # Membership degree calculation using the dual generator (f_func) and its pseudo-inverse (f_inv_func).
         md = tnorm.f_inv_func(operand * tnorm.f_func(strategy.md))
         # Non-membership degree calculation using the generator (g_func) and its pseudo-inverse (g_inv_func).
@@ -677,7 +677,6 @@ class QROFNExponential(OperationMixin):
                                    fuzzarray: Fuzzarray,
                                    operand: Union[int, float],
                                    tnorm: OperationTNorm) -> Fuzzarray:
-        # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
         mds, nmds = fuzzarray.backend.get_component_arrays()
 
         md_res = tnorm.f_inv_func(operand * tnorm.f_func(mds))
@@ -688,6 +687,7 @@ class QROFNExponential(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+# TODO: Log 计算目前还存在缺陷。此处写出来仅用于测试
 class QROFNLogarithmic(OperationMixin):
     """
     Implements the logarithmic operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -731,7 +731,6 @@ class QROFNLogarithmic(OperationMixin):
             Dict[str, Any]: A dictionary containing the 'md', 'nmd', and 'q'
                             of the resulting QROFN.
         """
-        # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
         # Membership degree calculation using the dual generator (f_func) and its pseudo-inverse (f_inv_func).
         md = tnorm.f_inv_func(tnorm.f_func(strategy.md) / operand)
         # Non-membership degree calculation using the generator (g_func) and its pseudo-inverse (g_inv_func).
@@ -744,7 +743,6 @@ class QROFNLogarithmic(OperationMixin):
                                    fuzzarray: Fuzzarray,
                                    operand: Union[int, float],
                                    tnorm: OperationTNorm) -> Fuzzarray:
-        # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
         mds, nmds = fuzzarray.backend.get_component_arrays()
 
         md_res = tnorm.f_inv_func(tnorm.f_func(mds) / operand)

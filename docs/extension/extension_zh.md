@@ -23,6 +23,24 @@ FuzzLab 的扩展系统主要由以下几个核心组件构成：
 - 核心功能：
   - `@extension`：这是最常用的装饰器，用于注册单个功能。您可以指定功能名称 (name)、适用的 `mtype`、目标类 (`target_classes`，例如 `Fuzznum` 或 `Fuzzarray`)、注入类型 (`injection_type`，可以是实例方法、顶级函数或两者) 以及是否为默认实现 (`is_default`) 和优先级 (`priority`)。
   - `@batch_extension`：用于批量注册多个功能，方便管理。
+- `injection_type` 现支持：
+  - instance_method：注入为实例方法
+  - top_level_function：注入为顶级函数
+  - both：以上两者
+  - instance_property（新增）：注入为只读分发属性（@property 形式），适合轻量快速计算的指标 (如 score / acc / ind)
+
+示例（注册一个分发属性）：
+```python
+@extension(
+    name='score',
+    mtype='qrofn',
+    target_classes=['Fuzznum', 'Fuzzarray'],
+    injection_type='instance_property'
+)
+def qrofn_score_ext(obj):
+    return obj.md ** obj.q - obj.nmd ** obj.q
+```
+注入后：obj.score
 
 ### 3. 分发器 (`ExtensionDispatcher`)
 - 文件：`dispatcher.py`
@@ -31,6 +49,9 @@ FuzzLab 的扩展系统主要由以下几个核心组件构成：
   - `create_instance_method()`：创建一个“代理”实例方法。当这个方法被调用时，它会检查调用对象的 `mtype`，然后从注册表中查找并调用对应的特化或默认实现。
   - `create_top_level_function()`：类似地，创建一个“代理”顶级函数，用于处理顶级函数调用时的 `mtype` 分发。
 - 运行机制：它不会直接执行功能，而是生成一个包装器函数。这个包装器函数在被调用时，会动态地从注册表中查找并执行最匹配的实现。
+- 说明：
+  - create_instance_property(func_name)：返回属性描述符，访问时进行 mtype 分发。
+  - property 对象本身没有 __name__，通过 doc 传入文档字符串。
 
 ### 4. 注入器 (`ExtensionInjector`)
 - 文件：`injector.py`
@@ -38,6 +59,8 @@ FuzzLab 的扩展系统主要由以下几个核心组件构成：
 - 核心功能：
   - `inject_all()`：遍历注册表中所有已注册的功能，并根据其 `injection_type` 将它们注入到指定的类（`Fuzznum`, `Fuzzarray`）或模块命名空间中。
 - 运行机制：它通过 `setattr()` 等方式，将分发器创建的代理函数绑定到目标类或模块上，使得这些扩展功能可以像原生方法或函数一样被调用。
+- 说明:
+    - 当发现某功能的任一实现声明 injection_type 包含 instance_property 时，会为目标类注入一个分发 property（若该名称尚不存在）。
 
 ### 5. 工具函数 (`call_extension`)
 - 文件：`utils.py`
@@ -50,7 +73,7 @@ FuzzLab 的扩展系统主要由以下几个核心组件构成：
 - 运行机制：在 `FuzzLab` 库被导入时（通过 `__init__.py` 中的 `apply_extensions()` 调用），`apply_extensions()` 函数会被执行。它会获取 `ExtensionInjector` 实例，并调用其 `inject_all()` 方法，从而完成所有已注册功能的动态注入。
 
 ## 2. 整体思想
-FuzzLab 扩展系统的整体思想可以概括为：“注册-分发-注入”。
+FuzzLab 扩展系统的整体思想可以概括为：“注册-分发-注入”, “注册-分发-注入” 现在同时覆盖 方法调用 与 属性访问两种交互方式。
 
 - 注册 (Registration)：开发者通过简单的 `@extension` 装饰器，声明一个函数是 FuzzLab 的一个扩展功能，并指定其名称、适用的 `mtype` 和注入方式。这些信息被存储在 `ExtensionRegistry` 中。
 - 分发 (Dispatching)：当用户调用一个扩展功能时（无论是作为实例方法还是顶级函数），实际执行的不是原始函数，而是 `ExtensionDispatcher` 创建的一个代理函数。这个代理函数会根据调用对象的 `mtype`，智能地从 `ExtensionRegistry` 中查找并调用最合适的具体实现。
@@ -105,3 +128,38 @@ def qrofn_distance(fuzz1: Fuzznum, fuzz2: Fuzznum, p: int = 2) -> float:
    - 作为顶级函数：当您调用 `fuzzlab.distance(my_qrofn_fuzznum, another_fuzznum)` 时，实际调用的是 `ExtensionDispatcher` 创建的代理顶级函数。这个代理函数会检测传入的第一个参数 `my_qrofn_fuzznum` 的 `mtype`，然后同样从注册表中找到 `qrofn_distance` 函数并执行它。
 
 通过这种机制，`FuzzLab` 实现了高度的模块化和可扩展性。您可以为任何 `mtype` 定义 `distance` 函数，甚至可以定义一个通用的 `distance` 默认实现，系统会根据对象的实际 `mtype` 自动选择最合适的实现。
+
+## 3. 新示例：分发属性 (score / acc / ind)
+
+QROFN 指标定义：
+- score = md^q - nmd^q
+- acc = md^q + nmd^q
+- ind = 1 - acc
+
+注册：
+```python
+@extension(name='acc', mtype='qrofn',
+           target_classes=['Fuzznum','Fuzzarray'],
+           injection_type='instance_property')
+def qrofn_acc_ext(x): return x.md ** x.q + x.nmd ** x.q
+```
+
+使用：
+```python
+x.score
+x.acc
+x.ind
+```
+
+高性能说明：
+- 对 Fuzzarray：底层直接取后端 SoA 分量数组 (mds, nmds) 做向量化 (幂、加减)。
+- 对 Fuzznum：标量直接计算。
+
+## 4. injection_type 汇总（更新）
+
+| 类型                | 作用                               |
+|---------------------|------------------------------------ |
+| instance_method     | 分发实例方法                       |
+| top_level_function  | 注入顶级函数                       |
+| both                | 方法 + 顶级函数                     |
+| instance_property   | 分发属性（只读，访问即计算）        |

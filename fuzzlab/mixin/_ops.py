@@ -303,7 +303,6 @@ def _var_impl(self: Union['Fuzzarray', 'Fuzznum'],
         Union['Fuzznum', 'Fuzzarray', float]: The variance. Returns 0.0 for a single Fuzznum.
     """
     if isinstance(self, Fuzznum):
-        # TODO: 方差这里,如果是一个 `Fuzznum`,则方差返回的应该是 `neg` `Fuzznum`. 而 `neg` 暂未实现.
         return 0.0
 
     if not self.size:
@@ -335,7 +334,6 @@ def _std_impl(self: Union['Fuzzarray', 'Fuzznum'],
         Union['Fuzznum', 'Fuzzarray', float]: The standard deviation. Returns 0.0 for a single Fuzznum.
     """
     if isinstance(self, Fuzznum):
-        # TODO: 标准差这里,如果是一个 `Fuzznum`,则标准差返回的应该是 `neg` `Fuzznum`. 而 `neg` 暂未实现.
         return 0.0
 
     # Calculate variance first

@@ -16,8 +16,28 @@ The FuzzLab extension system primarily consists of the following core components
 - File: `decorators.py`
 - Role: Provides concise syntactic sugar for registering functions with the `ExtensionRegistry`.
 - Core Functions:
-  - `@extension`: This is the most commonly used decorator for registering a single function. You can specify the function name (`name`), applicable `mtype`, target classes (`target_classes`, e.g., `Fuzznum` or `Fuzzarray`), injection type (`injection_type`, which can be `instance_method`, `top_level_function`, or `both`), whether it's a default implementation (`is_default`), and its `priority`.
+  - `@extension`: This is the most commonly used decorator for registering a single function. You can specify the function name (`name`), applicable `mtype`, target classes (`target_classes`, e.g., `Fuzznum` or `Fuzzarray`), injection type (`injection_type`, which can be `instance_method`, `top_level_function`, `instance_property` or `both`), whether it's a default implementation (`is_default`), and its `priority`.
   - `@batch_extension`: Used for batch registration of multiple functions, facilitating management.
+- injection_type supports:
+  - instance_method: injected as a dispatched instance method.
+  - top_level_function: injected into fuzzlab module namespace.
+  - both: combines the above two.
+  - instance_property (NEW): injected as a lazily evaluated dispatched @property (read‑only).
+    - Used for lightweight computed features (e.g. score, acc, ind).
+    - Implementation function still receives the instance as the first argument.
+
+Example (register a dispatched property):
+```python
+@extension(
+    name='score',
+    mtype='qrofn',
+    target_classes=['Fuzznum', 'Fuzzarray'],
+    injection_type='instance_property'
+)
+def qrofn_score_ext(obj):
+    return obj.md ** obj.q - obj.nmd ** obj.q
+```
+After injection: obj.score
 
 ### 3. Dispatcher (`ExtensionDispatcher`)
 - File: `dispatcher.py`
@@ -26,6 +46,10 @@ The FuzzLab extension system primarily consists of the following core components
   - `create_instance_method()`: Creates a "proxy" instance method. When this method is called, it inspects the `mtype` of the calling object and then finds and invokes the correct registered extension implementation.
   - `create_top_level_function()`: Similarly, creates a "proxy" top-level function for handling `mtype` dispatch during top-level function calls.
 - Operational Mechanism: It does not directly execute the function but generates a wrapper function. This wrapper function, when called, dynamically looks up and executes the most matching implementation from the registry.
+- Notes:
+    - Added create_instance_property(name) returning a property descriptor.
+    - Property getter performs the same mtype dispatch as methods.
+    - No __name__ on property objects; documentation is supplied via doc argument.
 
 ### 4. Injector (`ExtensionInjector`)
 - File: `injector.py`
@@ -33,6 +57,8 @@ The FuzzLab extension system primarily consists of the following core components
 - Core Functions:
   - `inject_all()`: Iterates through all registered functions in the registry and, based on their `injection_type`, injects them into the specified classes (`Fuzznum`, `Fuzzarray`) or module namespace.
 - Operational Mechanism: It uses `setattr()` or similar methods to bind the dispatcher-created proxy functions to the target classes or module, making the extensions callable like native methods or functions.
+- Note:
+  - inject_all now also detects registrations whose injection_type includes instance_property and attaches a dispatched property (if attribute not already present).
 
 ### 5. Utility Function (`call_extension`)
 - File: `utils.py`
@@ -45,7 +71,7 @@ The FuzzLab extension system primarily consists of the following core components
 - Operational Mechanism: When the FuzzLab library is imported (via the `apply_extensions()` call in `fuzzlab/__init__.py`), the `apply_extensions()` function is executed. It obtains the `ExtensionInjector` instance and calls its `inject_all()` method, thereby completing the dynamic injection of all registered functions.
 
 ## 2. Core Philosophy
-The overall philosophy of the FuzzLab extension system can be summarized as: "Registration - Dispatch - Injection".
+The overall philosophy of the FuzzLab extension system can be summarized as: "Registration - Dispatch - Injection". Registration – Dispatch – Injection now also covers attribute-style access for computed metrics.
 
 - Registration: Developers use the simple `@extension` decorator to declare a function as a FuzzLab extension, specifying its name, applicable `mtype`, and injection method. This information is stored in the `ExtensionRegistry`.
 - Dispatching: When a user calls an extension function (either as an instance method or a top-level function), the actual execution is handled by a proxy function created by the `ExtensionDispatcher`. This proxy function intelligently looks up and invokes the most appropriate concrete implementation from the `ExtensionRegistry` based on the `mtype` of the calling object.
@@ -115,4 +141,38 @@ Here's what happens:
         *   The proxy function then executes the `qrofn_distance` function, passing `my_qrofn_fuzznum` and `another_fuzznum` as arguments.
 
 Through this mechanism, FuzzLab achieves high modularity and extensibility. You can define a `distance` function for any `mtype`, or even a generic default `distance` implementation, and the system will automatically select the most appropriate implementation based on the object's actual `mtype`.
+
+## 3. New Example: Dispatched Properties (score / acc / ind)
+
+For q-rung orthopair fuzzy numbers (QROFN):
+- score = md^q - nmd^q
+- acc (accuracy) = md^q + nmd^q
+- ind (indeterminacy) = 1 - acc
+
+Registered as:
+```python
+@extension(name='score', mtype='qrofn',
+           target_classes=['Fuzznum','Fuzzarray'],
+           injection_type='instance_property')
+def qrofn_score_ext(x): return x.md ** x.q - x.nmd ** x.q
+```
+
+Usage:
+```python
+x.score   # dispatched, no parentheses
+x.acc
+x.ind
+```
+Performance:
+- Implementations for arrays operate on backend SoA component arrays (vectorized power and arithmetic).
+- Fuzznum path uses scalar computation.
+
+## 4. Summary of injection_type (updated)
+
+| injection_type       | Effect                                      |
+|----------------------|---------------------------------------------|
+| instance_method      | Inject as dispatched bound method           |
+| top_level_function   | Inject into fuzzlab namespace               |
+| both                 | Method + top-level                          |
+| instance_property    | Read-only dispatched property               |
 
