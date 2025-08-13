@@ -72,7 +72,7 @@ class TypeNormalizer:
     def to_float(value: Any) -> float:
         """将任意数值类型转换为标准 Python float"""
         if value is None:
-            return 0.0
+            raise TypeError("Cannot convert None to float")
         if isinstance(value, (np.ndarray, np.floating, np.integer)):
             if hasattr(value, 'item'):
                 return float(value.item())
@@ -84,7 +84,7 @@ class TypeNormalizer:
     def to_int(value: Any) -> int:
         """将任意数值类型转换为标准 Python int"""
         if value is None:
-            return 0
+            raise TypeError("Cannot convert None to int")
         if isinstance(value, (np.ndarray, np.floating, np.integer)):
             if hasattr(value, 'item'):
                 return int(value.item())
@@ -229,7 +229,7 @@ class HamacherNorm(BaseNormOperation):
         super().__init__(q, **params)
         self.gamma = params.get('hamacher_param', 1.0)
         if self.gamma <= 0:
-            raise ValueError("Hamacher parameter gamma must be greater than 0")
+            raise ValueError("Hamacher parameter gamma must be positive")
         self.is_archimedean = True
         self.is_strict_archimedean = True
         self.supports_q = True
@@ -264,7 +264,7 @@ class YagerNorm(BaseNormOperation):
         super().__init__(q, **params)
         self.p = params.get('yager_param', 1.0)
         if self.p <= 0:
-            raise ValueError("Yager parameter p must be greater than 0")
+            raise ValueError("Yager parameter p must be positive")
 
         self.is_archimedean = True
         self.is_strict_archimedean = (self.p != 1)  # p=1时退化为Łukasiewicz，非严格阿基米德
@@ -302,7 +302,7 @@ class SchweizerSklarNorm(BaseNormOperation):
         super().__init__(q, **params)
         self.p = params.get('sklar_param', 1.0)
         if self.p == 0:
-            raise ValueError("Schweizer-Sklar parameter p cannot be 0")
+            raise ValueError("Schweizer-Sklar parameter p cannot be zero")
 
         self.is_archimedean = True
         self.is_strict_archimedean = True
@@ -312,33 +312,42 @@ class SchweizerSklarNorm(BaseNormOperation):
         """Schweizer-Sklar T-范数实现"""
         eps = get_config().DEFAULT_EPSILON
 
+        # 确保输入是数组
+        a = np.asarray(a, dtype=np.float64)
+        b = np.asarray(b, dtype=np.float64)
+
         if self.p > 0:
             # T(a,b) = (max(0, a^(-p) + b^(-p) - 1))^(-1/p)
             mask = (a > eps) & (b > eps)
             result = np.zeros_like(a, dtype=np.float64)
 
-            a_safe = a[mask]
-            b_safe = b[mask]
+            if np.any(mask):
+                a_safe = a[mask]
+                b_safe = b[mask]
 
-            term1 = np.power(a_safe, -self.p)
-            term2 = np.power(b_safe, -self.p)
-            inner = np.maximum(0, term1 + term2 - 1)
+                term1 = np.power(a_safe, -self.p)
+                term2 = np.power(b_safe, -self.p)
+                inner = np.maximum(0, term1 + term2 - 1)
 
-            # 避免对0取负指数
-            result[mask] = np.where(inner > eps, np.power(inner, -1.0 / self.p), 0.0)
+                # 避免对0取负指数
+                result_masked = np.where(inner > eps, np.power(inner, -1.0 / self.p), 0.0)
+                result[mask] = result_masked
         else:  # p < 0
             # 当p<0时的处理
             mask = (a < 1.0 - eps) & (b < 1.0 - eps)
-            result = np.minimum(a, b)  # 默认值
+            # 确保 result 是一个可写的数组，并用默认值填充
+            result = np.minimum(a, b, out=np.empty_like(a, dtype=np.float64))
 
-            a_safe = a[mask]
-            b_safe = b[mask]
+            if np.any(mask):
+                a_safe = a[mask]
+                b_safe = b[mask]
 
-            term1 = np.power(a_safe, -self.p)
-            term2 = np.power(b_safe, -self.p)
-            inner = term1 + term2 - 1
+                term1 = np.power(a_safe, -self.p)
+                term2 = np.power(b_safe, -self.p)
+                inner = term1 + term2 - 1
 
-            result[mask] = np.where(inner > 0, np.power(inner, -1.0 / self.p), 0.0)
+                result_masked = np.where(inner > 0, np.power(inner, -1.0 / self.p), 0.0)
+                result[mask] = result_masked
 
         return TypeNormalizer.ensure_array_output(result)
 
@@ -346,37 +355,47 @@ class SchweizerSklarNorm(BaseNormOperation):
         """Schweizer-Sklar T-余范数实现"""
         eps = get_config().DEFAULT_EPSILON
 
+        # 确保输入是数组
+        a = np.asarray(a, dtype=np.float64)
+        b = np.asarray(b, dtype=np.float64)
+
+        # 确保 result 是一个可写的数组，并用默认值填充
+        result = np.maximum(a, b, out=np.empty_like(a, dtype=np.float64))
+
         if self.p > 0:
             # S(a,b) = 1 - (max(0, (1-a)^(-p) + (1-b)^(-p) - 1))^(-1/p)
             mask = (1 - a > eps) & (1 - b > eps)
-            result = np.maximum(a, b)  # 默认值
 
-            a_comp = 1 - a[mask]
-            b_comp = 1 - b[mask]
+            if np.any(mask):
+                a_comp = 1 - a[mask]
+                b_comp = 1 - b[mask]
 
-            term1 = np.power(a_comp, -self.p)
-            term2 = np.power(b_comp, -self.p)
-            inner = np.maximum(0, term1 + term2 - 1)
+                term1 = np.power(a_comp, -self.p)
+                term2 = np.power(b_comp, -self.p)
+                inner = np.maximum(0, term1 + term2 - 1)
 
-            result[mask] = 1 - np.where(inner > eps, np.power(inner, -1.0 / self.p), 0.0)
+                result_masked = 1 - np.where(inner > eps, np.power(inner, -1.0 / self.p), 0.0)
+                result[mask] = result_masked
         else:  # p < 0
-            mask = (1 - a < 1.0 - eps) & (1 - b < 1.0 - eps)
-            result = np.maximum(a, b)  # 默认值
+            mask = (a < 1.0 - eps) & (b < 1.0 - eps)
 
-            a_comp = 1 - a[mask]
-            b_comp = 1 - b[mask]
+            if np.any(mask):
+                a_comp = 1 - a[mask]
+                b_comp = 1 - b[mask]
 
-            term1 = np.power(a_comp, -self.p)
-            term2 = np.power(b_comp, -self.p)
-            inner = term1 + term2 - 1
+                term1 = np.power(a_comp, -self.p)
+                term2 = np.power(b_comp, -self.p)
+                inner = term1 + term2 - 1
 
-            result[mask] = 1 - np.where(inner > 0, np.power(inner, -1.0 / self.p), 0.0)
+                result_masked = 1 - np.where(inner > 0, np.power(inner, -1.0 / self.p), 0.0)
+                result[mask] = result_masked
 
         return TypeNormalizer.ensure_array_output(result)
 
     def g_func_impl(self, a: np.ndarray) -> np.ndarray:
         """Schweizer-Sklar 生成器函数"""
         eps = get_config().DEFAULT_EPSILON
+        a = np.asarray(a, dtype=np.float64)
 
         if self.p > 0:
             # g(a) = a^(-p) - 1
@@ -389,6 +408,8 @@ class SchweizerSklarNorm(BaseNormOperation):
 
     def g_inv_func_impl(self, u: np.ndarray) -> np.ndarray:
         """Schweizer-Sklar 生成器逆函数"""
+        u = np.asarray(u, dtype=np.float64)
+
         if self.p > 0:
             # g^(-1)(u) = (u + 1)^(-1/p)
             result = np.where(u > -1, np.power(u + 1, -1.0 / self.p), 0.0)
@@ -406,7 +427,7 @@ class DombiNorm(BaseNormOperation):
         super().__init__(q, **params)
         self.p = params.get('dombi_param', 1.0)
         if self.p <= 0:
-            raise ValueError("Dombi parameter p must be greater than 0")
+            raise ValueError("Dombi parameter p must be positive")
 
         self.is_archimedean = True
         self.is_strict_archimedean = True
@@ -507,7 +528,7 @@ class AczelAlsinaNorm(BaseNormOperation):
         super().__init__(q, **params)
         self.p = params.get('aa_param', 1.0)
         if self.p <= 0:
-            raise ValueError("Aczel-Alsina parameter p must be greater than 0")
+            raise ValueError("Aczel-Alsina parameter p must be positive")
 
         self.is_archimedean = True
         self.is_strict_archimedean = True
@@ -536,8 +557,12 @@ class AczelAlsinaNorm(BaseNormOperation):
         """S(a,b) = 1 - exp(-(((-ln(1-a))^p + (-ln(1-b))^p)^(1/p)))"""
         eps = get_config().DEFAULT_EPSILON
 
+        a = np.asarray(a, dtype=np.float64)
+        b = np.asarray(b, dtype=np.float64)
+
+        # 确保 result 是一个可写的数组，并用默认值填充
+        result = np.maximum(a, b, out=np.empty_like(a, dtype=np.float64))
         mask = (1 - a > eps) & (1 - b > eps)
-        result = np.maximum(a, b)  # 默认值
 
         if np.any(mask):
             a_comp = 1 - a[mask]
@@ -566,11 +591,13 @@ class AczelAlsinaNorm(BaseNormOperation):
 class FrankNorm(BaseNormOperation):
     """Frank T-范数"""
 
+    _S_INF_THRESHOLD = 1e5
+
     def __init__(self, q: int = 1, **params):
         super().__init__(q, **params)
         self.s = params.get('frank_param', np.e)
         if self.s <= 0 or self.s == 1:
-            raise ValueError("Frank parameter s must be greater than 0 and not equal to 1")
+            raise ValueError("Frank parameter s must be positive and not equal to 1")
 
         self.is_archimedean = True
         self.is_strict_archimedean = True
@@ -578,16 +605,18 @@ class FrankNorm(BaseNormOperation):
 
     def t_norm_impl(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """T(a,b) = log_s(1 + ((s^a - 1)(s^b - 1))/(s - 1))"""
-        eps = get_config().DEFAULT_EPSILON
-
-        if np.isinf(self.s):
+        # 当 s 足够大时，直接返回 minimum，避免数值不稳定
+        if self.s > self._S_INF_THRESHOLD:
             return TypeNormalizer.ensure_array_output(np.minimum(a, b))
 
+        eps = get_config().DEFAULT_EPSILON
         if abs(self.s - 1) < eps:
             return TypeNormalizer.ensure_array_output(np.minimum(a, b))
 
-        val_a = np.power(self.s, a) - 1
-        val_b = np.power(self.s, b) - 1
+        with np.errstate(over='ignore'):
+            val_a = np.power(self.s, a) - 1
+            val_b = np.power(self.s, b) - 1
+
         denominator = self.s - 1
 
         # 计算对数的参数，确保大于0
@@ -598,16 +627,18 @@ class FrankNorm(BaseNormOperation):
 
     def t_conorm_impl(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """S(a,b) = 1 - log_s(1 + ((s^(1-a) - 1)(s^(1-b) - 1))/(s - 1))"""
-        eps = get_config().DEFAULT_EPSILON
-
-        if np.isinf(self.s):
+        # 当 s 足够大时，直接返回 maximum，避免数值不稳定
+        if self.s > self._S_INF_THRESHOLD:
             return TypeNormalizer.ensure_array_output(np.maximum(a, b))
 
+        eps = get_config().DEFAULT_EPSILON
         if abs(self.s - 1) < eps:
             return TypeNormalizer.ensure_array_output(np.maximum(a, b))
 
-        val_1_a = np.power(self.s, 1 - a) - 1
-        val_1_b = np.power(self.s, 1 - b) - 1
+        with np.errstate(over='ignore'):
+            val_1_a = np.power(self.s, 1 - a) - 1
+            val_1_b = np.power(self.s, 1 - b) - 1
+
         denominator = self.s - 1
 
         # 计算对数的参数，确保大于0
@@ -1198,7 +1229,7 @@ class OperationTNorm:
             'is_archimedean': self.is_archimedean,
             'is_strict_archimedean': self.is_strict_archimedean,
             'supports_q': self.supports_q,
-            'q_value': self.q,
+            'q': self.q,
             'parameters': self.params,
         }
 
