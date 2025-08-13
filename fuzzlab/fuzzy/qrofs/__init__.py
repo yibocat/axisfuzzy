@@ -8,13 +8,10 @@
 from .qrofn import QROFNStrategy
 from .backend import QROFNBackend
 
-from .op import register_qrofn_operations
-
+from . import op
 from . import factory
 from . import random
 from . import extension
-
-register_qrofn_operations()
 
 __all__ = [
     'QROFNStrategy',

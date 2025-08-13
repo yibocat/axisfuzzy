@@ -711,7 +711,8 @@ class OperationScheduler:
         }
 
         if time_unit not in time_unit_dict:
-            raise RuntimeError(f"Unsupported time unit '{time_unit}'. Supported time units are {list(time_unit_dict.keys())}")
+            raise RuntimeError(
+                f"Unsupported time unit '{time_unit}'. Supported time units are {list(time_unit_dict.keys())}")
 
         with self._stats_lock:
             stats = {
@@ -776,3 +777,99 @@ def get_operation_registry() -> OperationScheduler:
         OperationScheduler: The global `OperationScheduler` instance.
     """
     return _operation_registry
+
+
+# ==================== Operation Auto-Registration Decorator =================
+
+def register_operation(cls_or_eager=None, *, eager: bool = True):
+    """
+    类装饰器: 自动将 OperationMixin 子类实例注册到全局 OperationScheduler.
+
+    这个装饰器支持两种使用方式:
+    1. 带括号: @register_operation() 或 @register_operation(eager=False)
+    2. 无括号: @register_operation
+
+    参数:
+        cls_or_eager: 当无括号使用时，这里是被装饰的类；
+                     当带括号使用时，这里是 None
+        eager: True(默认) 立即实例化并注册;
+               False 仅标记, 可由后续延迟加载机制处理（预留扩展位）
+
+    返回:
+        装饰后的类（未修改）
+
+    异常:
+        TypeError: 当被装饰的类不继承自 OperationMixin 时抛出
+
+    示例:
+        ```python
+        # 方式1: 无括号（推荐，简洁）
+        @register_operation
+        class MyAddition(OperationMixin):
+            operation_name = 'add'
+            supported_mtypes = ['my_type']
+
+            def execute(self, a, b, tnorm=None):
+                # 实现加法逻辑
+                return result
+
+        # 方式2: 带空括号
+        @register_operation()
+        class MySubtraction(OperationMixin):
+            operation_name = 'sub'
+            supported_mtypes = ['my_type']
+
+            def execute(self, a, b, tnorm=None):
+                # 实现减法逻辑
+                return result
+
+        # 方式3: 带参数（延迟注册，预留功能）
+        @register_operation(eager=False)
+        class MyDelayedOperation(OperationMixin):
+            operation_name = 'delayed'
+            supported_mtypes = ['my_type']
+
+            def execute(self, a, b, tnorm=None):
+                return result
+        ```
+
+    注意:
+        - 被装饰的类必须继承自 OperationMixin
+        - 类必须定义 operation_name 和 supported_mtypes 属性
+        - 重复注册同名/同mtype的操作会遵循 OperationScheduler 的覆盖策略
+        - 装饰器会在类定义时立即执行注册（eager=True时）
+    """
+    def _register_class(cls):
+        """实际的注册逻辑"""
+        if not issubclass(cls, OperationMixin):
+            raise TypeError(
+                f"@register_operation 只能用于 OperationMixin 子类, "
+                f"得到 {cls.__name__} (继承自: {[base.__name__ for base in cls.__bases__]})"
+            )
+
+        if eager:
+            try:
+                operation_instance = cls()
+                get_operation_registry().register(operation_instance)
+            except Exception as e:
+                # 提供更详细的错误信息
+                raise RuntimeError(
+                    f"注册操作类 {cls.__name__} 失败: {e}. "
+                    f"请检查类是否正确实现了 OperationMixin 接口"
+                ) from e
+
+        return cls
+
+    # 判断是无括号还是带括号的调用
+    if cls_or_eager is not None:
+        # 无括号形式: @register_operation
+        # cls_or_eager 实际上是被装饰的类
+        if isinstance(cls_or_eager, type):
+            return _register_class(cls_or_eager)
+        else:
+            # 这种情况不应该发生，但为了安全起见
+            raise TypeError(f"@register_operation 的第一个参数应该是类或None，得到 {type(cls_or_eager)}")
+    else:
+        # 带括号形式: @register_operation() 或 @register_operation(eager=False)
+        # 返回装饰器函数
+        return _register_class

@@ -54,7 +54,7 @@ from ...core import (
     get_backend,
     OperationTNorm,
     OperationMixin,
-    get_operation_registry
+    register_operation
 )
 
 
@@ -99,6 +99,7 @@ def _prepare_operands(
 
 # --- QROFN Arithmetic Operations ---
 
+@register_operation
 class QROFNAddition(OperationMixin):
     """
     Implements the addition operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -175,6 +176,7 @@ class QROFNAddition(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNSubtraction(OperationMixin):
     """
     Implements the subtraction operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -300,6 +302,7 @@ class QROFNSubtraction(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNMultiplication(OperationMixin):
     """
     Implements the multiplication operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -369,6 +372,7 @@ class QROFNMultiplication(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNDivision(OperationMixin):
     """
     Implements the division operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -489,6 +493,7 @@ class QROFNDivision(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNPower(OperationMixin):
     """
     Implements the power operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -555,6 +560,7 @@ class QROFNPower(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNTimes(OperationMixin):
     """
     Implements scalar multiplication for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -622,6 +628,7 @@ class QROFNTimes(OperationMixin):
 
 
 # TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
+@register_operation
 class QROFNExponential(OperationMixin):
     """
     Implements the exponential operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -688,6 +695,7 @@ class QROFNExponential(OperationMixin):
 
 
 # TODO: Log 计算目前还存在缺陷。此处写出来仅用于测试
+@register_operation
 class QROFNLogarithmic(OperationMixin):
     """
     Implements the logarithmic operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -755,6 +763,7 @@ class QROFNLogarithmic(OperationMixin):
 
 # --- QROFN Comparison Operations ---
 
+@register_operation
 class QROFNGreaterThan(OperationMixin):
     """
     Implements the greater than (>) comparison for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -808,6 +817,7 @@ class QROFNGreaterThan(OperationMixin):
         return np.where(mds1 - nmds1 > mds2 - nmds2, True, False)
 
 
+@register_operation
 class QROFNLessThan(OperationMixin):
     """
     Implements the less than (<) comparison for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -861,6 +871,7 @@ class QROFNLessThan(OperationMixin):
         return np.where(mds1 - nmds1 < mds2 - nmds2, True, False)
 
 
+@register_operation
 class QROFNEquals(OperationMixin):
     """
     Implements the equality (==) comparison for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -917,6 +928,7 @@ class QROFNEquals(OperationMixin):
         return np.where(abs((mds1 - nmds1) - (mds2 - nmds2)) < get_config().DEFAULT_EPSILON, True, False)
 
 
+@register_operation
 class QROFNGreaterEquals(OperationMixin):
     """
     Implements the greater than or equal to (>=) comparison for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -974,6 +986,7 @@ class QROFNGreaterEquals(OperationMixin):
         return np.where(mds1 - nmds1 >= mds2 - nmds2, True, False)
 
 
+@register_operation
 class QROFNLessEquals(OperationMixin):
     """
     Implements the less than or equal to (<=) comparison for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1031,6 +1044,7 @@ class QROFNLessEquals(OperationMixin):
         return np.where(mds1 - nmds1 <= mds2 - nmds2, True, False)
 
 
+@register_operation
 class QROFNNotEquals(OperationMixin):
     """
     Implements the not equal to (!=) comparison for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1089,6 +1103,7 @@ class QROFNNotEquals(OperationMixin):
 
 # --- QROFN Set Operations ---
 
+@register_operation
 class QROFNIntersection(OperationMixin):
     """
     Implements the intersection (AND) operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1158,6 +1173,7 @@ class QROFNIntersection(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNUnion(OperationMixin):
     """
     Implements the union (OR) operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1227,6 +1243,7 @@ class QROFNUnion(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNComplement(OperationMixin):
     """
     Implements the complement (NOT) operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1288,6 +1305,7 @@ class QROFNComplement(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNImplication(OperationMixin):
     """
     Implements the implication operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1354,6 +1372,7 @@ class QROFNImplication(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNEquivalence(OperationMixin):
     """
     Implements the equivalence operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1427,6 +1446,7 @@ class QROFNEquivalence(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNDifference(OperationMixin):
     """
     Implements the set difference (A - B) operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1492,6 +1512,7 @@ class QROFNDifference(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+@register_operation
 class QROFNSymmetricDifference(OperationMixin):
     """
     Implements the symmetric difference operation for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -1571,6 +1592,7 @@ class QROFNSymmetricDifference(OperationMixin):
 
 # ---- Special Matrix Multiplication ----
 
+@register_operation
 class QROFNMatmul(OperationMixin):
     """
     Implements matrix multiplication (@) for Q-Rung Orthopair Fuzzy Arrays.
@@ -1632,35 +1654,8 @@ class QROFNMatmul(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
-# TODO: 这种写法太麻烦了. 我们可以采用 @register 装饰器来进行注册. 需要更改 core.operation 来实现
+# 兼容旧接口（现在无需再调用）
 def register_qrofn_operations():
-    """
-    Registers all QROFN-related operational methods to the global operation registry.
-
-    This function should be called to make all QROFN arithmetic, comparison,
-    and set operations available for use within the FuzzLab framework.
-    It instantiates each `OperationMixin` subclass and registers it.
-    """
-    registry = get_operation_registry()
-    registry.register(QROFNAddition())
-    registry.register(QROFNSubtraction())
-    registry.register(QROFNMultiplication())
-    registry.register(QROFNDivision())
-    registry.register(QROFNPower())
-    registry.register(QROFNTimes())
-    registry.register(QROFNExponential())
-    registry.register(QROFNLogarithmic())
-    registry.register(QROFNGreaterThan())
-    registry.register(QROFNLessThan())
-    registry.register(QROFNEquals())
-    registry.register(QROFNGreaterEquals())
-    registry.register(QROFNLessEquals())
-    registry.register(QROFNNotEquals())
-    registry.register(QROFNIntersection())
-    registry.register(QROFNUnion())
-    registry.register(QROFNComplement())
-    registry.register(QROFNImplication())
-    registry.register(QROFNEquivalence())
-    registry.register(QROFNDifference())
-    registry.register(QROFNSymmetricDifference())
-    registry.register(QROFNMatmul())
+    import warnings
+    warnings.warn("register_qrofn_operations 已不再需要（类已通过 @register_operation 自动注册）",
+                  DeprecationWarning, stacklevel=2)

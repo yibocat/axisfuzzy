@@ -13,7 +13,7 @@ from .fuzznums import Fuzznum
 from .fuzzarray import Fuzzarray, fuzzarray
 from .backend import FuzzarrayBackend
 
-from .operation import OperationMixin, get_operation_registry
+from .operation import OperationMixin, get_operation_registry, register_operation
 
 from .registry import (
     get_fuzznum_registry,
@@ -38,6 +38,7 @@ __all__ = [
     'operate',
     'fuzzarray',
     'get_operation_registry',
+    'register_operation',
     'get_fuzznum_registry',
     'get_backend',
     'register_fuzznum',

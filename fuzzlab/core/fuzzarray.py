@@ -4,6 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
+import os
 from typing import Optional, Union, Any, Tuple, Iterator, Dict
 import numpy as np
 
@@ -450,7 +451,8 @@ class Fuzzarray:
             formatted,
             separator=' ',
             formatter={'object': lambda x: x},  # type: ignore
-            prefix='Fuzzarray('
+            prefix='Fuzzarray(',
+            max_line_width=90
         )
         return f"Fuzzarray({array_str}, mtype='{self.mtype}', q={self.q}, shape={self.shape})"
 
@@ -462,7 +464,8 @@ class Fuzzarray:
             formatted,
             separator=' ',
             formatter={'object': lambda x: x},  # type: ignore
-            prefix=''
+            prefix='',
+            max_line_width=80
         )
 
     def __format__(self, format_spec: str = "") -> Any:
@@ -471,7 +474,8 @@ class Fuzzarray:
             formatted,
             separator=' ',
             formatter={'object': lambda x: x},  # type: ignore
-            prefix=''  # 根据需要也可设 prefix
+            prefix='',  # 根据需要也可设 prefix
+            max_line_width=80
         )
 
     def __bool__(self) -> bool:
