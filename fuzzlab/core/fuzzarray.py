@@ -100,8 +100,8 @@ class Fuzzarray:
             # Iterate through the numpy array and populate the backend
             it = np.nditer(data, flags=['multi_index', 'refs_ok'])
             for item in it:
-                # TODO: 这里的 Fuzznum 没有 item() 方法
-                fuzznum_item = item.item()  # Get the Fuzznum object from the array cell
+                from ..mixin.factory import _item_factory
+                fuzznum_item = _item_factory(item)
                 if not isinstance(fuzznum_item, Fuzznum):
                     raise TypeError(f"All elements in the input data must be Fuzznum objects, found {type(fuzznum_item)}")
                 backend.set_fuzznum_data(it.multi_index, fuzznum_item)
@@ -193,25 +193,26 @@ class Fuzzarray:
         else:
             raise TypeError(f"Can only assign Fuzznum or Fuzzarray objects, got {type(value)}")
 
-    # TODO: 实现删除操作
     def __delitem__(self, key):
         raise NotImplementedError("Fuzzarray does not support item deletion.")
 
-    # TODO: 实现包含检查, 已实现代码是否合理?
-    def __contains__(self, item) -> bool:
+    def __contains__(self, item: Any) -> bool:
         """检查元素是否在数组中"""
-        pass
+        if not isinstance(item, Fuzznum):
+            return False
+        if item.mtype != self._mtype or item.q != self.q:
+            return False
 
-    # 这个方法用于迭代 Fuzzarray 的元素。
-    # 注意：如果 Fuzzarray 是 0 维的，这个方法会抛出 TypeError。
-    # 迭代器返回 Fuzznum 对象。
-    # 如果 Fuzzarray 是多维的，它会迭代第一个维度
-    # 的所有元素，并返回每个元素的 Fuzznum 视图。
-    # TODO: 是否要修复这个功能?
+        for idx in np.ndindex(self.shape):
+            fuzznum_view = self._backend.get_fuzznum_view(idx)
+            if fuzznum_view == item:
+                return True
+        return False
+
     def __iter__(self) -> Iterator:
         """Iterate over the fuzzy array."""
         if self.ndim == 0:
-            raise TypeError("Iteration over 0-d arrays")
+            raise TypeError("Fuzzarray iteration is not supported for zero-dimensional arrays.")
         for i in range(self.shape[0]):
             yield self[i]
 
@@ -428,8 +429,9 @@ class Fuzzarray:
         return operate('equivalence', self, other)
 
     def __matmul__(self, other):
-        # TODO: 基于后端的矩阵乘法有点复杂,后续实现
-        pass
+        """Implements matrix multiplication (@)."""
+        from .dispatcher import operate
+        return operate('matmul', self, other)
 
     # ========================= Utility Methods =========================
 
@@ -443,41 +445,76 @@ class Fuzzarray:
     def __repr__(self) -> str:
         if self.size == 0:
             return f"Fuzzarray([], mtype='{self.mtype}', q={self.q}, shape={self.shape})"
-
-        # 从后端获取格式化好的字符串元素数组
-        formatted_elements = self._backend.format_elements()
-
-        # 使用自定义 formatter 来避免在每个元素周围添加引号
+        formatted = self._backend.format_elements()
+        # 关键：prefix='Fuzzarray(' 使续行缩进与期望的左侧对齐
         array_str = np.array2string(
-            formatted_elements,
+            formatted,
             separator=' ',
-            formatter={'str_kind': lambda x: x},    # type: ignore
+            formatter={'object': lambda x: x},  # type: ignore
             prefix='Fuzzarray('
         )
-
-        # 组合成最终的 repr 字符串
         return f"Fuzzarray({array_str}, mtype='{self.mtype}', q={self.q}, shape={self.shape})"
 
     def __str__(self) -> str:
-        """String representation of the Fuzzarray."""
         if self.size == 0:
             return "[]"
-
-        # 从后端获取格式化好的字符串元素数组
-        formatted_elements = self._backend.format_elements()
-
-        # 使用与 repr 相同的格式化技巧，但不加 Fuzzarray(...) 的外壳
+        formatted = self._backend.format_elements()
         return np.array2string(
-            formatted_elements,
+            formatted,
             separator=' ',
-            formatter={'str_kind': lambda x: x}     # type: ignore
+            formatter={'object': lambda x: x},  # type: ignore
+            prefix=''
         )
 
-    # TODO: 实现特殊方法
-    def __bool__(self) -> bool: ...
-    def __format__(self, format_spec: str) -> Any: ...
-    def __getstate__(self) -> Any: ...
-    def __setstate__(self, state: Any): ...
+    def __format__(self, format_spec: str = "") -> Any:
+        formatted = self._backend.format_elements(format_spec)
+        return np.array2string(
+            formatted,
+            separator=' ',
+            formatter={'object': lambda x: x},  # type: ignore
+            prefix=''  # 根据需要也可设 prefix
+        )
+
+    def __bool__(self) -> bool:
+        if self.size > 1:
+            raise ValueError(
+                "The truth value of a Fuzzarray with more than one element is ambiguous. "
+                "Use .any() or .all()"
+            )
+        if self.size == 1:
+            # For a single element array, its truthiness is determined by the Fuzznum itself.
+            # Fuzznum.__bool__ is True, so this will be True.
+            return bool(self[0])
+        # For a 0-element array
+        return False
+
+    def __getstate__(self) -> Dict[str, Any]:
+        """For pickling"""
+        return {
+            'mtype': self.mtype,
+            'q': self.q,
+            'kwargs': self.kwargs,
+            'backend_state': self.backend.__dict__  # A simple way, might need refinement
+        }
+
+    def __setstate__(self, state: Dict[str, Any]):
+        """For unpickling"""
+        self._mtype = state['mtype']
+        self._q = state['q']
+        self._kwargs = state['kwargs']
+
+        registry = get_fuzznum_registry()
+        backend_cls = registry.get_backend(self._mtype)
+
+        # Reconstruct backend from its state
+        backend_state = state['backend_state']
+        shape = backend_state['shape']
+        self._backend = backend_cls(shape=shape, q=self._q, **self._kwargs)
+
+        # Restore component arrays
+        for key, value in backend_state.items():
+            if isinstance(value, np.ndarray):
+                setattr(self._backend, key, value)
 
 
 # ================================= 工厂函数 =================================

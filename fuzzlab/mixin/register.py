@@ -12,7 +12,7 @@ from .registry import register
 from .factory import (
     _reshape_factory, _flatten_factory, _squeeze_factory, _copy_factory,
     _ravel_factory, _transpose_factory, _broadcast_to_factory, _item_factory,
-    _concat_factory, _stack_factory, _append_factory, _pop_factory
+    _concat_factory, _stack_factory, _append_factory, _pop_factory, _any_factory, _all_factory
 )
 
 
@@ -69,6 +69,18 @@ def _broadcast_to_impl(self, *shape):
 def _item_impl(self, *args):
     """Returns the scalar item of the fuzzy object."""
     return _item_factory(self, *args)
+
+
+@register(name='any', target_classes=["Fuzzarray"], injection_type='both')
+def _any_impl(self):
+    """Returns True if any element of the Fuzzarray is True."""
+    return _any_factory(self)
+
+
+@register(name='all', target_classes=["Fuzzarray"], injection_type='both')
+def _all_impl(self):
+    """Returns True if all elements of the Fuzzarray are True."""
+    return _all_factory(self)
 
 
 @register(name='concat', target_classes=['Fuzzarray'], injection_type='both')

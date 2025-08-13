@@ -197,6 +197,21 @@ def _item_factory(obj: Union[Fuzzarray, Fuzznum], *args) -> Fuzznum:
     raise TypeError(f"Unsupported type for item() method: {type(obj)}")
 
 
+def _any_factory(obj: Fuzzarray) -> bool:
+    """
+    Test whether any array element evaluates to True.
+    For a Fuzzarray, this returns True if the array is not empty.
+    """
+    return obj.size > 0
+
+
+def _all_factory(obj: Fuzzarray) -> bool:
+    """
+    Test whether all array elements evaluate to True.
+    For a Fuzzarray, this is always True as all valid Fuzznum instances are truthy.
+    """
+    return True
+
 # ========================= Container Operations =========================
 
 def _concat_factory(obj: Fuzzarray, *others: Fuzzarray, axis: int = 0) -> Fuzzarray:

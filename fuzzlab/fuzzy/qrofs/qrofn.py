@@ -6,12 +6,13 @@
 #  Software: FuzzLab
 from typing import Optional, Any
 
+import numpy as np
+
 from ...config import get_config
 from ...core import FuzznumStrategy
 
 
 class QROFNStrategy(FuzznumStrategy):
-
     mtype = 'qrofn'
     md: Optional[float] = None
     nmd: Optional[float] = None
@@ -20,9 +21,9 @@ class QROFNStrategy(FuzznumStrategy):
         super().__init__(q=q)
 
         self.add_attribute_validator(
-            'md', lambda x: x is None or isinstance(x, (int, float)) and 0 <= x <= 1)
+            'md', lambda x: x is None or isinstance(x, (int, float, np.floating, np.integer)) and 0 <= x <= 1)
         self.add_attribute_validator(
-            'nmd', lambda x: x is None or isinstance(x, (int, float)) and 0 <= x <= 1)
+            'nmd', lambda x: x is None or isinstance(x, (int, float, np.floating, np.integer)) and 0 <= x <= 1)
 
         self.add_change_callback('md', self._on_membership_change)
         self.add_change_callback('nmd', self._on_membership_change)
@@ -51,13 +52,17 @@ class QROFNStrategy(FuzznumStrategy):
         self._fuzz_constraint()
 
     @classmethod
-    def format_from_components(cls, md: float, nmd: float) -> str:
-        """
-        A class method to format a q-rung orthopair fuzzy number from its raw components.
-        """
+    def format_from_components(cls, md: float, nmd: float,
+                               format_spec: str = "", q: Optional[int] = None) -> str:
         if md is None and nmd is None:
             return "<>"
         precision = get_config().DEFAULT_PRECISION
+        if format_spec == 'p':
+            return f"({md}, {nmd})"
+        if format_spec == 'j':
+            import json
+            return json.dumps({'mtype': cls.mtype, 'md': md, 'nmd': nmd, 'q': q})
+        # 'r' 当前等同默认
         md_str = f"{round(md, precision)}"
         nmd_str = f"{round(nmd, precision)}"
         return f"<{md_str},{nmd_str}>"
@@ -69,46 +74,10 @@ class QROFNStrategy(FuzznumStrategy):
         return self.format_from_components(self.md, self.nmd)
 
     def __format__(self, format_spec: str) -> str:
-        """Provides custom formatting for the example fuzzy number.
+        """Provides custom formatting by delegating to the stateless class method."""
+        # If a specifier other than the custom ones is provided, it falls back
+        # to the standard string formatting applied to the concise representation.
+        if format_spec and format_spec not in ['r', 'p', 'j']:
+            return format(self.str(), format_spec)
 
-        This implementation extends the default formatting behavior to support
-        several custom format specifiers specific to this fuzzy number type.
-
-        Format Specifiers:
-            r: The detailed report string.
-            p: The parameters as a tuple string, e.g., '(0.8, 0.1)'.
-            j: A JSON string representation of the fuzzy number's attributes.
-
-        If a specifier other than the custom ones is provided, it falls back
-        to the standard string formatting applied to the concise representation.
-
-        Args:
-            format_spec (str): The format specification string.
-
-        Returns:
-            str: The formatted string representation.
-
-        Examples:
-            fuzz = ...
-            f"Report: {fuzz:r}"
-            f"Params: {fuzz:p}"
-            f"JSON: {fuzz:j}"
-            f"Right-aligned: {fuzz:>20}"
-        """
-        # If no format specifier is provided, return the default string representation.
-        if not format_spec:
-            return self.str()
-
-        if format_spec == 'r':
-            return self.report()
-        if format_spec == 'p':
-            return f"({self.md}, {self.nmd})"
-        if format_spec == 'j':
-            import json
-            return json.dumps({
-                'mtype': self.mtype,
-                'md': self.md,
-                'nmd': self.nmd,
-                'q': self.q
-            })
-        return super().__format__(format_spec)
+        return self.format_from_components(self.md, self.nmd, format_spec, self.q)

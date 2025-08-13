@@ -1571,6 +1571,70 @@ class QROFNSymmetricDifference(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
+# ---- Special Matrix Multiplication ----
+
+class QROFNMatmul(OperationMixin):
+    """
+    Implements matrix multiplication (@) for Q-Rung Orthopair Fuzzy Arrays.
+    """
+    def get_operation_name(self) -> str:
+        return 'matmul'
+
+    def get_supported_mtypes(self) -> List[str]:
+        return ['qrofn']
+
+    def _execute_fuzzarray_op_impl(self,
+                                   fuzzarray_1: Fuzzarray,
+                                   other: Optional[Any],
+                                   tnorm: OperationTNorm) -> Fuzzarray:
+        if not isinstance(other, Fuzzarray):
+            raise TypeError(f"Matrix multiplication requires two Fuzzarrays, "
+                            f"but got '{type(fuzzarray_1)}' and '{type(other)}'")
+
+        if fuzzarray_1.ndim != 2 or other.ndim != 2:
+            raise ValueError(f"Matrix multiplication requires 2-D arrays, "
+                             f"but got shapes '{fuzzarray_1.shape}' and '{other.shape}'")
+
+        if fuzzarray_1.shape[1] != other.shape[0]:
+            raise ValueError(f"Shape mismatch for matmul: '{fuzzarray_1.shape}' @ '{other.shape}'.")
+
+        a_md, a_nmd = fuzzarray_1.backend.get_component_arrays()
+        b_md, b_nmd = other.backend.get_component_arrays()
+
+        # 模糊矩阵乘法的核心：
+        # C_ij = V_k (A_ik * B_kj)
+        # 其中 V 是 t-conorm, * 是 t-norm
+        # 新的隶属度是 t-conorm(t-norm(a.md, b.md))
+        # 新的非隶属度是 t-norm(t-conorm(a.nmd, b.nmd))
+
+        # 使用 einsum 实现高效的张量点积
+        # 'ik,kj->ij' 定义了标准的矩阵乘法
+        # t-norm(a.md, b.md) -> a_md[:, :, np.newaxis] * b_md[np.newaxis, :, :]
+        # t-conorm over k -> .sum(axis=1) for algebraic t-conorm
+        # 这是一个简化的代数实现。
+        # 更通用的实现将使用 tnorm.t_norm 和 tnorm.t_conorm
+
+        # Step 1: 结果矩阵每个潜在元素的逐元素t-范数
+        # 这将创建一个新的维度。 Shape: (ik, kj) -> (i, k, j)
+
+        md_prod = tnorm.t_norm(a_md[:, :, np.newaxis], b_md[np.newaxis, :, :])
+        nmd_sum = tnorm.t_conorm(a_nmd[:, :, np.newaxis], b_nmd[np.newaxis, :, :])
+
+        # Step 2: 沿着公共维度“k”进行聚合
+        # 对于 md，我们使用 t-余模进行聚合。对于 nmd，我们使用 t-模进行聚合。
+        new_md = tnorm.t_conorm_reduce(md_prod, axis=1)     # type: ignore
+        new_nmd = tnorm.t_norm_reduce(nmd_sum, axis=1)      # type: ignore
+
+        # Ensure the results are proper float64 arrays
+        new_md = np.asarray(new_md, dtype=np.float64)
+        new_nmd = np.asarray(new_nmd, dtype=np.float64)
+
+        backend_cls = get_backend('qrofn')
+        new_backend = backend_cls.from_arrays(new_md, new_nmd, q=fuzzarray_1.q)
+        return Fuzzarray(backend=new_backend)
+
+
+# TODO: 这种写法太麻烦了. 我们可以采用 @register 装饰器来进行注册. 需要更改 core.operation 来实现
 def register_qrofn_operations():
     """
     Registers all QROFN-related operational methods to the global operation registry.
@@ -1601,3 +1665,4 @@ def register_qrofn_operations():
     registry.register(QROFNEquivalence())
     registry.register(QROFNDifference())
     registry.register(QROFNSymmetricDifference())
+    registry.register(QROFNMatmul())

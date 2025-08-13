@@ -34,9 +34,8 @@ def _qrofn_sum(arr: Union[Fuzznum, Fuzzarray],
 
     mds, nmds = arr.backend.get_component_arrays()
 
-    # TODO: t_conorm.reduce 和 t_norm.reduce 需要实现
-    md_sum = tnorm.t_conorm.reduce(mds, axis=axis)
-    nmd_sum = tnorm.t_norm.reduce(nmds, axis=axis)
+    md_sum = tnorm.t_conorm_reduce(mds, axis=axis)
+    nmd_sum = tnorm.t_norm_reduce(nmds, axis=axis)
 
     if axis is None:
         return Fuzznum('qrofn', q=arr.q).create(md=md_sum, nmd=nmd_sum)

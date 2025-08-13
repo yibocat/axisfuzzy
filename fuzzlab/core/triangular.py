@@ -53,7 +53,7 @@ Usage Example:
 """
 
 import warnings
-from typing import Optional, Callable
+from typing import Optional, Callable, Union
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -116,7 +116,7 @@ class OperationTNorm:
         >>> print(f"Algebraic T(0.5, 0.8) = {alg_norm.t_norm(0.5, 0.8):.4f}") # 0.5 * 0.8 = 0.4000
         >>> print(f"Algebraic S(0.5, 0.8) = {alg_norm.t_conorm(0.5, 0.8):.4f}") # 0.5 + 0.8 - 0.5*0.8 = 0.9000
 
-        >>> # 2. Initialize a Łukasiewicz t-norm and use q=2 for q-rung generalization
+        >>> # 2. Initialize an Łukasiewicz t-norm and use q=2 for q-rung generalization
         >>> luk_norm_q2 = OperationTNorm(norm_type='lukasiewicz', q=2)
         >>> # For Łukasiewicz, T_base(a,b) = max(0, a+b-1)
         >>> # T_q(a,b) = (max(0, a^q + b^q - 1))^(1/q)
@@ -470,6 +470,78 @@ class OperationTNorm:
                               f"mapping values of the t-norm and t-conorm({check}).",
                               RuntimeWarning)
 
+    def _pairwise_reduce(self, func: Callable[[np.ndarray, np.ndarray], np.ndarray],
+                         arr: np.ndarray) -> np.ndarray:
+        """
+        高效(避免 Python 逐元素)的成对规约：
+        不断两两合并(树形规约)，降低调用次数。
+        arr: 形状 (n, ...)，n > 0
+        """
+        data = arr
+        while data.shape[0] > 1:
+            n = data.shape[0]
+            even = n // 2 * 2
+            if even > 0:
+                merged = func(data[0:even:2], data[1:even:2])  # 向量化批量二元
+                if n % 2 == 1:
+                    # 拼回最后一个未配对
+                    data = np.concatenate([merged, data[-1:]], axis=0)
+                else:
+                    data = merged
+            else:
+                # n=1 直接退出
+                break
+        return data[0]
+
+    def _generic_reduce(self, func: Callable[[np.ndarray, np.ndarray], np.ndarray],
+                        array: np.ndarray,
+                        axis: Optional[Union[int, tuple]]):
+        a = np.asarray(array, dtype=np.float64)
+        if a.size == 0:
+            raise ValueError("Cannot reduce an empty array.")
+        if axis is None:
+            flat = a.reshape(-1)
+            res = flat[0]
+            for i in range(1, flat.shape[0]):
+                res = func(res, flat[i])
+            return np.asarray(res, dtype=np.float64)
+        # 支持多轴
+        if isinstance(axis, tuple):
+            # 逐轴规约（从大到小防止轴索引位移）
+            for ax in sorted(axis, reverse=True):
+                a = self._generic_reduce(func, a, ax)
+            return a
+        # 单轴
+        ax = int(axis)
+        if a.shape[ax] == 0:
+            raise ValueError(f"Cannot reduce over axis {ax} with size 0.")
+        # 移动到前面做树规约
+        moved = np.moveaxis(a, ax, 0)  # (n, ...)
+        res = self._pairwise_reduce(func, moved)
+        return np.asarray(res, dtype=np.float64)
+
+    def t_norm_reduce(self, array: np.ndarray, axis: Optional[Union[int, tuple]] = None) -> np.ndarray:
+        """
+        自定义规约实现，替代 frompyfunc.reduce，避免 not reorderable 错误。
+        """
+        if self.t_norm is None:
+            raise NotImplementedError(f"T-norm reduction is not supported for {self.norm_type}")
+        # self.t_norm 已支持 ndarray 逐元素广播
+        def _f(x, y):
+            return self.t_norm(x, y)
+        return self._generic_reduce(_f, array, axis)
+
+    def t_conorm_reduce(self, array: np.ndarray, axis: Optional[Union[int, tuple]] = None) -> np.ndarray:
+        """
+        自定义规约实现，替代 frompyfunc.reduce。
+        """
+        if self.t_conorm is None:
+            raise NotImplementedError(f"T-conorm reduction is not supported for {self.norm_type}")
+        def _f(x, y):
+            return self.t_conorm(x, y)
+        return self._generic_reduce(_f, array, axis)
+
+
     # ======================= Initialize Base Operations (q=1) ====================
     # Each _init_xxx method is responsible for defining the following for that norm type at q=1:
     # - _base_g_func_raw: The raw generator function g(a).
@@ -489,6 +561,7 @@ class OperationTNorm:
         self._base_t_conorm_raw = lambda a, b: a + b - a * b
         """Mathematical expression: S(a,b) = a + b - ab"""
 
+        # TODO: RuntimeWarning: divide by zero encountered in log self._base_g_func_raw = lambda a: np.where(a > get_config().DEFAULT_EPSILON, -np.log(a), np.inf)
         self._base_g_func_raw = lambda a: np.where(a > get_config().DEFAULT_EPSILON, -np.log(a), np.inf)
         """Mathematical expression: g(a) = -ln(a)
         The generator g(a) approaches infinity as a approaches 0, and approaches 0 as a approaches 1.

@@ -91,13 +91,17 @@ class FuzzarrayBackend(ABC):
         pass
 
     @abstractmethod
-    def format_elements(self) -> np.ndarray:
+    def format_elements(self, format_spec: str = "") -> np.ndarray:
         """
         Generates a NumPy array of formatted strings for each element.
 
         This method is responsible for taking the component arrays (like mds, nmds)
         and formatting them into a human-readable string representation according
         to the rules of the specific mtype.
+
+        Args:
+            format_spec (str): The format specification string, passed from
+                               Fuzzarray.__format__ or other formatting calls.
 
         Returns:
             A numpy.ndarray of dtype 'object' containing formatted strings.

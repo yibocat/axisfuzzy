@@ -9,6 +9,7 @@ from typing import Any, Tuple
 import numpy as np
 
 from ...core import Fuzznum, FuzzarrayBackend
+from ...config import get_config
 
 from .qrofn import QROFNStrategy
 
@@ -70,14 +71,40 @@ class QROFNBackend(FuzzarrayBackend):
         new_backend.nmds = self.nmds[key]
         return new_backend
 
-    def format_elements(self) -> np.ndarray:
+    def format_elements(self, format_spec: str = "") -> np.ndarray:
         """
-        Generates a NumPy array of formatted strings for each QROFN element.
+        高性能批量格式化：
+        默认 / 'c' 使用向量化字符串操作 (np.char.*)，避免 np.vectorize。
+        特殊格式 'p','j','r'（少用）回退逐元素。
         """
-        # Use np.vectorize to apply the formatting function element-wise
-        # This is highly efficient as it operates on the numpy arrays directly.
-        formatter = np.vectorize(QROFNStrategy.format_from_components)
-        return formatter(self.mds, self.nmds)
+        precision = get_config().DEFAULT_PRECISION  # 若需放到 config，可直接引用
+        # 特殊格式少量使用，回退简单循环
+        if format_spec in ('p', 'j', 'r'):
+            out = np.empty(self.shape, dtype=object)
+            it = np.nditer(self.mds, flags=['multi_index'])
+            while not it.finished:
+                idx = it.multi_index
+                md = float(self.mds[idx]); nmd = float(self.nmds[idx])
+                out[idx] = QROFNStrategy.format_from_components(md, nmd, format_spec, self.q)
+                it.iternext()
+            return out
+
+        # 批量数值格式化
+        fmt = f"%.{precision}f"
+        md_strs = np.char.mod(fmt, self.mds)
+        nmd_strs = np.char.mod(fmt, self.nmds)
+
+
+        # 紧凑：<0.1234,0.5678>
+        combined = np.char.add(
+            np.char.add(
+                np.char.add("<", md_strs),
+                np.char.add(",", nmd_strs)
+            ),
+            ">"
+        )
+
+        return combined.astype(object)
 
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROFNBackend':

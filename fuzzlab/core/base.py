@@ -134,14 +134,6 @@ class FuzznumStrategy(ABC):
                 f"Declared attributes: {sorted(self._declared_attributes)}"
             )
 
-        # if (hasattr(config, 'STRICT_ATTRIBUTE_MODE') and
-        #         config.STRICT_ATTRIBUTE_MODE and
-        #         name not in self._declared_attributes):
-        #     raise AttributeError(
-        #         f"Attribute '{name}' not declared in {self.__class__.__name__}. "
-        #         f"Declared attributes: {sorted(self._declared_attributes)}"
-        #     )
-
         # Get the old value of the attribute before it's changed.
         # This old value is passed to change callback functions.
         # `getattr(self, name, None)` safely retrieves the current value, returning None
