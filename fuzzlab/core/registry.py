@@ -69,7 +69,7 @@ class FuzznumRegistry:
     @staticmethod
     def _get_default_types() -> List[Tuple[Type[FuzznumStrategy], Type[FuzzarrayBackend]]]:
 
-        from ..fuzzy.qrofs import QROFNStrategy, QROFNBackend
+        from ..fuzztype.qrofs import QROFNStrategy, QROFNBackend
 
         return [(QROFNStrategy, QROFNBackend)]
 

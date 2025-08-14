@@ -9,5 +9,5 @@ __pycache__
 /uv.lock
 /notebook/
 /.github/
-/docs/todo/
+/doc/todo/
 /.vscode/

@@ -19,14 +19,18 @@ from .extension import (
     get_extension_injector,
     batch_extension
 )
-from .fuzzy import *
+from .fuzztype import *
 from .mixin import *
+from .membership import *
+
 from . import random
+from . import fuzzify
 
 __all__.extend(config.__all__)
 __all__.extend(core.__all__)
 __all__.extend(extension.__all__)
-__all__.extend(fuzzy.__all__)
+__all__.extend(fuzztype.__all__)
 __all__.extend(mixin.__all__)
+__all__.extend(membership.__all__)
 
 apply_extensions()
