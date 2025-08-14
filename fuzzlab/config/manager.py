@@ -49,7 +49,8 @@ class ConfigManager:
         self._config_source = None       # Configure source tracking
         self._is_modified = False        # Modify Status Tracking
 
-        # TODO: 为未来扩展预留
+        # --------------------- Reserved for future expansion ----------------------
+
         self._observers = []             # Observer List (Not currently used)
         self._config_history = []        # Configuration History (Not currently used)
         self._validation_rules = {}      # Validation Rules (Not Currently Used)
@@ -305,7 +306,6 @@ class ConfigManager:
 
     # ==================== 未来扩展预留接口 ====================
 
-    # TODO: 观察者模式和配置历史记录（预留接口）
     def add_config_observer(self, observer: Any):
         """
         Add a configuration change observer.
