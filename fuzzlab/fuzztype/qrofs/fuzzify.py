@@ -17,26 +17,25 @@ from ...membership import MembershipFunction
 class QROFNFuzzificationStrategy(FuzzificationStrategy):
 
     def __init__(self, q: int = 1, pi: Optional[float] = None):
-        super().__init__(q, pi=pi)
+        if q is None or int(q) < 1:
+            raise ValueError("Parameter 'q' must be an integer >= 1.")
+        super().__init__(int(q), pi=pi)
         self.mtype = "qrofn"
         self.method = 'default'
-        self.q = q
 
     def fuzzify_scalar(self,
                        x: Optional[float],
                        mf: Optional[MembershipFunction] = None) -> 'Fuzznum':
 
-        if not self.kwargs.get('pi'):
+        pi = self.kwargs.get('pi')
+        if pi is None:
             raise ValueError("Parameter 'pi'(hesitation factor) is required for QROFN fuzzification.")
 
         q = self.q
-        pi = self.kwargs.get('pi')
-
         # 计算隶属度
-        md = mf.compute(x)
-
+        md = float(np.clip(mf.compute(x), 0.0, 1.0))
         # 基于犹豫因子计算非隶属度
-        nmd = self._compute_nmd_from_hesitation(md, pi, q)
+        nmd = float(self._compute_nmd_from_hesitation(md, pi, q))
 
         return Fuzznum(mtype=self.mtype, q=q).create(md=float(md), nmd=float(nmd))
 
@@ -44,22 +43,20 @@ class QROFNFuzzificationStrategy(FuzzificationStrategy):
                       x: Optional[np.ndarray],
                       mf: Optional[MembershipFunction] = None) -> 'Fuzzarray':
 
-        if not self.kwargs.get('pi'):
+        pi = self.kwargs.get('pi')
+        if pi is None:
             raise ValueError("Parameter 'pi'(hesitation factor) is required for QROFN fuzzification.")
 
         q = self.q
-        pi = self.kwargs.get('pi')
-
-        # 批量计算隶属度
-        md = mf.compute(x)
-
+        # 批量计算隶属度并裁剪
+        mds = np.clip(mf.compute(x), 0.0, 1.0)
         # 基于犹豫因子批量计算非隶属度
-        nmd = self._compute_nmd_from_hesitation(md, pi, q)
+        nmds = self._compute_nmd_from_hesitation(mds, pi, q)
 
-        # 直接创建FuzzarrayBackend
+        # 直接创建FuzzarrayBackend（与文档一致的参数名）
         registry = get_fuzznum_registry()
         backend_cls = registry.get_backend(self.mtype)
-        backend = backend_cls.from_arrays(mds=md, nmds=nmd, q=q)
+        backend = backend_cls.from_arrays(mds=mds, nmds=nmds, q=q)
 
         return Fuzzarray(backend=backend, mtype=self.mtype, q=q)
 
@@ -73,20 +70,14 @@ class QROFNFuzzificationStrategy(FuzzificationStrategy):
         公式: nmd = (1 - md^q - pi)^(1/q)
         其中: pi = 1 - md^q - nmd^q (犹豫度/不确定度)
         """
-        md = np.asarray(md)
-        pi = np.asarray(pi)
+        md = np.asarray(md, dtype=float)
+        pi = np.asarray(pi, dtype=float)
 
-        # 确保值在合理范围内
-        md = np.clip(md, 0, 1)
-        pi = np.clip(pi, 0, 1)
+        md = np.clip(md, 0.0, 1.0)
+        pi = np.clip(pi, 0.0, 1.0)
 
-        # 计算可用于非隶属度的剩余空间
         remaining_space = 1.0 - md ** q - pi ** q
-
-        # 确保剩余空间非负
         remaining_space = np.maximum(remaining_space, 0.0)
-
-        # 计算非隶属度
-        nmd = remaining_space ** (1/q)
+        nmd = remaining_space ** (1.0 / q)
 
         return nmd

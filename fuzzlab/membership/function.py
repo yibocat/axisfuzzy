@@ -36,24 +36,32 @@ class TriangularMF(MembershipFunction):
 
     def __init__(self, a: float, b: float, c: float, name: str = None):
         super().__init__(name)
-        self.a = a  # 左端点
-        self.b = b  # 峰值点
-        self.c = c  # 右端点
+        if not (a <= b <= c):
+            raise ValueError("TriangularMF requires parameters to satisfy a <= b <= c")
+        self.a = a
+        self.b = b
+        self.c = c
         self.parameters = {'a': a, 'b': b, 'c': c}
 
     def compute(self, x):
-        x = np.asarray(x)
+        x = np.asarray(x, dtype=float)
         result = np.zeros_like(x, dtype=float)
 
-        # 左侧上升
-        mask1 = (x >= self.a) & (x <= self.b)
-        result[mask1] = (x[mask1] - self.a) / (self.b - self.a)
+        # 左侧上升段（仅当 b > a）
+        if self.b > self.a:
+            mask1 = (x >= self.a) & (x < self.b)
+            result[mask1] = (x[mask1] - self.a) / (self.b - self.a)
 
-        # 右侧下降
-        mask2 = (x > self.b) & (x <= self.c)
-        result[mask2] = (self.c - x[mask2]) / (self.c - self.b)
+        # 顶点
+        result[x == self.b] = 1.0
 
-        return result
+        # 右侧下降段（仅当 c > b）
+        if self.c > self.b:
+            mask2 = (x > self.b) & (x <= self.c)
+            result[mask2] = (self.c - x[mask2]) / (self.c - self.b)
+
+        # 裁剪到 [0,1]
+        return np.clip(result, 0.0, 1.0)
 
     def set_parameters(self, **kwargs):
         if 'a' in kwargs:
@@ -65,6 +73,9 @@ class TriangularMF(MembershipFunction):
         if 'c' in kwargs:
             self.c = kwargs['c']
             self.parameters['c'] = self.c
+        # 重新验证参数顺序
+        if not (self.a <= self.b <= self.c):
+            raise ValueError("TriangularMF requires parameters to satisfy a <= b <= c")
 
 
 class TrapezoidalMF(MembershipFunction):
@@ -72,35 +83,42 @@ class TrapezoidalMF(MembershipFunction):
 
     def __init__(self, a: float, b: float, c: float, d: float, name: str = None):
         super().__init__(name)
-        self.a = a  # 左端点
-        self.b = b  # 左平台点
-        self.c = c  # 右平台点
-        self.d = d  # 右端点
+        if not (a <= b <= c <= d):
+            raise ValueError("TrapezoidalMF requires parameters to satisfy a <= b <= c <= d")
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
         self.parameters = {'a': a, 'b': b, 'c': c, 'd': d}
 
     def compute(self, x):
-        x = np.asarray(x)
+        x = np.asarray(x, dtype=float)
         result = np.zeros_like(x, dtype=float)
 
-        # 左侧上升
-        mask1 = (x >= self.a) & (x <= self.b)
-        result[mask1] = (x[mask1] - self.a) / (self.b - self.a)
+        # 左侧上升（仅当 b > a）
+        if self.b > self.a:
+            mask_rise = (x > self.a) & (x < self.b)
+            result[mask_rise] = (x[mask_rise] - self.a) / (self.b - self.a)
 
-        # 平台区域
-        mask2 = (x > self.b) & (x <= self.c)
-        result[mask2] = 1.0
+        # 平台区域 [b, c]
+        mask_plateau = (x >= self.b) & (x <= self.c)
+        result[mask_plateau] = 1.0
 
-        # 右侧下降
-        mask3 = (x > self.c) & (x <= self.d)
-        result[mask3] = (self.d - x[mask3]) / (self.d - self.c)
+        # 右侧下降（仅当 d > c）
+        if self.d > self.c:
+            mask_fall = (x > self.c) & (x < self.d)
+            result[mask_fall] = (self.d - x[mask_fall]) / (self.d - self.c)
 
-        return result
+        return np.clip(result, 0.0, 1.0)
 
     def set_parameters(self, **kwargs):
         for param in ['a', 'b', 'c', 'd']:
             if param in kwargs:
                 setattr(self, param, kwargs[param])
                 self.parameters[param] = kwargs[param]
+        # 重新验证参数顺序
+        if not (self.a <= self.b <= self.c <= self.d):
+            raise ValueError("TrapezoidalMF requires parameters to satisfy a <= b <= c <= d")
 
 
 class GaussianMF(MembershipFunction):
@@ -108,15 +126,20 @@ class GaussianMF(MembershipFunction):
 
     def __init__(self, sigma: float, c: float, name: str = None):
         super().__init__(name)
-        self.sigma = sigma  # 标准差
-        self.c = c  # 中心点
+        if sigma <= 0:
+            raise ValueError("GaussianMF parameter 'sigma' must be positive")
+        self.sigma = sigma
+        self.c = c
         self.parameters = {'sigma': sigma, 'c': c}
 
     def compute(self, x):
+        x = np.asarray(x, dtype=float)
         return np.exp(-0.5 * ((x - self.c) / self.sigma) ** 2)
 
     def set_parameters(self, **kwargs):
         if 'sigma' in kwargs:
+            if kwargs['sigma'] <= 0:
+                raise ValueError("GaussianMF parameter 'sigma' must be positive")
             self.sigma = kwargs['sigma']
             self.parameters['sigma'] = self.sigma
         if 'c' in kwargs:
@@ -129,49 +152,46 @@ class SMF(MembershipFunction):
 
     def __init__(self, a: float, b: float, name: str = None):
         super().__init__(name)
-        self.a = a  # 左端点
-        self.b = b  # 右端点
+        if a >= b:
+            raise ValueError("SMF requires parameter a < b")
+        self.a = a
+        self.b = b
         self.parameters = {'a': a, 'b': b}
 
-        if a >= b:
-            raise ValueError("Parameter 'a' must be less than 'b'")
-
     def compute(self, x):
-        x = np.asarray(x)
+        x = np.asarray(x, dtype=float)
         result = np.zeros_like(x, dtype=float)
 
-        # 计算中点
+        # x <= a: y = 0
+        result[x <= self.a] = 0.0
+
+        # x >= b: y = 1
+        result[x >= self.b] = 1.0
+
+        # a < x < b: S型曲线
         mid = (self.a + self.b) / 2
+        mask_first = (x > self.a) & (x <= mid)
+        mask_second = (x > mid) & (x < self.b)
 
-        # x <= a: 隶属度为0
-        mask1 = x <= self.a
-        result[mask1] = 0.0
+        # 第一段：2 * ((x - a) / (b - a))^2
+        if np.any(mask_first):
+            result[mask_first] = 2 * ((x[mask_first] - self.a) / (self.b - self.a)) ** 2
 
-        # a < x <= mid: 二次增长
-        mask2 = (x > self.a) & (x <= mid)
-        result[mask2] = 2 * ((x[mask2] - self.a) / (self.b - self.a)) ** 2
+        # 第二段：1 - 2 * ((x - b) / (b - a))^2
+        if np.any(mask_second):
+            result[mask_second] = 1 - 2 * ((x[mask_second] - self.b) / (self.b - self.a)) ** 2
 
-        # mid < x < b: 二次减缓增长
-        mask3 = (x > mid) & (x < self.b)
-        result[mask3] = 1 - 2 * ((x[mask3] - self.b) / (self.b - self.a)) ** 2
-
-        # x >= b: 隶属度为1
-        mask4 = x >= self.b
-        result[mask4] = 1.0
-
-        return result
+        return np.clip(result, 0.0, 1.0)
 
     def set_parameters(self, **kwargs):
-        if 'a' in kwargs and 'b' in kwargs:
-            if kwargs['a'] >= kwargs['b']:
-                raise ValueError("Parameter 'a' must be less than 'b'")
-
         if 'a' in kwargs:
             self.a = kwargs['a']
             self.parameters['a'] = self.a
         if 'b' in kwargs:
             self.b = kwargs['b']
             self.parameters['b'] = self.b
+        if self.a >= self.b:
+            raise ValueError("SMF requires parameter a < b")
 
 
 class ZMF(MembershipFunction):
@@ -179,49 +199,46 @@ class ZMF(MembershipFunction):
 
     def __init__(self, a: float, b: float, name: str = None):
         super().__init__(name)
-        self.a = a  # 左端点
-        self.b = b  # 右端点
+        if a >= b:
+            raise ValueError("ZMF requires parameter a < b")
+        self.a = a
+        self.b = b
         self.parameters = {'a': a, 'b': b}
 
-        if a >= b:
-            raise ValueError("Parameter 'a' must be less than 'b'")
-
     def compute(self, x):
-        x = np.asarray(x)
-        result = np.zeros_like(x, dtype=float)
+        x = np.asarray(x, dtype=float)
+        result = np.ones_like(x, dtype=float)
 
-        # 计算中点
+        # x <= a: y = 1
+        result[x <= self.a] = 1.0
+
+        # x >= b: y = 0
+        result[x >= self.b] = 0.0
+
+        # a < x < b: Z型曲线
         mid = (self.a + self.b) / 2
+        mask_first = (x > self.a) & (x <= mid)
+        mask_second = (x > mid) & (x < self.b)
 
-        # x <= a: 隶属度为1
-        mask1 = x <= self.a
-        result[mask1] = 1.0
+        # 第一段：1 - 2 * ((x - a) / (b - a))^2
+        if np.any(mask_first):
+            result[mask_first] = 1 - 2 * ((x[mask_first] - self.a) / (self.b - self.a)) ** 2
 
-        # a < x <= mid: 二次减少
-        mask2 = (x > self.a) & (x <= mid)
-        result[mask2] = 1 - 2 * ((x[mask2] - self.a) / (self.b - self.a)) ** 2
+        # 第二段：2 * ((x - b) / (b - a))^2
+        if np.any(mask_second):
+            result[mask_second] = 2 * ((x[mask_second] - self.b) / (self.b - self.a)) ** 2
 
-        # mid < x < b: 二次加速减少
-        mask3 = (x > mid) & (x < self.b)
-        result[mask3] = 2 * ((x[mask3] - self.b) / (self.b - self.a)) ** 2
-
-        # x >= b: 隶属度为0
-        mask4 = x >= self.b
-        result[mask4] = 0.0
-
-        return result
+        return np.clip(result, 0.0, 1.0)
 
     def set_parameters(self, **kwargs):
-        if 'a' in kwargs and 'b' in kwargs:
-            if kwargs['a'] >= kwargs['b']:
-                raise ValueError("Parameter 'a' must be less than 'b'")
-
         if 'a' in kwargs:
             self.a = kwargs['a']
             self.parameters['a'] = self.a
         if 'b' in kwargs:
             self.b = kwargs['b']
             self.parameters['b'] = self.b
+        if self.a >= self.b:
+            raise ValueError("ZMF requires parameter a < b")
 
 
 class DoubleGaussianMF(MembershipFunction):
@@ -229,25 +246,25 @@ class DoubleGaussianMF(MembershipFunction):
 
     def __init__(self, sigma1: float, c1: float, sigma2: float, c2: float, name: str = None):
         super().__init__(name)
-        self.sigma1 = sigma1  # 第一个高斯的标准差
-        self.c1 = c1          # 第一个高斯的中心
-        self.sigma2 = sigma2  # 第二个高斯的标准差
-        self.c2 = c2          # 第二个高斯的中心
+        if sigma1 <= 0 or sigma2 <= 0:
+            raise ValueError("DoubleGaussianMF parameters 'sigma1' and 'sigma2' must be positive")
+        self.sigma1 = sigma1
+        self.c1 = c1
+        self.sigma2 = sigma2
+        self.c2 = c2
         self.parameters = {'sigma1': sigma1, 'c1': c1, 'sigma2': sigma2, 'c2': c2}
 
     def compute(self, x):
-        x = np.asarray(x)
-
-        # 计算两个高斯函数
+        x = np.asarray(x, dtype=float)
         gauss1 = np.exp(-0.5 * ((x - self.c1) / self.sigma1) ** 2)
         gauss2 = np.exp(-0.5 * ((x - self.c2) / self.sigma2) ** 2)
-
-        # 取最大值
         return np.maximum(gauss1, gauss2)
 
     def set_parameters(self, **kwargs):
         for param in ['sigma1', 'c1', 'sigma2', 'c2']:
             if param in kwargs:
+                if param in ('sigma1', 'sigma2') and kwargs[param] <= 0:
+                    raise ValueError("DoubleGaussianMF parameters 'sigma1' and 'sigma2' must be positive")
                 setattr(self, param, kwargs[param])
                 self.parameters[param] = kwargs[param]
 
@@ -257,15 +274,14 @@ class GeneralizedBellMF(MembershipFunction):
 
     def __init__(self, a: float, b: float, c: float, name: str = None):
         super().__init__(name)
-        self.a = a  # 宽度参数
-        self.b = b  # 形状参数
-        self.c = c  # 中心参数
-        self.parameters = {'a': a, 'b': b, 'c': c}
-
         if a <= 0:
-            raise ValueError("Parameter 'a' must be positive")
+            raise ValueError("GeneralizedBellMF parameter 'a' must be positive")
         if b <= 0:
-            raise ValueError("Parameter 'b' must be positive")
+            raise ValueError("GeneralizedBellMF parameter 'b' must be positive")
+        self.a = a
+        self.b = b
+        self.c = c
+        self.parameters = {'a': a, 'b': b, 'c': c}
 
     def compute(self, x):
         x = np.asarray(x)
@@ -282,16 +298,14 @@ class GeneralizedBellMF(MembershipFunction):
     def set_parameters(self, **kwargs):
         if 'a' in kwargs:
             if kwargs['a'] <= 0:
-                raise ValueError("Parameter 'a' must be positive")
+                raise ValueError("GeneralizedBellMF parameter 'a' must be positive")
             self.a = kwargs['a']
             self.parameters['a'] = self.a
-
         if 'b' in kwargs:
             if kwargs['b'] <= 0:
-                raise ValueError("Parameter 'b' must be positive")
+                raise ValueError("GeneralizedBellMF parameter 'b' must be positive")
             self.b = kwargs['b']
             self.parameters['b'] = self.b
-
         if 'c' in kwargs:
             self.c = kwargs['c']
             self.parameters['c'] = self.c
@@ -302,46 +316,46 @@ class PiMF(MembershipFunction):
 
     def __init__(self, a: float, b: float, c: float, d: float, name: str = None):
         super().__init__(name)
-        self.a = a  # 左下降开始点
-        self.b = b  # 左下降结束点/平台开始点
-        self.c = c  # 平台结束点/右下降开始点
-        self.d = d  # 右下降结束点
+        if not (a <= b <= c <= d):
+            raise ValueError("PiMF requires parameters to satisfy a <= b <= c <= d")
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
         self.parameters = {'a': a, 'b': b, 'c': c, 'd': d}
 
-        if not (a <= b <= c <= d):
-            raise ValueError("Parameters must satisfy: a <= b <= c <= d")
-
     def compute(self, x):
-        x = np.asarray(x)
+        x = np.asarray(x, dtype=float)
         result = np.zeros_like(x, dtype=float)
 
-        # 左侧S型部分 (a到b)
-        if self.a < self.b:
-            s_part = SMF(self.a, self.b)
-            mask_s = (x >= self.a) & (x <= self.b)
-            result[mask_s] = s_part.compute(x[mask_s])
+        # x <= a 或 x >= d: y = 0
+        result[(x <= self.a) | (x >= self.d)] = 0.0
 
-        # 平台部分 (b到c)
-        mask_plateau = (x > self.b) & (x <= self.c)
-        result[mask_plateau] = 1.0
+        # b <= x <= c: y = 1 (平台区域)
+        result[(x >= self.b) & (x <= self.c)] = 1.0
 
-        # 右侧Z型部分 (c到d)
-        if self.c < self.d:
-            z_part = ZMF(self.c, self.d)
-            mask_z = (x > self.c) & (x <= self.d)
-            result[mask_z] = z_part.compute(x[mask_z])
+        # a < x < b: S型上升
+        if self.b > self.a:
+            mask_rise = (x > self.a) & (x < self.b)
+            if np.any(mask_rise):
+                # 使用SMF的逻辑
+                smf_result = SMF(self.a, self.b).compute(x[mask_rise])
+                result[mask_rise] = smf_result
 
-        return result
+        # c < x < d: Z型下降
+        if self.d > self.c:
+            mask_fall = (x > self.c) & (x < self.d)
+            if np.any(mask_fall):
+                # 使用ZMF的逻辑
+                zmf_result = ZMF(self.c, self.d).compute(x[mask_fall])
+                result[mask_fall] = zmf_result
+
+        return np.clip(result, 0.0, 1.0)
 
     def set_parameters(self, **kwargs):
-        # 验证参数顺序
-        params = self.parameters.copy()
-        params.update(kwargs)
-
-        if not (params['a'] <= params['b'] <= params['c'] <= params['d']):
-            raise ValueError("Parameters must satisfy: a <= b <= c <= d")
-
         for param in ['a', 'b', 'c', 'd']:
             if param in kwargs:
                 setattr(self, param, kwargs[param])
                 self.parameters[param] = kwargs[param]
+        if not (self.a <= self.b <= self.c <= self.d):
+            raise ValueError("PiMF requires parameters to satisfy a <= b <= c <= d")

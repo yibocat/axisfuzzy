@@ -92,13 +92,17 @@ class Fuzzifier:
         Returns:
             生成的 Fuzznum 或 Fuzzarray。
         """
-        if isinstance(x, (int, float)):
-            return self.strategy.fuzzify_scalar(x, self.mf)
-        elif isinstance(x, (list, np.ndarray)):
+        # 统一处理 numpy 标量与 0 维 ndarray
+        if isinstance(x, (int, float, np.number)):
+            return self.strategy.fuzzify_scalar(float(x), self.mf)
+
+        elif isinstance(x, (list, tuple, np.ndarray)):
             x_array = np.asarray(x)
+            if x_array.ndim == 0:
+                return self.strategy.fuzzify_scalar(float(x_array), self.mf)
             return self.strategy.fuzzify_array(x_array, self.mf)
         else:
-            raise TypeError(f"Unsupported input type: {type(x)}. Must be float, int, list, or np.ndarray.")
+            raise TypeError(f"Unsupported input type: {type(x)}. Must be float, int, list, tuple, or np.ndarray.")
 
 
 def fuzzify(
