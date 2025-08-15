@@ -6,6 +6,7 @@
 #  Software: FuzzLab
 
 from .experimental import experimental
+from .deprecated import deprecated
 
 __all__ = []
-__all__.extend(['experimental'])
+__all__.extend(['experimental', 'deprecated'])

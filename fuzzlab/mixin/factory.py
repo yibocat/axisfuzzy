@@ -212,6 +212,7 @@ def _all_factory(obj: Fuzzarray) -> bool:
     """
     return True
 
+
 # ========================= Container Operations =========================
 
 def _concat_factory(obj: Fuzzarray, *others: Fuzzarray, axis: int = 0) -> Fuzzarray:
@@ -403,3 +404,17 @@ def _pop_factory(obj: Union[Fuzznum, Fuzzarray],
         return popped_item
     else:
         return popped_item, new_array
+
+
+# ========================== Sort operation ===========================
+# 暂未实现
+def _sort_factory(obj: Union[Fuzznum, Fuzzarray]): ...
+
+
+def _argsort_factory(obj: Union[Fuzznum, Fuzzarray], axis: int = -1) -> Fuzzarray: ...
+
+
+def _argmax_factory(obj: Union[Fuzznum, Fuzzarray], axis: int = -1) -> Fuzzarray: ...
+
+
+def _argmix_factory(obj: Union[Fuzznum, Fuzzarray], axis: int = -1) -> Fuzzarray: ...

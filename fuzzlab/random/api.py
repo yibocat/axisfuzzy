@@ -59,7 +59,7 @@ def random_fuzz(
     seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = None,
     rng: Optional[np.random.Generator] = None,
     **params
-) -> Union['Fuzznum', 'Fuzzarray']:
+) -> Union[Fuzznum, Fuzzarray]:
     """
     Generate a random Fuzznum or Fuzzarray.
 
@@ -112,13 +112,13 @@ def random_fuzz(
 
 
 def choice(
-    obj: 'Fuzzarray',
+    obj: Fuzzarray,
     size: Optional[Union[int, Tuple[int, ...]]] = None,
     replace: bool = True,
     p: Optional[Sequence[float]] = None,
     seed: Optional[int] = None,
     rng: Optional[np.random.Generator] = None
-) -> Union[Any, 'Fuzzarray']:
+) -> Union[Any, Fuzzarray]:
     """
     Generate a random sample from a given 1-D array or Fuzzarray.
 

@@ -12,7 +12,7 @@ import numpy as np
 from .registry import get_fuzzification_registry
 from ..core import Fuzzarray, Fuzznum
 from ..config import get_config
-from ..membership import MembershipFunction, create_mf, get_mf_class
+from ..membership import MembershipFunction, get_mf_class
 
 
 class Fuzzifier:

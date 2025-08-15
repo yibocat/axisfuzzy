@@ -28,7 +28,7 @@ class FuzznumRegistry:
         return cls._instance
 
     def __init__(self):
-        self._in_transaction = None
+        self._in_transaction = False
         if not FuzznumRegistry._initialized:
             with FuzznumRegistry._lock:
                 if not FuzznumRegistry._initialized:
