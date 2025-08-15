@@ -7,14 +7,10 @@
 
 from typing import Type, Callable
 
-from .base import FuzzificationStrategy
-from .registry import FuzzificationRegistry
-from .fuzzifier import Fuzzifier, fuzzify
+from .base import FuzzificationStrategy as FuzzificationStrategy
+from .fuzzifier import Fuzzifier as Fuzzifier, fuzzify as fuzzify
 
-def get_fuzzification_registry() -> FuzzificationRegistry: ...
-
-def register_fuzzification_strategy(
-    mtype: str,
-    method: str,
-    is_default: bool = ...
-) -> Callable[[Type[FuzzificationStrategy]], Type[FuzzificationStrategy]]: ...
+from .registry import (
+    get_fuzzification_registry as get_fuzzification_registry,
+    register_fuzzification_strategy as register_fuzzification_strategy,
+)

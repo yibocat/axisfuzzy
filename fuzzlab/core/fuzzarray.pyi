@@ -5,7 +5,7 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 
-from typing import Any, Optional, Union, Tuple, Iterator, Dict, overload
+from typing import Any, Optional, Union, Tuple, Iterator, Dict, overload, List
 import numpy as np
 
 from .backend import FuzzarrayBackend
