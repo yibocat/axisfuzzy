@@ -21,15 +21,28 @@ It includes:
 The `apply_extensions()` function is the entry point to activate the entire
 extension system, typically called once during FuzzLab's library loading.
 """
+import warnings
+from typing import Dict, Any
 
 from .registry import get_extension_registry
 from .dispatcher import get_extension_dispatcher
 from .injector import get_extension_injector
 from .decorator import extension, batch_extension
-# from .utils import call_extension
+
+__all__ = [
+    'get_extension_registry',
+    'get_extension_dispatcher',
+    'get_extension_injector',
+    'extension',
+    'batch_extension',
+    'apply_extensions',
+]
+
+# 标志：记录是否已经应用过注入，避免重复注入
+_applied = False
 
 
-def apply_extensions():
+def apply_extensions(target_module_globals: Dict[str, Any] | None = None) -> bool:
     """
     Applies all registered extension functions to their respective targets.
 
@@ -53,6 +66,10 @@ def apply_extensions():
         # and functions like fuzzlab.distance() available.
         ```
     """
+    global _applied
+    if _applied:
+        return True
+
     # Prepare the class map for Fuzznum and Fuzzarray, which are target classes for injection.
     from ..core import Fuzznum, Fuzzarray
     class_map = {
@@ -62,20 +79,13 @@ def apply_extensions():
 
     # Get the namespace of the 'fuzzlab' module for injecting top-level functions.
     import fuzzlab
-    # Explicitly convert to dict to satisfy type checkers, as __dict__ can be a property.
-    module_namespace = fuzzlab.__dict__
 
-    # Get the singleton injector instance and trigger the injection process.
-    apply_injector = get_extension_injector()
-    apply_injector.inject_all(class_map, module_namespace)      # type: ignore[call-arg]
-
-
-__all__ = [
-    'get_extension_registry',
-    'get_extension_dispatcher',
-    'get_extension_injector',
-    'extension',
-    'batch_extension',
-    'apply_extensions',
-    # 'call_extension',
-]
+    injectors = get_extension_injector()
+    try:
+        injectors.inject_all(class_map, target_module_globals)    # type: ignore
+        _applied = True
+        return True
+    except Exception as e:
+        # 如果有日志, 可以记录日志
+        # logger.error(f"Failed to apply extensions: {e}")
+        return False

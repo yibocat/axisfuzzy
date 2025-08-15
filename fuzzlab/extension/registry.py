@@ -267,6 +267,24 @@ class ExtensionRegistry:
 
             return None
 
+    def get_top_level_function_names(self) -> List[str]:
+        """
+        Returns a list of names for all functions registered for top-level injection.
+        """
+        names = set()
+        for func_name, implementations in self._functions.items():
+            for mtype, (func, metadata) in implementations.items():
+                if metadata.injection_type in ('top_level_function', 'both'):
+                    names.add(func_name)
+                    # 只要找到一个，就可以确定该函数名需要顶层注入，跳到下一个函数名
+                    break
+        # 检查所有默认实现
+        for func_name, (func, metadata) in self._defaults.items():
+            if metadata.injection_type in ('top_level_function', 'both'):
+                names.add(func_name)
+
+        return sorted(list(names))
+
     def get_metadata(self, name: str, mtype: Optional[str] = None) -> Optional[FunctionMetadata]:
         """
         Retrieves the metadata for a registered function.

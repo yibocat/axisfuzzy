@@ -4,65 +4,66 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-
-# from .registry import get_mixin_registry
-# from ._ops import *
-# from ._function import *
-#
-# from ..core import Fuzznum, Fuzzarray
-#
-#
-# # 3. 执行动态注入
-# def _apply_functions():
-#     """
-#     将注册的功能动态注入到 Fuzznum 和 Fuzzarray 类中，
-#     并将顶层函数注入到 fuzzlab 模块的命名空间。
-#     """
-#     # 构建一个从类名字符串到实际类对象的映射
-#     class_map = {
-#         'Fuzznum': Fuzznum,
-#         'Fuzzarray': Fuzzarray
-#     }
-#
-#     # 调用 MixinFunctionRegistry 的 build_and_inject 方法。
-#     # globals() 传递的是当前模块（即 fuzzlab/__init__.py）的命名空间，
-#     # 这样顶层函数就可以被直接添加到 fuzzlab 模块下。
-#     get_mixin_registry().build_and_inject(class_map, globals())
-#
-#
-# _apply_functions()
-#
-# __all__ = [
-#     'get_mixin_registry'
-# ] + get_mixin_registry().get_top_level_function_names()
+import warnings
+from typing import Dict, Any
 
 
 from .registry import get_mixin_registry
-from . import register  # This triggers the registration of all structural operations
-
 from ..core import Fuzznum, Fuzzarray
 
+# 关键修复：导入 register 模块以触发所有 @register 装饰器的执行。
+# 这个导入本身没有用到任何变量，但它的副作用是填充了 mixin 注册表。
+from . import register
 
-def _apply_functions():
+_applied = False
+
+
+def _apply_functions(target_module_globals: Dict[str, Any] | None = None) -> bool:
     """
-    将注册的功能动态注入到 Fuzznum 和 Fuzzarray 类中，
-    并将顶层函数注入到 fuzzlab 模块的命名空间。
+    将注册的功能动态注入到目标模块的命名空间以及 Fuzznum/Fuzzarray 类中。
+
+    如果 target_module_globals 为 None，则默认注入到 fuzzlab 顶级模块（fuzzlab.__dict__）。
+    返回 True 表示注入成功或已应用；False 表示注入失败。
     """
-    # 构建一个从类名字符串到实际类对象的映射
+    global _applied
+    if _applied:
+        return True
+
+    # prepare class map
     class_map = {
         'Fuzznum': Fuzznum,
         'Fuzzarray': Fuzzarray
     }
 
-    # 调用 MixinFunctionRegistry 的 build_and_inject 方法。
-    # globals() 传递的是当前模块（即 fuzzlab/__init__.py）的命名空间，
-    # 这样顶层函数就可以被直接添加到 fuzzlab 模块下。
-    get_mixin_registry().build_and_inject(class_map, globals())
+    # determine where to inject top-level functions: prefer fuzzlab package
+    if target_module_globals is None:
+        try:
+            import fuzzlab
+            target_module_globals = fuzzlab.__dict__
+        except Exception as e:
+
+            # 这里可以添加日志记录或其他处理方式
+            # _logger.exception("Failed to import fuzzlab for mixin top-level injection: %s", e)
+
+            warnings.warn(f"Failed to import fuzzlab for mixin top-level injection: {e}")
+            # fallback to local mixin module globals to avoid complete failure
+            target_module_globals = globals()
+
+    try:
+        get_mixin_registry().build_and_inject(class_map, target_module_globals)
+        _applied = True
+        return True
+    except Exception as e:
+        # 这里可以添加日志记录或其他处理方式
+        # _logger.exception("Failed to apply mixin functions: %s", e)
+
+        warnings.warn(f"Failed to injection mixin functions: {e}")
+        return False
 
 
-_apply_functions()
+# 自动注入（保留以兼容现有行为），但经过幂等与异常保护
+# _apply_functions()
 
+apply_mixins = _apply_functions
 
-__all__ = [
-    'get_mixin_registry',
-] + get_mixin_registry().get_top_level_function_names()
+__all__ = ['get_mixin_registry', 'apply_mixins'] + get_mixin_registry().get_top_level_function_names()

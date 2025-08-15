@@ -14,3 +14,11 @@ from .registry import (
     get_fuzzification_registry as get_fuzzification_registry,
     register_fuzzification_strategy as register_fuzzification_strategy,
 )
+
+__all__ = [
+    'FuzzificationStrategy',
+    'Fuzzifier',
+    'fuzzify',
+    'get_fuzzification_registry',
+    'register_fuzzification_strategy',
+]

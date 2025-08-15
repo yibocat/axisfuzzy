@@ -7,9 +7,6 @@
 from pathlib import Path
 from typing import Union, Any
 from .config_file import Config
-from .manager import ConfigManager
-
-_config_manager: ConfigManager
 
 def get_config() -> Config: ...
 def set_config(**kwargs: Any) -> None: ...

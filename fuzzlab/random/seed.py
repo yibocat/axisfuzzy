@@ -76,11 +76,9 @@ class GlobalRandomState:
             A new independent Generator instance.
         """
         with self._lock:
-            # Use the global generator to spawn a new independent one
-            spawned_rng = np.random.default_rng()
-            # Initialize with entropy from current generator
-            seed_sequence = np.random.SeedSequence(self._rng.integers(0, 2**32))
-            return np.random.default_rng(seed_sequence)
+            # Use the generator's spawn method, which is the recommended way
+            # to create statistically independent child generators.
+            return self._rng.spawn(1)[0]
 
 
 # Global instance

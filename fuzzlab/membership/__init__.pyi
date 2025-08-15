@@ -27,3 +27,20 @@ from .function import (
     GeneralizedBellMF as GeneralizedBellMF,
     PiMF as PiMF
 )
+
+# 显式声明包公共 API（便于类型检查器）
+__all__ = [
+    'MembershipFunction',
+    'create_mf',
+    'get_mf_class',
+    'function',
+    'SigmoidMF',
+    'TriangularMF',
+    'TrapezoidalMF',
+    'GaussianMF',
+    'SMF',
+    'ZMF',
+    'DoubleGaussianMF',
+    'GeneralizedBellMF',
+    'PiMF'
+]

@@ -97,9 +97,10 @@ class ParameterizedRandomGenerator(BaseRandomGenerator, ABC):
         Returns:
             A dictionary containing the merged parameters.
         """
-        params = self._default_params.copy()
-        params.update(params)
-        return params
+        # FIX: Create a copy of defaults, then update with user params.
+        merged_params = self._default_params.copy()
+        merged_params.update(params)
+        return merged_params
 
     def _validate_range(self, name: str, value: float, min_val: float, max_val: float):
         """
