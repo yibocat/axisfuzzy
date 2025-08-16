@@ -23,6 +23,7 @@ from .config import (
 )
 from .core import (
     Fuzznum as Fuzznum,
+    fuzznum as fuzznum,
     Fuzzarray as Fuzzarray,
     fuzzarray as fuzzarray,
     operate as operate

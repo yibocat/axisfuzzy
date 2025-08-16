@@ -587,3 +587,28 @@ class Fuzznum:
             return self.get_strategy_instance().__format__(format_spec)
         except (RuntimeError, AttributeError):
             return format(str(self), format_spec)
+
+
+# ================================= 工厂函数 =================================
+
+def fuzznum(mtype: Optional[str] = None,
+            q: Optional[int] = None,
+            **kwargs: Any) -> Fuzznum:
+    """
+    Factory function to create a Fuzznum instance.
+
+    Args:
+        mtype:  The type of fuzzy number strategy to use.
+        q:  The discretization level for the fuzzy number.
+        **kwargs: Additional parameters specific to the chosen fuzzy number strategy.
+
+    Returns:
+        An instance of Fuzznum configured with the specified strategy and parameters.
+    """
+    mtype = mtype or get_config().DEFAULT_MTYPE
+    q = q or 1
+
+    instance = Fuzznum(mtype, q)
+    if kwargs:
+        return instance.create(**kwargs)
+    return instance

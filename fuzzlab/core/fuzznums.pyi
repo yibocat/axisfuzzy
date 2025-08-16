@@ -111,5 +111,9 @@ class Fuzznum:
     def __bool__(self) -> bool: ...
     def __format__(self, format_spec: str) -> str: ...
 
+def fuzznum(mtype: Optional[str] = None,
+            q: Optional[int] = None,
+            **kwargs: Any) -> Fuzznum: ...
+
 # 确保 Fuzzarray 类型在此处可用
 from .fuzzarray import Fuzzarray

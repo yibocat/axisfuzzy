@@ -31,6 +31,7 @@ from .config import (
 )
 from .core import (
     Fuzznum,
+    fuzznum,
     Fuzzarray,
     fuzzarray,
     operate
@@ -52,7 +53,7 @@ _static_api = [
     # config
     'get_config', 'set_config', 'Config',
     # core
-    'Fuzznum', 'Fuzzarray', 'fuzzarray', 'operate',
+    'Fuzznum', 'Fuzzarray', 'fuzznum', 'fuzzarray', 'operate',
     # extension decorators
     'extension', 'batch_extension',
     # fuzzify

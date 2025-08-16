@@ -10,7 +10,9 @@ from typing import Any, Dict, Tuple, Optional
 # 从具体子模块显式重导出，以便类型检查器识别
 from .base import FuzznumStrategy as FuzznumStrategy
 from .dispatcher import operate as operate
-from .fuzznums import Fuzznum as Fuzznum
+from .fuzznums import (
+    Fuzznum as Fuzznum,
+    fuzznum as fuzznum)
 from .fuzzarray import Fuzzarray as Fuzzarray, fuzzarray as fuzzarray
 from .backend import FuzzarrayBackend as FuzzarrayBackend
 from .operation import (
@@ -36,6 +38,7 @@ __all__ = [
     'OperationMixin',
     'OperationTNorm',
     'operate',
+    'fuzznum',
     'fuzzarray',
     'get_operation_registry',
     'register_operation',
