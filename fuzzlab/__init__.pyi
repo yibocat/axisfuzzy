@@ -19,26 +19,50 @@ from typing import List, Any
 from .config import (
     get_config as get_config,
     set_config as set_config,
-    Config as Config
+    load_config_file as load_config_file,
+    save_config_file as save_config_file,
+    reset_config as reset_config,
 )
+
 from .core import (
-    Fuzznum as Fuzznum,
-    fuzznum as fuzznum,
-    Fuzzarray as Fuzzarray,
-    fuzzarray as fuzzarray,
-    operate as operate
+    FuzznumStrategy as FuzznumStrategy,
+    FuzzarrayBackend as FuzzarrayBackend,
+    Fuzznum as Fuzznum, fuzznum as fuzznum,
+    Fuzzarray as Fuzzarray, fuzzarray as fuzzarray,
+    operate as operate,
+    OperationTNorm as OperationTNorm,
+
+    get_registry_fuzztype as get_registry_fuzztype,
+    get_registry_operation as get_registry_operation,
+
+    get_fuzztype_mtypes as get_fuzztype_mtypes,
+    get_fuzztype_strategy as get_fuzztype_strategy,
+    get_fuzztype_backend as get_fuzztype_backend,
+
+    register_strategy as register_strategy,
+    register_backend as register_backend,
+    register_operation as register_operation,
+    register_fuzztype as register_fuzztype,
+    # register_batch_fuzztypes as register_batch_fuzztypes,
+    unregister_fuzztype as unregister_fuzztype
 )
 from .extension import (
+    get_registry_extension as get_registry_extension,
     extension as extension,
     batch_extension as batch_extension
 )
+
 from .fuzzify import (
+    FuzzificationStrategy as FuzzificationStrategy,
+
     fuzzify as fuzzify,
-    Fuzzifier as Fuzzifier
+    get_registry_fuzzify as get_registry_fuzzify,
+    register_fuzzify as register_fuzzify,
 )
+
 from .membership import (
     create_mf as create_mf,
-    MembershipFunction as MembershipFunction
+    get_mf_class as get_mf_class
 )
 
 # 2. 将 `random` 声明为一个可导入的模块。
@@ -46,6 +70,7 @@ from . import random as random
 
 # 3. 从 `mixin/__init__.pyi` 中导入所有将被注入的顶层函数的签名。
 from .mixin import (
+    get_registry_mixin as get_registry_mixin,
     reshape as reshape,
     flatten as flatten,
     squeeze as squeeze,

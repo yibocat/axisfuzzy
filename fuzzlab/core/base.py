@@ -11,7 +11,7 @@ from typing import Optional, Set, Dict, Callable, Any, Union, List
 
 from .cache import LruCache
 from .triangular import OperationTNorm
-from .operation import get_operation_registry
+from .operation import get_registry_operation
 from ..config import get_config
 
 
@@ -314,7 +314,7 @@ class FuzznumStrategy(ABC):
             ValueError: If an unknown operation type is requested.
         """
         # Get the global operation registry.
-        registry = get_operation_registry()
+        registry = get_registry_operation()
         # Retrieve the specific operation handler for the given operation name and fuzzy number type.
         operation = registry.get_operation(op_name, self.mtype)
         if operation is None:
@@ -398,7 +398,7 @@ class FuzznumStrategy(ABC):
             List[str]: A list of strings, where each string is the name of an
                        operation supported by this fuzzy number type.
         """
-        operation = get_operation_registry()
+        operation = get_registry_operation()
         return operation.get_available_ops(self.mtype)
 
     def validate_all_attributes(self) -> Dict[str, Any]:

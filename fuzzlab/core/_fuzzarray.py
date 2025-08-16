@@ -22,7 +22,7 @@ import numpy as np
 from ..config import get_config
 
 from .fuzznums import Fuzznum
-from .operation import get_operation_registry, OperationMixin
+from .operation import get_registry_operation, OperationMixin
 from ._triangular import OperationTNorm
 
 
@@ -91,7 +91,7 @@ class Fuzzarray:
         self._q: int = self._validate_and_set_q()
 
         # Get the global operation registry for dispatching operations.
-        self._operation_registry = get_operation_registry()
+        self._operation_registry = get_registry_operation()
         # self._op_cache: Dict[str, Optional[OperationMixin]] = {} # Currently unused, operations are dispatched directly.
 
         # Sets to store names of methods and attributes that can be delegated
@@ -962,7 +962,7 @@ class Fuzzarray:
         self._data, self._mtype, self._q = state
         # After restoring the core state, re-initialize delegation and other
         # non-serialized attributes.
-        self._operation_registry = get_operation_registry()
+        self._operation_registry = get_registry_operation()
         self._delegated_methods = set()
         self._delegated_attributes = set()
         self._initialize_delegation()

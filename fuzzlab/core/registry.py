@@ -15,7 +15,6 @@ from fuzzlab.core.backend import FuzzarrayBackend
 
 
 class FuzznumRegistry:
-
     _instance: Optional['FuzznumRegistry'] = None
     _lock: threading.RLock = threading.RLock()
     _initialized: bool = False
@@ -52,26 +51,7 @@ class FuzznumRegistry:
         self._observers: List[Callable[[str, Dict[str, Any]], None]] = []
 
         # Call a private method to load predefined default fuzzy number types.
-        self._load_default_fuzznum_types()
-
-    def _load_default_fuzznum_types(self) -> None:
-
-        default_types = self._get_default_types()
-
-        with self.transaction():
-
-            for strategy_cls, backend_cls in default_types:
-                try:
-                    self.register(strategy=strategy_cls, backend=backend_cls)
-                except Exception as e:
-                    warnings.warn(f"Failed to load default type {strategy_cls.mtype}: {e}")
-
-    @staticmethod
-    def _get_default_types() -> List[Tuple[Type[FuzznumStrategy], Type[FuzzarrayBackend]]]:
-
-        from ..fuzztype.qrofs import QROFNStrategy, QROFNBackend
-
-        return [(QROFNStrategy, QROFNBackend)]
+        # self._load_default_fuzznum_types()
 
     # ======================== Transaction Support ========================
 
@@ -128,6 +108,50 @@ class FuzznumRegistry:
 
     # ======================== Registration Management ========================
 
+    def register_strategy(self, strategy: Type[FuzznumStrategy]) -> Dict[str, Any]:
+        """Registers a FuzznumStrategy subclass."""
+        self._validate_strategy_class(strategy)
+        mtype = strategy.mtype
+
+        with self._lock:
+            try:
+                existing = mtype in self.strategies
+                self.strategies[mtype] = strategy
+
+                result = {
+                    'mtype': mtype,
+                    'component': 'strategy',
+                    'registered_class': strategy.__name__,
+                    'overwrote_existing': existing
+                }
+                self._notify_observers('register_strategy', result)
+                return result
+            except Exception as e:
+                self._registration_stats['failed_registrations'] += 1
+                raise e
+
+    def register_backend(self, backend: Type[FuzzarrayBackend]) -> Dict[str, Any]:
+        """Registers a FuzzarrayBackend subclass."""
+        self._validate_backend_class(backend)
+        mtype = backend.mtype
+
+        with self._lock:
+            try:
+                existing = mtype in self.backends
+                self.backends[mtype] = backend
+
+                result = {
+                    'mtype': mtype,
+                    'component': 'backend',
+                    'registered_class': backend.__name__,
+                    'overwrote_existing': existing
+                }
+                self._notify_observers('register_backend', result)
+                return result
+            except Exception as e:
+                self._registration_stats['failed_registrations'] += 1
+                raise e
+
     def register(self,
                  strategy: Optional[Type[FuzznumStrategy]] = None,
                  backend: Optional[Type[FuzzarrayBackend]] = None) -> Dict[str, Any]:
@@ -148,46 +172,21 @@ class FuzznumRegistry:
                 )
 
         with self._lock:
-            # Determine mtype from any provided component
-            mtype = None
-            if strategy and hasattr(strategy, 'mtype'):
-                mtype = strategy.mtype
-            elif backend and hasattr(backend, 'mtype'):
-                mtype = backend.mtype
 
-            existing_strategy = mtype in self.strategies
-            existing_backend = mtype in self.backends
-
-            result = {
-                'mtype': mtype,
-                'strategy_registered': False,
-                'backend_registered': False,
-                'is_complete': False,
-                'overwrote_existing': {
-                    'strategy': existing_strategy and strategy is not None,
-                    'backend': existing_backend and backend is not None
-                }
-            }
+            mtype = (strategy or backend).mtype
+            result = {'mtype': mtype, 'details': []}
 
             try:
-                if strategy is not None:
-                    if existing_strategy:
-                        self._registration_stats['overwrites'] += 1
-                    self.strategies[mtype] = strategy
-                    result['strategy_registered'] = True
+                if strategy:
+                    reg_info = self.register_strategy(strategy)
+                    result['details'].append(reg_info)
 
-                if backend is not None:
-                    if existing_backend:
-                        self._registration_stats['overwrites'] += 1
-                    self.backends[mtype] = backend
-                    result['back_registered'] = True
-
-                result['is_complete'] = (
-                        mtype in self.strategies and mtype in self.backends)
+                if backend:
+                    reg_info = self.register_backend(backend)
+                    result['details'].append(reg_info)
 
                 self._registration_stats['total_registrations'] += 1
-                self._notify_observers('register', result)
-
+                self._notify_observers('register_bundle', result)
                 return result
 
             except Exception as e:
@@ -347,7 +346,7 @@ _registry_instance: Optional[FuzznumRegistry] = None
 _registry_lock = threading.RLock()
 
 
-def get_fuzznum_registry() -> FuzznumRegistry:
+def get_registry_fuzztype() -> FuzznumRegistry:
     global _registry_instance
 
     if _registry_instance is None:
@@ -358,39 +357,49 @@ def get_fuzznum_registry() -> FuzznumRegistry:
     return _registry_instance
 
 
-def register_fuzznum(strategy: Optional[Type[FuzznumStrategy]] = None,
-                     backend: Optional[Type[FuzzarrayBackend]] = None) -> Dict[str, Any]:
-    return get_fuzznum_registry().register(
+def register_strategy(cls: Type[FuzznumStrategy]) -> Type[FuzznumStrategy]:
+    get_registry_fuzztype().register_strategy(cls)
+    return cls
+
+
+def register_backend(cls: Type[FuzzarrayBackend]) -> Type[FuzzarrayBackend]:
+    get_registry_fuzztype().register_backend(cls)
+    return cls
+
+
+def register_fuzztype(strategy: Optional[Type[FuzznumStrategy]] = None,
+                      backend: Optional[Type[FuzzarrayBackend]] = None) -> Dict[str, Any]:
+    return get_registry_fuzztype().register(
         strategy=strategy, backend=backend)
 
 
-def batch_register_fuzz(registrations: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
-    return get_fuzznum_registry().batch_register(registrations)
+def register_batch_fuzztypes(registrations: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    return get_registry_fuzztype().batch_register(registrations)
 
 
-def unregister_fuzznum(mtype: str,
-                       remove_strategy: bool = True,
-                       remove_backend: bool = True) -> Dict[str, Any]:
-    return get_fuzznum_registry().unregister(
+def unregister_fuzztype(mtype: str,
+                        remove_strategy: bool = True,
+                        remove_backend: bool = True) -> Dict[str, Any]:
+    return get_registry_fuzztype().unregister(
         mtype=mtype,
         remove_strategy=remove_strategy,
         remove_backend=remove_backend
     )
 
 
-def get_strategy(mtype: str) -> Optional[Type[FuzznumStrategy]]:
+def get_fuzztype_strategy(mtype: str) -> Optional[Type[FuzznumStrategy]]:
     try:
-        return get_fuzznum_registry().get_strategy(mtype)
+        return get_registry_fuzztype().get_strategy(mtype)
     except ValueError:
         return None
 
 
-def get_backend(mtype: str) -> Optional[Type[FuzzarrayBackend]]:
+def get_fuzztype_backend(mtype: str) -> Optional[Type[FuzzarrayBackend]]:
     try:
-        return get_fuzznum_registry().get_backend(mtype)
+        return get_registry_fuzztype().get_backend(mtype)
     except ValueError:
         return None
 
 
-def get_fuzznum_registered_mtypes() -> Dict[str, Dict[str, Any]]:
-    return get_fuzznum_registry().get_registered_mtypes()
+def get_fuzztype_mtypes() -> Dict[str, Dict[str, Any]]:
+    return get_registry_fuzztype().get_registered_mtypes()

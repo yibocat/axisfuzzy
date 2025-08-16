@@ -20,9 +20,9 @@ these proxy functions into classes or the top-level namespace).
 """
 from typing import Callable
 
-from .registry import get_extension_registry
+from .registry import get_registry_extension
 from ..config import get_config
-from ..core import Fuzznum, get_fuzznum_registry, Fuzzarray
+from ..core import Fuzznum, get_registry_fuzztype, Fuzzarray
 
 
 class ExtensionDispatcher:
@@ -42,7 +42,7 @@ class ExtensionDispatcher:
         It obtains a reference to the global `ExtensionRegistry` to
         perform function lookups.
         """
-        self.registry = get_extension_registry()
+        self.registry = get_registry_extension()
 
     def create_instance_method(self, func_name: str) -> Callable:
         """
@@ -156,7 +156,7 @@ class ExtensionDispatcher:
             """
             # 1. Try to get mtype from kwargs. 'pop' is used to remove it so it
             #    doesn't get passed to the final implementation, as it's a dispatch key.
-            fuzznum_registry = get_fuzznum_registry()
+            fuzznum_registry = get_registry_fuzztype()
             config = get_config()
 
             mtype = kwargs.pop('mtype', None)

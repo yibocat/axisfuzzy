@@ -114,14 +114,14 @@ class FuzzificationRegistry:
 _registry = FuzzificationRegistry()
 
 
-def get_fuzzification_registry() -> FuzzificationRegistry:
+def get_registry_fuzzify() -> FuzzificationRegistry:
     """获取全局模糊化注册表实例"""
     return _registry
 
 
-def register_fuzzification_strategy(mtype: str,
-                                    method: str,
-                                    is_default: bool = False):
+def register_fuzzify(mtype: str,
+                     method: str,
+                     is_default: bool = False):
     """
     装饰器：注册模糊化策略
 
@@ -132,7 +132,7 @@ def register_fuzzification_strategy(mtype: str,
     """
 
     def decorator(strategy_cls: Type[FuzzificationStrategy]):
-        get_fuzzification_registry().register(
+        get_registry_fuzzify().register(
             mtype=mtype,
             method=method,
             strategy_cls=strategy_cls,

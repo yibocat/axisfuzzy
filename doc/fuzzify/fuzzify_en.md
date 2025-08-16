@@ -45,7 +45,7 @@ Related files:
 - `Registry`
   - Maps `(mtype, method)` → StrategyClass
   - Default `method` per `mtype` supported
-  - Decorator` @register_fuzzification_strategy(mtype, method, is_default=False)`
+  - Decorator` @register_fuzzify(mtype, method, is_default=False)`
 
 - `Membership`
   - `MembershipFunction`: `compute(x)` → `[0, 1]`
@@ -158,14 +158,14 @@ Signature:
 
 Implementation tips:
 - Vectorize the array path; avoid Python for-loops
-- Build SoA backend via get_fuzznum_registry() and from_arrays if applicable
+- Build SoA backend via get_registry_fuzztype() and from_arrays if applicable
 
 ### 4.4 `Registry`
 
-- `get_fuzzification_registry()` -> `FuzzificationRegistry`
-- `@register_fuzzification_strategy(mtype, method, is_default=False)`
+- `get_registry_fuzzify()` -> `FuzzificationRegistry`
+- `@register_fuzzify(mtype, method, is_default=False)`
 - `FuzzificationRegistry.register(...)`
-- `FuzzificationRegistry.get_strategy(mtype, method=None)`
+- `FuzzificationRegistry.get_fuzztype_strategy(mtype, method=None)`
 - `FuzzificationRegistry.get_default_method(mtype)`
 - `FuzzificationRegistry.get_available_mtypes()`
 - `FuzzificationRegistry.get_available_methods(mtype)`
@@ -188,7 +188,7 @@ Implementation tips:
 ## 5. qrofn Default Strategy: `QROFNFuzzificationStrategy`
 
 Location: fuzzlab/fuzztype/qrofs/fuzzify.py  
-Registration: `@register_fuzzification_strategy('qrofn', 'default')`
+Registration: `@register_fuzzify('qrofn', 'default')`
 
 Parameters:
 - `q: int = 1` (optional)
@@ -213,30 +213,31 @@ Stability:
 ### 6.1 Add a new strategy (for the same mtype)
 
 ````python
-from fuzzlab.fuzzify import FuzzificationStrategy, register_fuzzification_strategy
+from fuzzlab.fuzzify import FuzzificationStrategy, register_fuzzify
 from fuzzlab.membership import MembershipFunction
-from fuzzlab.core import Fuzznum, Fuzzarray, get_fuzznum_registry
+from fuzzlab.core import Fuzznum, Fuzzarray, get_registry_fuzztype
 import numpy as np
 
-@register_fuzzification_strategy('qrofn', 'my_method')
+
+@register_fuzzify('qrofn', 'my_method')
 class QROFNMyStrategy(FuzzificationStrategy):
-    def __init__(self, q: int = 2, alpha: float = 0.1):
-        super().__init__(q=q, alpha=alpha)
+  def __init__(self, q: int = 2, alpha: float = 0.1):
+    super().__init__(q=q, alpha=alpha)
 
-    def fuzzify_scalar(self, x: float, mf: MembershipFunction) -> Fuzznum:
-        md = mf.compute(x)
-        pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
-        nmd = np.maximum(1.0 - md**self.q - pi**self.q, 0.0)**(1.0/self.q)
-        return Fuzznum(mtype='qrofn', q=self.q).create(md=float(md), nmd=float(nmd))
+  def fuzzify_scalar(self, x: float, mf: MembershipFunction) -> Fuzznum:
+    md = mf.compute(x)
+    pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
+    nmd = np.maximum(1.0 - md ** self.q - pi ** self.q, 0.0) ** (1.0 / self.q)
+    return Fuzznum(mtype='qrofn', q=self.q).create(md=float(md), nmd=float(nmd))
 
-    def fuzzify_array(self, x: np.ndarray, mf: MembershipFunction) -> Fuzzarray:
-        md = mf.compute(x)
-        pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
-        nmd = np.maximum(1.0 - md**self.q - pi**self.q, 0.0)**(1.0/self.q)
+  def fuzzify_array(self, x: np.ndarray, mf: MembershipFunction) -> Fuzzarray:
+    md = mf.compute(x)
+    pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
+    nmd = np.maximum(1.0 - md ** self.q - pi ** self.q, 0.0) ** (1.0 / self.q)
 
-        backend_cls = get_fuzznum_registry().get_backend('qrofn')
-        backend = backend_cls.from_arrays(md=md, nmd=nmd, q=self.q)
-        return Fuzzarray(backend=backend, mtype='qrofn', q=self.q)
+    backend_cls = get_registry_fuzztype().get_fuzztype_backend('qrofn')
+    backend = backend_cls.from_arrays(md=md, nmd=nmd, q=self.q)
+    return Fuzzarray(backend=backend, mtype='qrofn', q=self.q)
 ````
 
 Usage:

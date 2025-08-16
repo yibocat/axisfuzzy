@@ -11,7 +11,7 @@ from typing import Optional, Any, Dict, Callable, Set, List, Tuple
 
 from ..config import get_config
 
-from .registry import get_fuzznum_registry
+from .registry import get_registry_fuzztype
 from .base import FuzznumStrategy
 
 
@@ -58,7 +58,7 @@ class Fuzznum:
         self._configure_strategy()
 
     def _configure_strategy(self):
-        registry = get_fuzznum_registry()
+        registry = get_registry_fuzztype()
 
         if self.mtype not in registry.strategies:
             available_mtypes = ', '.join(registry.strategies.keys())

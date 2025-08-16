@@ -24,7 +24,7 @@ Classes:
                         collects performance metrics.
 
 Functions:
-    get_operation_registry(): Returns the global singleton instance of `OperationScheduler`.
+    get_registry_operation(): Returns the global singleton instance of `OperationScheduler`.
 """
 import threading
 import time
@@ -298,7 +298,7 @@ class OperationMixin(ABC):
             return result
         finally:
             execution_time = time.perf_counter() - start_time
-            get_operation_registry()._record_operation_time(op_name, 'binary', execution_time)
+            get_registry_operation()._record_operation_time(op_name, 'binary', execution_time)
 
     def execute_unary_op_operand(self,
                                  strategy: Any,
@@ -334,7 +334,7 @@ class OperationMixin(ABC):
             return result
         finally:
             execution_time = time.perf_counter() - start_time
-            get_operation_registry()._record_operation_time(op_name, 'unary_operand', execution_time)
+            get_registry_operation()._record_operation_time(op_name, 'unary_operand', execution_time)
 
     def execute_unary_op_pure(self,
                               strategy: Any,
@@ -367,7 +367,7 @@ class OperationMixin(ABC):
             return result
         finally:
             execution_time = time.perf_counter() - start_time
-            get_operation_registry()._record_operation_time(op_name, 'unary_pure', execution_time)
+            get_registry_operation()._record_operation_time(op_name, 'unary_pure', execution_time)
 
     def execute_comparison_op(self,
                               strategy_1: Any,
@@ -403,7 +403,7 @@ class OperationMixin(ABC):
             return result
         finally:
             execution_time = time.perf_counter() - start_time
-            get_operation_registry()._record_operation_time(op_name, 'comparison', execution_time)
+            get_registry_operation()._record_operation_time(op_name, 'comparison', execution_time)
 
     def execute_fuzzarray_op(self,
                              fuzzarray_1: Any,
@@ -436,7 +436,7 @@ class OperationMixin(ABC):
             return result
         finally:
             execution_time = time.perf_counter() - start_time
-            get_operation_registry()._record_operation_time(op_name, 'fuzzarray', execution_time)
+            get_registry_operation()._record_operation_time(op_name, 'fuzzarray', execution_time)
 
     # ========= Actual operation execution method (subclasses need to override)==============
 
@@ -766,7 +766,7 @@ class OperationScheduler:
 _operation_registry = OperationScheduler()
 
 
-def get_operation_registry() -> OperationScheduler:
+def get_registry_operation() -> OperationScheduler:
     """
     Returns the global singleton instance of the `OperationScheduler`.
 
@@ -850,7 +850,7 @@ def register_operation(cls_or_eager=None, *, eager: bool = True):
         if eager:
             try:
                 operation_instance = cls()
-                get_operation_registry().register(operation_instance)
+                get_registry_operation().register(operation_instance)
             except Exception as e:
                 # 提供更详细的错误信息
                 raise RuntimeError(

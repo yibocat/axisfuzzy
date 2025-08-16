@@ -10,10 +10,10 @@ from typing import Union, Tuple, List
 
 import numpy as np
 
-from .registry import get_mixin_registry
+from .registry import get_registry_mixin
 from ..core import Fuzznum, Fuzzarray
 
-mixin = get_mixin_registry()
+mixin = get_registry_mixin()
 
 
 @mixin.register(name='reshape', target_classes=["Fuzzarray", "Fuzznum"], injection_type='both')

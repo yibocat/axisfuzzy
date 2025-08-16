@@ -248,7 +248,7 @@ class ExtensionRegistry:
 
         Examples:
             ```python
-            registry = get_extension_registry()
+            registry = get_registry_extension()
             # Assuming 'qrofn_distance' was registered for mtype 'qrofn'
             qrofn_impl = registry.get_function('distance', 'qrofn')
             # Assuming 'default_distance' was registered as default
@@ -299,7 +299,7 @@ class ExtensionRegistry:
 
         Examples:
             ```python
-            registry = get_extension_registry()
+            registry = get_registry_extension()
             qrofn_meta = registry.get_metadata('distance', 'qrofn')
             default_meta = registry.get_metadata('distance', None)
             ```
@@ -402,7 +402,7 @@ _extension_registry = None
 _extension_registry_lock = threading.RLock()
 
 
-def get_extension_registry() -> ExtensionRegistry:
+def get_registry_extension() -> ExtensionRegistry:
     """
     Retrieves the global singleton instance of `ExtensionRegistry`.
 
@@ -414,7 +414,7 @@ def get_extension_registry() -> ExtensionRegistry:
 
     Examples:
         ```python
-        registry = get_extension_registry()
+        registry = get_registry_extension()
         # Use the registry to register or retrieve functions
         ```
     """

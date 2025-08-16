@@ -6,13 +6,13 @@
 #  Software: FuzzLab
 
 from .base import FuzzificationStrategy
-from .registry import get_fuzzification_registry, register_fuzzification_strategy
+from .registry import get_registry_fuzzify, register_fuzzify
 from .fuzzifier import Fuzzifier, fuzzify
 
 __all__ = [
     'FuzzificationStrategy',
-    'get_fuzzification_registry',
-    'register_fuzzification_strategy',
+    'get_registry_fuzzify',
+    'register_fuzzify',
     'Fuzzifier',
     'fuzzify'
 ]

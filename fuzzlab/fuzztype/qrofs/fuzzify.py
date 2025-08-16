@@ -8,12 +8,12 @@ from typing import Any, Optional, Union
 
 import numpy as np
 
-from ...core import Fuzznum, Fuzzarray, get_fuzznum_registry
-from ...fuzzify import FuzzificationStrategy, register_fuzzification_strategy
+from ...core import Fuzznum, Fuzzarray, get_registry_fuzztype
+from ...fuzzify import FuzzificationStrategy, register_fuzzify
 from ...membership import MembershipFunction
 
 
-@register_fuzzification_strategy('qrofn', 'default')
+@register_fuzzify('qrofn', 'default')
 class QROFNFuzzificationStrategy(FuzzificationStrategy):
 
     def __init__(self, q: int = 1, pi: Optional[float] = None):
@@ -54,7 +54,7 @@ class QROFNFuzzificationStrategy(FuzzificationStrategy):
         nmds = self._compute_nmd_from_hesitation(mds, pi, q)
 
         # 直接创建FuzzarrayBackend（与文档一致的参数名）
-        registry = get_fuzznum_registry()
+        registry = get_registry_fuzztype()
         backend_cls = registry.get_backend(self.mtype)
         backend = backend_cls.from_arrays(mds=mds, nmds=nmds, q=q)
 

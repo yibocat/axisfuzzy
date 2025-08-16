@@ -162,7 +162,7 @@ _global_registry: Optional[RandomGeneratorRegistry] = None
 _global_lock = threading.RLock()
 
 
-def get_random_registry() -> RandomGeneratorRegistry:
+def get_registry_random() -> RandomGeneratorRegistry:
     """
     Get the global random generator registry instance.
 
@@ -179,21 +179,31 @@ def get_random_registry() -> RandomGeneratorRegistry:
     return _global_registry
 
 
-def register_random_generator(mtype: str, generator: 'BaseRandomGenerator') -> None:
+def register_random(cls: type[BaseRandomGenerator]) -> type[BaseRandomGenerator]:
     """
-    Register a random generator for a specific mtype.
+    A class decorator to register a random generator.
 
-    This is a convenience function that delegates to the global registry.
+    This decorator automatically instantiates the generator class and registers
+    it with the global registry based on the class's `mtype` attribute.
 
-    Args:
-        mtype: The fuzzy number type identifier.
-        generator: The generator instance to register.
+    Usage:
+        @register_random
+        class MyRandomGenerator(BaseRandomGenerator):
+            mtype = 'my_type'
+            ...
     """
-    registry = get_random_registry()
-    registry.register(mtype, generator)
+    if not hasattr(cls, 'mtype') or not cls.mtype:
+        raise TypeError(f"Class {cls.__name__} must have a non-empty 'mtype' attribute to be registered.")
+
+    # Instantiate the generator and register it
+    generator_instance = cls()
+    registry = get_registry_random()
+    registry.register(cls.mtype, generator_instance)
+
+    return cls
 
 
-def unregister_random_generator(mtype: str) -> bool:
+def unregister_random(mtype: str) -> bool:
     """
     Unregister a random generator for a specific mtype.
 
@@ -203,7 +213,7 @@ def unregister_random_generator(mtype: str) -> bool:
     Returns:
         True if successfully unregistered, False otherwise.
     """
-    registry = get_random_registry()
+    registry = get_registry_random()
     return registry.unregister(mtype)
 
 
@@ -217,22 +227,22 @@ def get_random_generator(mtype: str) -> Optional['BaseRandomGenerator']:
     Returns:
         The generator instance, or None if not registered.
     """
-    registry = get_random_registry()
+    registry = get_registry_random()
     return registry.get_generator(mtype)
 
 
-def list_registered_random_mtypes() -> List[str]:
+def list_registered_random() -> List[str]:
     """
     Get a list of all registered mtypes.
 
     Returns:
         A sorted list of registered mtype identifiers.
     """
-    registry = get_random_registry()
+    registry = get_registry_random()
     return registry.list_mtypes()
 
 
-def is_mtype_random_registered(mtype: str) -> bool:
+def is_registered_random(mtype: str) -> bool:
     """
     Check if a random generator is registered for the given mtype.
 
@@ -242,5 +252,13 @@ def is_mtype_random_registered(mtype: str) -> bool:
     Returns:
         True if registered, False otherwise.
     """
-    registry = get_random_registry()
+    registry = get_registry_random()
     return registry.is_registered(mtype)
+
+
+registry = get_registry_random
+register_random = register_random
+unregister_random = unregister_random
+get_generator = get_random_generator
+list_registered = list_registered_random
+is_registered = is_registered_random

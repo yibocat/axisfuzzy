@@ -47,7 +47,7 @@ FuzzLab 从高性能模糊数计算出发，提供了“将精确值转为模糊
 - `Registry`（策略注册表）
   - 维护 `(mtype, method)` → `StrategyClass` 的映射
   - 支持默认方法：每个 `mtype` 可设置默认 `method`
-  - 提供装饰器 `@register_fuzzification_strategy(mtype, method, is_default=False)`
+  - 提供装饰器 `@register_fuzzify(mtype, method, is_default=False)`
 
 - `Membership`（隶属函数）
   - 抽象基类 `MembershipFunction`:`compute(x)` → `[0,1]`
@@ -170,14 +170,14 @@ print(fuzz_engine([15.0, 20.0]))   # -> Fuzzarray
 
 实现建议：
 - 在数组路径中避免 Python for 循环，直接向量化计算 `md`、`nmd` 等组件
-- 通过 `get_fuzznum_registry()` 获取 `backend_cls` 并调用 `from_arrays` 构建后端
+- 通过 `get_registry_fuzztype()` 获取 `backend_cls` 并调用 `from_arrays` 构建后端
 
 ### 4.4 `Registry`（注册表）
 
-- `get_fuzzification_registry()` -> `FuzzificationRegistry`
-- `register_fuzzification_strategy(mtype, method, is_default=False)`：装饰器
+- `get_registry_fuzzify()` -> `FuzzificationRegistry`
+- `register_fuzzify(mtype, method, is_default=False)`：装饰器
 -` FuzzificationRegistry.register(...)`
-- `FuzzificationRegistry.get_strategy(mtype, method=None)`
+- `FuzzificationRegistry.get_fuzztype_strategy(mtype, method=None)`
 - `FuzzificationRegistry.get_default_method(mtype)`
 - `FuzzificationRegistry.get_available_mtypes()`
 - `FuzzificationRegistry.get_available_methods(mtype)`
@@ -202,7 +202,7 @@ print(fuzz_engine([15.0, 20.0]))   # -> Fuzzarray
 ## 5. `qrofn` 默认策略详解：`QROFNFuzzificationStrategy`
 
 位置：`fuzzlab/fuzztype/qrofs/fuzzify.py`  
-注册：`@register_fuzzification_strategy('qrofn', 'default')`
+注册：`@register_fuzzify('qrofn', 'default')`
 
 参数：
 - `q: int = 1`（可选）
@@ -215,7 +215,7 @@ print(fuzz_engine([15.0, 20.0]))   # -> Fuzzarray
 
 实现要点：
 - 标量路径：返回 `Fuzznum`
-- 数组路径：向量化计算 `md/nmd`，使用 `get_fuzznum_registry()` -> `backend_cls.from_arrays(md, nmd, q)` 构建 SoA 后端，再返回 `Fuzzarray`
+- 数组路径：向量化计算 `md/nmd`，使用 `get_registry_fuzztype()` -> `backend_cls.from_arrays(md, nmd, q)` 构建 SoA 后端，再返回 `Fuzzarray`
 
 异常与数值稳定：
 - 若未提供 `pi`：抛出 ValueError
@@ -232,31 +232,32 @@ print(fuzz_engine([15.0, 20.0]))   # -> Fuzzarray
 
 ````python
 # 示例：新增 qrofn 的另一策略（示意）
-from fuzzlab.fuzzify import FuzzificationStrategy, register_fuzzification_strategy
+from fuzzlab.fuzzify import FuzzificationStrategy, register_fuzzify
 from fuzzlab.membership import MembershipFunction
-from fuzzlab.core import Fuzznum, Fuzzarray, get_fuzznum_registry
+from fuzzlab.core import Fuzznum, Fuzzarray, get_registry_fuzztype
 import numpy as np
 
-@register_fuzzification_strategy('qrofn', 'my_method')
+
+@register_fuzzify('qrofn', 'my_method')
 class QROFNMyStrategy(FuzzificationStrategy):
-    def __init__(self, q: int = 2, alpha: float = 0.1):
-        super().__init__(q=q, alpha=alpha)
+  def __init__(self, q: int = 2, alpha: float = 0.1):
+    super().__init__(q=q, alpha=alpha)
 
-    def fuzzify_scalar(self, x: float, mf: MembershipFunction) -> Fuzznum:
-        md = mf.compute(x)
-        # 示例：用 alpha 导出一个“自定义犹豫度”，再计算 nmd
-        pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
-        nmd = np.maximum(1.0 - md**self.q - pi**self.q, 0.0)**(1.0/self.q)
-        return Fuzznum(mtype='qrofn', q=self.q).create(md=float(md), nmd=float(nmd))
+  def fuzzify_scalar(self, x: float, mf: MembershipFunction) -> Fuzznum:
+    md = mf.compute(x)
+    # 示例：用 alpha 导出一个“自定义犹豫度”，再计算 nmd
+    pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
+    nmd = np.maximum(1.0 - md ** self.q - pi ** self.q, 0.0) ** (1.0 / self.q)
+    return Fuzznum(mtype='qrofn', q=self.q).create(md=float(md), nmd=float(nmd))
 
-    def fuzzify_array(self, x: np.ndarray, mf: MembershipFunction) -> Fuzzarray:
-        md = mf.compute(x)
-        pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
-        nmd = np.maximum(1.0 - md**self.q - pi**self.q, 0.0)**(1.0/self.q)
+  def fuzzify_array(self, x: np.ndarray, mf: MembershipFunction) -> Fuzzarray:
+    md = mf.compute(x)
+    pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
+    nmd = np.maximum(1.0 - md ** self.q - pi ** self.q, 0.0) ** (1.0 / self.q)
 
-        backend_cls = get_fuzznum_registry().get_backend('qrofn')
-        backend = backend_cls.from_arrays(md=md, nmd=nmd, q=self.q)
-        return Fuzzarray(backend=backend, mtype='qrofn', q=self.q)
+    backend_cls = get_registry_fuzztype().get_fuzztype_backend('qrofn')
+    backend = backend_cls.from_arrays(md=md, nmd=nmd, q=self.q)
+    return Fuzzarray(backend=backend, mtype='qrofn', q=self.q)
 ````
 
 使用：

@@ -12,7 +12,7 @@ from ..core import Fuzznum, Fuzzarray
 
 # --- Public Functions ---
 
-def get_mixin_registry() -> MixinFunctionRegistry: ...
+def get_registry_mixin() -> MixinFunctionRegistry: ...
 
 # --- Dynamically Injected Top-Level Functions ---
 # These signatures should match the ones in the top-level __init__.pyi

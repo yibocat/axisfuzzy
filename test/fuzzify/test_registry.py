@@ -7,8 +7,8 @@
 
 import pytest
 from fuzzlab.fuzzify.registry import (
-    get_fuzzification_registry,
-    register_fuzzification_strategy,
+    get_registry_fuzzify,
+    register_fuzzify,
     FuzzificationRegistry
 )
 from fuzzlab.fuzzify.base import FuzzificationStrategy
@@ -32,8 +32,8 @@ class MockStrategy(FuzzificationStrategy):
 
     def fuzzify_array(self, x, mf=None):
         # 简单模拟实现
-        from fuzzlab.core import Fuzzarray, get_fuzznum_registry
-        registry = get_fuzznum_registry()
+        from fuzzlab.core import Fuzzarray, get_registry_fuzztype
+        registry = get_registry_fuzztype()
         backend_cls = registry.get_backend('qrofn')
         backend = backend_cls.from_arrays(md=np.array([0.5]), nmd=np.array([0.3]), q=2)
         return Fuzzarray(backend=backend, mtype='qrofn', q=2)
@@ -43,8 +43,8 @@ class TestFuzzificationRegistry:
 
     def test_registry_singleton(self):
         """测试注册表是单例"""
-        registry1 = get_fuzzification_registry()
-        registry2 = get_fuzzification_registry()
+        registry1 = get_registry_fuzzify()
+        registry2 = get_registry_fuzzify()
         assert registry1 is registry2
         assert isinstance(registry1, FuzzificationRegistry)
 
@@ -178,7 +178,7 @@ class TestRegisterDecorator:
         """测试装饰器基本功能"""
         registry = FuzzificationRegistry()
 
-        @register_fuzzification_strategy('decorator_type', 'decorator_method')
+        @register_fuzzify('decorator_type', 'decorator_method')
         class DecoratorStrategy(FuzzificationStrategy):
             def fuzzify_scalar(self, x, mf=None):
                 pass
@@ -186,21 +186,21 @@ class TestRegisterDecorator:
                 pass
 
         # 注意：装饰器会注册到全局注册表，这里我们检查全局注册表
-        global_registry = get_fuzzification_registry()
+        global_registry = get_registry_fuzzify()
         strategy_cls = global_registry.get_strategy('decorator_type', 'decorator_method')
         assert strategy_cls is DecoratorStrategy
 
     def test_decorator_with_default(self):
         """测试装饰器设置默认策略"""
 
-        @register_fuzzification_strategy('decorator_type2', 'default_via_decorator', is_default=True)
+        @register_fuzzify('decorator_type2', 'default_via_decorator', is_default=True)
         class DefaultDecoratorStrategy(FuzzificationStrategy):
             def fuzzify_scalar(self, x, mf=None):
                 pass
             def fuzzify_array(self, x, mf=None):
                 pass
 
-        global_registry = get_fuzzification_registry()
+        global_registry = get_registry_fuzzify()
         default_method = global_registry.get_default_method('decorator_type2')
         assert default_method == 'default_via_decorator'
 
@@ -210,7 +210,7 @@ class TestBuiltinStrategies:
 
     def test_qrofn_default_registered(self):
         """测试 qrofn 默认策略已注册"""
-        registry = get_fuzzification_registry()
+        registry = get_registry_fuzzify()
 
         # 检查 qrofn 默认策略存在
         strategy_cls = registry.get_strategy('qrofn', 'default')
@@ -226,7 +226,7 @@ class TestBuiltinStrategies:
 
     def test_qrofn_in_available_types(self):
         """测试 qrofn 在可用类型列表中"""
-        registry = get_fuzzification_registry()
+        registry = get_registry_fuzzify()
 
         mtypes = registry.get_available_mtypes()
         assert 'qrofn' in mtypes

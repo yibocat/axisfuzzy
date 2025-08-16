@@ -8,7 +8,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
-from ....core import OperationTNorm, get_operation_registry, Fuzznum, Fuzzarray
+from ....core import OperationTNorm, get_registry_operation, Fuzznum, Fuzzarray
 
 
 def _qrofn_sum(arr: Union[Fuzznum, Fuzzarray],
@@ -26,7 +26,7 @@ def _qrofn_sum(arr: Union[Fuzznum, Fuzzarray],
         else:
             return arr.backend.get_fuzznum_view(0)
 
-    op_registry = get_operation_registry()
+    op_registry = get_registry_operation()
     norm_type, params = op_registry.get_default_t_norm_config()
     tnorm = OperationTNorm(norm_type=norm_type, q=arr.q, **params)
 
@@ -150,7 +150,7 @@ def _qrofn_prod(arr: Union[Fuzznum, Fuzzarray],
         else:
             return arr.backend.get_fuzznum_view(0)
 
-    op_registry = get_operation_registry()
+    op_registry = get_registry_operation()
     norm_type, params = op_registry.get_default_t_norm_config()
     tnorm = OperationTNorm(norm_type=norm_type, q=arr.q, **params)
 

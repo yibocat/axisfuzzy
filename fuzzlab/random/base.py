@@ -14,11 +14,13 @@ from ..core import Fuzznum, Fuzzarray
 
 class BaseRandomGenerator(ABC):
 
-    @property
-    @abstractmethod
-    def mtype(self) -> str:
-        """The fuzzy number type (mtype) this generator handles."""
-        pass
+    mtype: str = 'unknown'
+
+    # @property
+    # @abstractmethod
+    # def mtype(self) -> str:
+    #     """The fuzzy number type (mtype) this generator handles."""
+    #     pass
 
     @abstractmethod
     def get_default_parameters(self) -> Dict[str, Any]:

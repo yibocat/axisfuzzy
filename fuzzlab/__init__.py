@@ -21,54 +21,106 @@ from . import fuzzify
 from . import membership
 from . import mixin
 from . import random
-from . import fuzztype         # 必须导入以触发 mtype 的自动注册
+from . import fuzztype  # 确保所有 mtype 实现被加载
 
 # 2. 从子模块中显式导入需要提升到顶层命名空间的公共 API。
 from .config import (
     get_config,
     set_config,
-    Config
+    load_config_file,
+    save_config_file,
+    reset_config
 )
 from .core import (
-    Fuzznum,
-    fuzznum,
-    Fuzzarray,
-    fuzzarray,
-    operate
+    FuzznumStrategy,
+    FuzzarrayBackend,
+    Fuzznum, fuzznum,
+    Fuzzarray, fuzzarray,
+    operate,
+    OperationTNorm,
+
+    get_registry_fuzztype,
+    get_registry_operation,
+
+    get_fuzztype_mtypes,
+    get_fuzztype_strategy,
+    get_fuzztype_backend,
+
+    register_strategy,
+    register_backend,
+    register_operation,
+    register_fuzztype,
+    # register_batch_fuzztypes,
+    unregister_fuzztype
 )
 from .extension import (
+    get_registry_extension,
     extension,
     batch_extension,
-    apply_extensions,
-    get_extension_registry
+    apply_extensions
 )
-from .fuzzify import fuzzify, Fuzzifier
-from .membership import create_mf, MembershipFunction
-from .mixin import apply_mixins, get_mixin_registry
+
+from .fuzzify import (
+    FuzzificationStrategy,
+
+    fuzzify,
+    get_registry_fuzzify,
+    register_fuzzify
+)
+
+from .membership import create_mf, get_mf_class
+from .mixin import apply_mixins, get_registry_mixin
 
 # 3. 准备 __all__ 列表，明确声明本模块的公共 API。
 #    - 首先包含所有静态导入的名称。
 #    - 然后动态地从 mixin 系统获取将被注入的函数名。
 _static_api = [
     # config
-    'get_config', 'set_config', 'Config',
+    'get_config',
+    'set_config',
+    'load_config_file',
+    'save_config_file',
+    'reset_config',
     # core
-    'Fuzznum', 'Fuzzarray', 'fuzznum', 'fuzzarray', 'operate',
-    # extension decorators
-    'extension', 'batch_extension',
+    'FuzznumStrategy',
+    'FuzzarrayBackend',
+    'Fuzznum', 'fuzznum',
+    'Fuzzarray', 'fuzzarray',
+    'operate',
+    'OperationTNorm',
+    'get_registry_fuzztype',
+    'get_registry_operation',
+    'get_fuzztype_mtypes',
+    'get_fuzztype_strategy',
+    'get_fuzztype_backend',
+    'register_strategy',
+    'register_backend',
+    'register_operation',
+    'register_fuzztype',
+    'unregister_fuzztype',
+    # extension
+    'get_registry_extension',
+    'extension',
+    'batch_extension',
     # fuzzify
-    'fuzzify', 'Fuzzifier',
+    'FuzzificationStrategy',
+    'fuzzify',
+    'get_registry_fuzzify',
+    'register_fuzzify',
     # membership
-    'create_mf', 'MembershipFunction',
+    'create_mf',
+    'get_mf_class',
+    # mixin
+    'get_registry_mixin'
     # random (as a module)
     'random',
 ]
 
 # 从 mixin 系统获取动态函数名
-_mixin_funcs = get_mixin_registry().get_top_level_function_names()
+_mixin_funcs = get_registry_mixin().get_top_level_function_names()
 
 # 从 extension 系统获取动态函数名
-_extension_funcs = get_extension_registry().get_top_level_function_names()
+_extension_funcs = get_registry_extension().get_top_level_function_names()
 
 __all__ = sorted(list(set(_static_api + _mixin_funcs + _extension_funcs)))
 
@@ -83,6 +135,4 @@ del _mixin_funcs
 del _extension_funcs
 del apply_extensions
 del apply_mixins
-del get_extension_registry
-del get_mixin_registry
 

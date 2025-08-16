@@ -6,7 +6,7 @@
 #  Software: FuzzLab
 from typing import Tuple, Union, Optional
 
-from ....core import Fuzznum, Fuzzarray, get_backend
+from ....core import Fuzznum, Fuzzarray, get_fuzztype_backend
 
 
 def _qrofn_empty(shape: Optional[Tuple[int, ...]] = None,
@@ -16,7 +16,7 @@ def _qrofn_empty(shape: Optional[Tuple[int, ...]] = None,
     if shape is None:
         return Fuzznum(mtype='qrofn', q=q).create(md=0., nmd=0.)
 
-    backend_cls = get_backend('qrofn')
+    backend_cls = get_fuzztype_backend('qrofn')
     backend = backend_cls(shape=shape, q=q)
     return Fuzzarray(backend=backend)
 
@@ -28,7 +28,7 @@ def _qrofn_poss(shape: Optional[Tuple[int, ...]] = None,
     if shape is None:
         return Fuzznum(mtype='qrofn', q=q).create(md=1.0, nmd=0.0)
 
-    backend_cls = get_backend('qrofn')
+    backend_cls = get_fuzztype_backend('qrofn')
     backend = backend_cls(shape=shape, q=q)
     backend.fill_from_values(1.0, 0.0)
     return Fuzzarray(backend=backend)
@@ -41,7 +41,7 @@ def _qrofn_negs(shape: Optional[Tuple[int, ...]] = None,
     if shape is None:
         return Fuzznum(mtype='qrofn', q=q).create(md=0.0, nmd=1.0)
 
-    backend_cls = get_backend('qrofn')
+    backend_cls = get_fuzztype_backend('qrofn')
     backend = backend_cls(shape=shape, q=q)
     backend.fill_from_values(0.0, 1.0)
     return Fuzzarray(backend=backend)
@@ -60,7 +60,7 @@ def _qrofn_full(fill_value: Fuzznum,
     if fill_value.q != q:
         raise ValueError(f"Q-rung mismatch: array q is {q}, but fill_value q is {fill_value.q}")
 
-    backend_cls = get_backend('qrofn')
+    backend_cls = get_fuzztype_backend('qrofn')
     backend = backend_cls(shape=shape, q=q)
     backend.fill_from_values(fill_value.md, fill_value.nmd)
     return Fuzzarray(backend=backend)

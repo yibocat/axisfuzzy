@@ -51,7 +51,7 @@ from ...config import get_config
 from ...core import (
     Fuzznum,
     Fuzzarray,
-    get_backend,
+    get_fuzztype_backend,
     OperationTNorm,
     OperationMixin,
     register_operation
@@ -171,7 +171,7 @@ class QROFNAddition(OperationMixin):
         md_res = tnorm.t_conorm(mds1, mds2)
         nmd_res = tnorm.t_norm(nmds1, nmds2)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -297,7 +297,7 @@ class QROFNSubtraction(OperationMixin):
         np.nan_to_num(md_res, copy=False, nan=0.0)
         np.nan_to_num(nmd_res, copy=False, nan=1.0)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=q)
         return Fuzzarray(backend=new_backend)
 
@@ -367,7 +367,7 @@ class QROFNMultiplication(OperationMixin):
         md_res = tnorm.t_norm(mds1, mds2)
         nmd_res = tnorm.t_conorm(nmds1, nmds2)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -488,7 +488,7 @@ class QROFNDivision(OperationMixin):
         np.nan_to_num(md_res, copy=False, nan=1.0)
         np.nan_to_num(nmd_res, copy=False, nan=0.0)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=q)
         return Fuzzarray(backend=new_backend)
 
@@ -555,7 +555,7 @@ class QROFNPower(OperationMixin):
         md_res = tnorm.f_inv_func(operand * tnorm.f_func(mds))
         nmd_res = tnorm.g_inv_func(operand * tnorm.g_func(nmds))
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -622,7 +622,7 @@ class QROFNTimes(OperationMixin):
         md_res = tnorm.f_inv_func(operand * tnorm.f_func(mds))
         nmd_res = tnorm.g_inv_func(operand * tnorm.g_func(nmds))
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -689,7 +689,7 @@ class QROFNExponential(OperationMixin):
         md_res = tnorm.f_inv_func(operand * tnorm.f_func(mds))
         nmd_res = tnorm.g_inv_func(operand * tnorm.g_func(nmds))
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -756,7 +756,7 @@ class QROFNLogarithmic(OperationMixin):
         md_res = tnorm.f_inv_func(tnorm.f_func(mds) / operand)
         nmd_res = tnorm.g_inv_func(tnorm.g_func(nmds) / operand)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1168,7 +1168,7 @@ class QROFNIntersection(OperationMixin):
         md_res = tnorm.t_norm(mds1, mds2)
         nmd_res = tnorm.t_conorm(nmds1, nmds2)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1238,7 +1238,7 @@ class QROFNUnion(OperationMixin):
         md_res = tnorm.t_conorm(mds1, mds2)
         nmd_res = tnorm.t_norm(nmds1, nmds2)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1300,7 +1300,7 @@ class QROFNComplement(OperationMixin):
         md_res = nmds.copy()
         nmd_res = mds.copy()
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1367,7 +1367,7 @@ class QROFNImplication(OperationMixin):
         md_res = tnorm.t_conorm(nmds1, mds2)
         nmd_res = tnorm.t_norm(mds1, nmds2)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1441,7 +1441,7 @@ class QROFNEquivalence(OperationMixin):
             tnorm.t_norm(mds1, nmds2),
             tnorm.t_norm(mds2, nmds1))
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1507,7 +1507,7 @@ class QROFNDifference(OperationMixin):
         md_res = tnorm.t_norm(mds1, nmds2)
         nmd_res = tnorm.t_conorm(nmds1, mds2)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1585,7 +1585,7 @@ class QROFNSymmetricDifference(OperationMixin):
             tnorm.t_conorm(mds1, nmds2),
             tnorm.t_conorm(nmds1, mds2))
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1649,7 +1649,7 @@ class QROFNMatmul(OperationMixin):
         new_md = np.asarray(new_md, dtype=np.float64)
         new_nmd = np.asarray(new_nmd, dtype=np.float64)
 
-        backend_cls = get_backend('qrofn')
+        backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(new_md, new_nmd, q=fuzzarray_1.q)
         return Fuzzarray(backend=new_backend)
 

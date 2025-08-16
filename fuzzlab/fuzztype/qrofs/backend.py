@@ -4,16 +4,17 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-from typing import Any, Tuple
+from typing import Any, Tuple, cast
 
 import numpy as np
 
-from ...core import Fuzznum, FuzzarrayBackend
+from ...core import Fuzznum, FuzzarrayBackend, register_backend
 from ...config import get_config
 
 from .qrofn import QROFNStrategy
 
 
+@register_backend
 class QROFNBackend(FuzzarrayBackend):
     """
     SoA (Struct of Arrays) backend for q-rung orthopair fuzzy numbers.
@@ -23,6 +24,17 @@ class QROFNBackend(FuzzarrayBackend):
     """
 
     mtype = "qrofn"
+
+    def __init__(self, shape: Tuple[int, ...], q: int = 1, **kwargs):
+        """
+        Initializes the QROFNBackend.
+
+        Args:
+            shape: The shape of the array.
+            q: The q-rung parameter.
+            **kwargs: Additional keyword arguments.
+        """
+        super().__init__(shape, q, **kwargs)
 
     def _initialize_arrays(self):
         """Initialize mds and nmds arrays for QROFN data."""
@@ -61,7 +73,7 @@ class QROFNBackend(FuzzarrayBackend):
         new_backend = QROFNBackend(self.shape, self.q, **self.kwargs)
         new_backend.mds = self.mds.copy()
         new_backend.nmds = self.nmds.copy()
-        return new_backend
+        return cast('QROFNBackend', new_backend)
 
     def slice_view(self, key) -> 'QROFNBackend':
         """Create a view of the backend with the given slice."""
@@ -69,7 +81,7 @@ class QROFNBackend(FuzzarrayBackend):
         new_backend = QROFNBackend(new_shape, self.q, **self.kwargs)
         new_backend.mds = self.mds[key]
         new_backend.nmds = self.nmds[key]
-        return new_backend
+        return cast('QROFNBackend', new_backend)
 
     def format_elements(self, format_spec: str = "") -> np.ndarray:
         """
@@ -80,12 +92,14 @@ class QROFNBackend(FuzzarrayBackend):
         precision = get_config().DEFAULT_PRECISION
         if format_spec in ('p', 'j', 'r'):
             out = np.empty(self.shape, dtype=object)
+            # 创建一个策略实例用于格式化
+            strategy_formatter = QROFNStrategy(q=self.q)
             it = np.nditer(self.mds, flags=['multi_index'])
             while not it.finished:
                 idx = it.multi_index
                 md = float(self.mds[idx])
                 nmd = float(self.nmds[idx])
-                out[idx] = QROFNStrategy.format_from_components(md, nmd, format_spec, self.q)
+                out[idx] = strategy_formatter.format_from_components(md, nmd, format_spec)  # type: ignore
                 it.iternext()
             return out
 

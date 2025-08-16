@@ -11,8 +11,8 @@ import numpy as np
 from ..config import get_config
 from .fuzznums import Fuzznum
 from .backend import FuzzarrayBackend
-from .registry import get_fuzznum_registry
-from .operation import get_operation_registry, OperationMixin
+from .registry import get_registry_fuzztype
+from .operation import get_registry_operation, OperationMixin
 from .triangular import OperationTNorm
 
 
@@ -58,7 +58,7 @@ class Fuzzarray:
 
     def _create_backend_from_data(self, data, shape: Optional[Tuple[int, ...]]) -> FuzzarrayBackend:
         """Create backend from input data"""
-        registry = get_fuzznum_registry()
+        registry = get_registry_fuzztype()
         backend_cls = registry.get_backend(self._mtype)
         if backend_cls is None:
             raise ValueError(f"No backend registered for mtype '{self._mtype}'")
@@ -229,7 +229,7 @@ class Fuzzarray:
         Returns:
             Result of operation (Fuzzarray for arithmetic, ndarray for comparison)
         """
-        registry = get_operation_registry()
+        registry = get_registry_operation()
         op = registry.get_operation(op_name, self.mtype)
         if op is None:
             raise NotImplementedError(
@@ -506,7 +506,7 @@ class Fuzzarray:
         self._q = state['q']
         self._kwargs = state['kwargs']
 
-        registry = get_fuzznum_registry()
+        registry = get_registry_fuzztype()
         backend_cls = registry.get_backend(self._mtype)
 
         # Reconstruct backend from its state

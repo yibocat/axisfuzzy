@@ -24,13 +24,13 @@ extension system, typically called once during FuzzLab's library loading.
 import warnings
 from typing import Dict, Any
 
-from .registry import get_extension_registry
+from .registry import get_registry_extension
 from .dispatcher import get_extension_dispatcher
 from .injector import get_extension_injector
 from .decorator import extension, batch_extension
 
 __all__ = [
-    'get_extension_registry',
+    'get_registry_extension',
     'get_extension_dispatcher',
     'get_extension_injector',
     'extension',

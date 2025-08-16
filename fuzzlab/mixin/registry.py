@@ -18,10 +18,10 @@ Example:
     To register a function `my_func` that should be an instance method of `Fuzznum`
     and also a top-level function in the `fuzzlab` module:
 
-    >>> from fuzzlab.mixin.registry import get_mixin_registry
-    >>> registry = get_mixin_registry()
+    >>> from fuzzlab.mixin.registry import get_registry_mixin
+    >>> registry = get_registry_mixin()
 
-    >>> @registry.register(name='my_func', target_classes=['Fuzznum'], injection_type='both')
+    >>> @registry.register_mixin(name='my_func', target_classes=['Fuzznum'], injection_type='both')
     ... def _my_func_impl(self, arg1, arg2):
     ...     # Implementation details
     ...     return f"Called my_func on {self.__class__.__name__} with {arg1}, {arg2}"
@@ -108,21 +108,21 @@ class MixinFunctionRegistry:
         Examples:
             Registering a function as an instance method for `Fuzznum` and `Fuzzarray`:
 
-            >>> @registry.register(name='is_normalized', target_classes=['Fuzznum', 'Fuzzarray'], injection_type='instance_function')
+            >>> @registry.register_mixin(name='is_normalized', target_classes=['Fuzznum', 'Fuzzarray'], injection_type='instance_function')
             ... def _is_normalized_impl(self):
             ...     # Check if fuzzy number/array is normalized
             ...     return True
 
             Registering a function as a top-level function only:
 
-            >>> @registry.register(name='create_identity', injection_type='top_level_function')
+            >>> @registry.register_mixin(name='create_identity', injection_type='top_level_function')
             ... def _create_identity_impl(mtype: str):
             ...     # Create an identity fuzzy number of a given mtype
             ...     return Fuzznum(mtype=mtype, md=1.0, nmd=0.0)
 
             Registering a function as both an instance method and a top-level function:
 
-            >>> @registry.register(name='to_array', target_classes=['Fuzznum'], injection_type='both')
+            >>> @registry.register_mixin(name='to_array', target_classes=['Fuzznum'], injection_type='both')
             ... def _to_array_impl(self):
             ...     # Convert a Fuzznum to a Fuzzarray
             ...     return Fuzzarray([self])
@@ -180,7 +180,7 @@ class MixinFunctionRegistry:
             >>> class_map = {"Fuzznum": Fuzznum, "Fuzzarray": Fuzzarray}
             >>> module_namespace = {} # Simulate a module's globals()
 
-            >>> registry = get_mixin_registry()
+            >>> registry = get_registry_mixin()
             >>> # (Register functions using @registry.register as shown in register method's example)
 
             >>> registry.build_and_inject(class_map, module_namespace)
@@ -237,7 +237,7 @@ class MixinFunctionRegistry:
                 `'top_level_function'` or `'both'`.
 
         Example:
-            >>> registry = get_mixin_registry()
+            >>> registry = get_registry_mixin()
             >>> # (Register some functions)
             >>> registry.register(name='my_func_tl', injection_type='top_level_function')(lambda x: x)
             >>> registry.register(name='my_func_both', target_classes=['Fuzznum'], injection_type='both')(lambda self: self)
@@ -259,7 +259,7 @@ class MixinFunctionRegistry:
 _registry = MixinFunctionRegistry()
 
 
-def get_mixin_registry():
+def get_registry_mixin():
     """
     Returns the global `MixinFunctionRegistry` instance.
 
@@ -271,19 +271,19 @@ def get_mixin_registry():
         MixinFunctionRegistry: The single, global instance of the registry.
 
     Example:
-        >>> registry = get_mixin_registry()
+        >>> registry = get_registry_mixin()
         >>> # Now 'registry' can be used to register functions or trigger injection.
     """
     return _registry
 
 
-def register(name: str,
-             target_classes: Optional[List[str]] = None,
-             injection_type: Literal['instance_function', 'top_level_function', 'both'] = 'both') -> Callable:
+def register_mixin(name: str,
+                   target_classes: Optional[List[str]] = None,
+                   injection_type: Literal['instance_function', 'top_level_function', 'both'] = 'both') -> Callable:
     """
     Top-level decorator to register a function for dynamic injection.
 
-    This is a convenience wrapper around `get_mixin_registry().register`.
+    This is a convenience wrapper around `get_registry_mixin().register`.
 
     Args:
         name (str): The unique name under which the function will be registered.
@@ -293,4 +293,4 @@ def register(name: str,
     Returns:
         Callable: A decorator for the function implementation.
     """
-    return get_mixin_registry().register(name, target_classes, injection_type)
+    return get_registry_mixin().register(name, target_classes, injection_type)

@@ -20,7 +20,7 @@ or functions.
 
 from typing import Dict, Type, Any
 
-from .registry import get_extension_registry
+from .registry import get_registry_extension
 from .dispatcher import get_extension_dispatcher
 
 
@@ -42,7 +42,7 @@ class ExtensionInjector:
         It obtains references to the global `ExtensionRegistry` and
         `ExtensionDispatcher` instances.
         """
-        self.registry = get_extension_registry()
+        self.registry = get_registry_extension()
         self.dispatcher = get_extension_dispatcher()
 
     def inject_all(self, class_map: Dict[str, Type], module_namespace: Dict[str, Any]):

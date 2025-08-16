@@ -9,9 +9,10 @@ from typing import Optional, Any
 import numpy as np
 
 from ...config import get_config
-from ...core import FuzznumStrategy
+from ...core import FuzznumStrategy, register_strategy
 
 
+@register_strategy
 class QROFNStrategy(FuzznumStrategy):
     mtype = 'qrofn'
     md: Optional[float] = None
@@ -51,9 +52,8 @@ class QROFNStrategy(FuzznumStrategy):
         super()._validate()
         self._fuzz_constraint()
 
-    @classmethod
-    def format_from_components(cls, md: float, nmd: float,
-                               format_spec: str = "", q: Optional[int] = None) -> str:
+    def format_from_components(self, md: float, nmd: float,
+                               format_spec: str = "") -> str:
         if md is None and nmd is None:
             return "<>"
         precision = get_config().DEFAULT_PRECISION
@@ -61,7 +61,7 @@ class QROFNStrategy(FuzznumStrategy):
             return f"({md}, {nmd})"
         if format_spec == 'j':
             import json
-            return json.dumps({'mtype': cls.mtype, 'md': md, 'nmd': nmd, 'q': q})
+            return json.dumps({'mtype': self.mtype, 'md': md, 'nmd': nmd, 'q': self.q})
         # 'r' 当前等同默认
 
         def strip_trailing_zeros(x: float) -> str:
@@ -85,4 +85,4 @@ class QROFNStrategy(FuzznumStrategy):
         if format_spec and format_spec not in ['r', 'p', 'j']:
             return format(self.str(), format_spec)
 
-        return self.format_from_components(self.md, self.nmd, format_spec, self.q)
+        return self.format_from_components(self.md, self.nmd, format_spec)

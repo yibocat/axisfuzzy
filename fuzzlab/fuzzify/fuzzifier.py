@@ -9,7 +9,7 @@ from typing import Optional, Union, Any
 
 import numpy as np
 
-from .registry import get_fuzzification_registry
+from .registry import get_registry_fuzzify
 from ..core import Fuzzarray, Fuzznum
 from ..config import get_config
 from ..membership import MembershipFunction, get_mf_class
@@ -41,7 +41,7 @@ class Fuzzifier:
         """
         # 1. 确定 mtype 和 method
         self.mtype = mtype or get_config().DEFAULT_MTYPE
-        registry = get_fuzzification_registry()
+        registry = get_registry_fuzzify()
         self.method = method or registry.get_default_method(self.mtype)
 
         if self.method is None:

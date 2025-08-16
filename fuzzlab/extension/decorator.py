@@ -21,7 +21,7 @@ and `Fuzzarray` classes or the `fuzzlab` top-level namespace by the
 
 from typing import Optional, Union, List, Literal
 
-from .registry import get_extension_registry
+from .registry import get_registry_extension
 
 
 def extension(name: str,
@@ -113,7 +113,7 @@ def extension(name: str,
             return Fuzznum(md=md, nmd=nmd, q=q, mtype='qrofn')
         ```
     """
-    registry = get_extension_registry()
+    registry = get_registry_extension()
     return registry.register(
         name=name,
         mtype=mtype,
@@ -180,7 +180,7 @@ def batch_extension(registrations: List[dict]):
         ```
     """
     def decorator(func):
-        registry = get_extension_registry()
+        registry = get_registry_extension()
         for reg in registrations:
             registry.register(**reg)(func)
         return func

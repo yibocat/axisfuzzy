@@ -89,4 +89,4 @@ def create_mf(name: str, **mf_kwargs: Any) -> Tuple[MembershipFunction, Dict[str
     # 创建实例
     instance = mf_cls(**mf_init_kwargs)
 
-    return instance, remaining_kwargs
+    return instance, remaining_kwargs   # type: ignore

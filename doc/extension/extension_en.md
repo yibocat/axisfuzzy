@@ -114,7 +114,7 @@ Here's what happens:
 
 2.  **Registration Process**:
     *   When the `_func.py` module is imported (typically during FuzzLab initialization), the `@extension` decorator executes.
-    *   It calls `get_extension_registry().register(...)`, passing the `qrofn_distance` function and its metadata.
+    *   It calls `get_registry_extension().register(...)`, passing the `qrofn_distance` function and its metadata.
     *   The `ExtensionRegistry` stores this function and its associated metadata, making it available for lookup.
 
 3.  **Injection Process**:

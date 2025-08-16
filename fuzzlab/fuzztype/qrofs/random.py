@@ -17,12 +17,13 @@ from typing import Any, Dict, Tuple
 import numpy as np
 
 from ...core import Fuzznum, Fuzzarray
-from ...random import register
+from ...random import register_random
 from ...random.base import ParameterizedRandomGenerator
 
 from .backend import QROFNBackend
 
 
+@register_random
 class QROFNRandomGenerator(ParameterizedRandomGenerator):
     """
     High-performance random generator for q-rung orthopair fuzzy numbers.
@@ -31,9 +32,7 @@ class QROFNRandomGenerator(ParameterizedRandomGenerator):
     large Fuzzarray instances by directly populating the QROFNBackend.
     """
 
-    @property
-    def mtype(self) -> str:
-        return 'qrofn'
+    mtype = "qrofn"
 
     def get_default_parameters(self) -> Dict[str, Any]:
         """Returns the default parameters for QROFN generation."""
@@ -184,10 +183,3 @@ class QROFNRandomGenerator(ParameterizedRandomGenerator):
 
         # 5. Return the final Fuzzarray
         return Fuzzarray(backend=backend)
-
-
-# --- Register the generator instance with the global registry ---
-# This makes it available to `fuzzlab.random.random_fuzz('qrofn', ...)`
-
-_qrofn_random_generator_instance = QROFNRandomGenerator()
-register('qrofn', _qrofn_random_generator_instance)

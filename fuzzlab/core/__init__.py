@@ -13,18 +13,20 @@ from .fuzznums import Fuzznum, fuzznum
 from .fuzzarray import Fuzzarray, fuzzarray
 from .backend import FuzzarrayBackend
 
-from .operation import OperationMixin, get_operation_registry, register_operation
+from .operation import OperationMixin, get_registry_operation, register_operation
 
 from .registry import (
-    get_fuzznum_registry,
-    get_backend,
-    register_fuzznum,
-    batch_register_fuzz,
-    unregister_fuzznum,
-    get_fuzznum_registered_mtypes
-)
+    get_registry_fuzztype,
+    register_strategy,
+    register_backend,
+    register_fuzztype,
+    register_batch_fuzztypes,
 
-# from .triangular import OperationTNorm
+    unregister_fuzztype,
+    get_fuzztype_strategy,
+    get_fuzztype_backend,
+    get_fuzztype_mtypes
+)
 
 from .triangular import OperationTNorm
 
@@ -38,12 +40,12 @@ __all__ = [
     'operate',
     'fuzznum',
     'fuzzarray',
-    'get_operation_registry',
+    'get_registry_operation',
     'register_operation',
-    'get_fuzznum_registry',
-    'get_backend',
-    'register_fuzznum',
-    'batch_register_fuzz',
-    'unregister_fuzznum',
-    'get_fuzznum_registered_mtypes'
+    'get_registry_fuzztype',
+    'get_fuzztype_backend',
+    'register_fuzztype',
+    'register_batch_fuzztypes',
+    'unregister_fuzztype',
+    'get_fuzztype_mtypes'
 ]

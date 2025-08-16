@@ -8,7 +8,7 @@ import warnings
 from typing import Dict, Any
 
 
-from .registry import get_mixin_registry
+from .registry import get_registry_mixin
 from ..core import Fuzznum, Fuzzarray
 
 # 关键修复：导入 register 模块以触发所有 @register 装饰器的执行。
@@ -50,7 +50,7 @@ def _apply_functions(target_module_globals: Dict[str, Any] | None = None) -> boo
             target_module_globals = globals()
 
     try:
-        get_mixin_registry().build_and_inject(class_map, target_module_globals)
+        get_registry_mixin().build_and_inject(class_map, target_module_globals)
         _applied = True
         return True
     except Exception as e:
@@ -66,4 +66,4 @@ def _apply_functions(target_module_globals: Dict[str, Any] | None = None) -> boo
 
 apply_mixins = _apply_functions
 
-__all__ = ['get_mixin_registry', 'apply_mixins'] + get_mixin_registry().get_top_level_function_names()
+__all__ = ['get_registry_mixin', 'apply_mixins'] + get_registry_mixin().get_top_level_function_names()

@@ -9,7 +9,7 @@ import json
 
 import numpy as np
 
-from ....core import Fuzzarray, get_backend
+from ....core import Fuzzarray, get_fuzztype_backend
 
 
 def _qrofn_to_csv(arr: Fuzzarray, path: str, **kwargs) -> None:
@@ -56,7 +56,7 @@ def _qrofn_from_csv(path: str, q: int, **kwargs) -> Fuzzarray:
     nmds = nmd_strs.astype(float)
 
     # Create backend directly with arrays
-    backend_cls = get_backend('qrofn')
+    backend_cls = get_fuzztype_backend('qrofn')
     new_backend = backend_cls.from_arrays(mds, nmds, q=q)
     return Fuzzarray(backend=new_backend)
 
@@ -90,7 +90,7 @@ def _qrofn_from_json(path: str, **kwargs) -> Fuzzarray:
     mds = np.array(data['md_data'])
     nmds = np.array(data['nmd_data'])
 
-    backend_cls = get_backend('qrofn')
+    backend_cls = get_fuzztype_backend('qrofn')
     new_backend = backend_cls.from_arrays(mds, nmds, q=q)
     return Fuzzarray(backend=new_backend)
 
@@ -120,7 +120,7 @@ def _qrofn_from_npy(path: str, **kwargs) -> Fuzzarray:
     nmds = structured_data['nmd']
     q = int(structured_data['q'].flat[0])  # Assume uniform q
 
-    backend_cls = get_backend('qrofn')
+    backend_cls = get_fuzztype_backend('qrofn')
     new_backend = backend_cls.from_arrays(mds, nmds, q=q)
     return Fuzzarray(backend=new_backend)
 

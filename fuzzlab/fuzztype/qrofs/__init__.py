@@ -5,16 +5,10 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 
-from .qrofn import QROFNStrategy
-from .backend import QROFNBackend
-
+from . import qrofn
+from . import backend
 from . import op
 from . import factory
 from . import random
 from . import extension
 from . import fuzzify
-
-__all__ = [
-    'QROFNStrategy',
-    'QROFNBackend'
-]

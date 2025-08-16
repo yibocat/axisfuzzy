@@ -9,43 +9,59 @@ from typing import Any, Dict, Tuple, Optional
 
 # 从具体子模块显式重导出，以便类型检查器识别
 from .base import FuzznumStrategy as FuzznumStrategy
-from .dispatcher import operate as operate
+
+from .backend import FuzzarrayBackend as FuzzarrayBackend
+
 from .fuzznums import (
     Fuzznum as Fuzznum,
     fuzznum as fuzznum)
-from .fuzzarray import Fuzzarray as Fuzzarray, fuzzarray as fuzzarray
-from .backend import FuzzarrayBackend as FuzzarrayBackend
+
+from .fuzzarray import (
+    Fuzzarray as Fuzzarray,
+    fuzzarray as fuzzarray)
+
+from .dispatcher import (
+    operate as operate)
+
 from .operation import (
     OperationMixin as OperationMixin,
-    get_operation_registry as get_operation_registry,
+    get_registry_operation as get_registry_operation,
     register_operation as register_operation
 )
-from .registry import (
-    get_fuzznum_registry as get_fuzznum_registry,
-    get_backend as get_backend,
-    register_fuzznum as register_fuzznum,
-    batch_register_fuzz as batch_register_fuzz,
-    unregister_fuzznum as unregister_fuzznum,
-    get_fuzznum_registered_mtypes as get_fuzznum_registered_mtypes
-)
+
 from .triangular import OperationTNorm as OperationTNorm
+
+from .registry import (
+    get_registry_fuzztype as get_registry_fuzztype,
+    register_strategy as register_strategy,
+    register_backend as register_backend,
+    register_fuzztype as register_fuzztype,
+    register_batch_fuzztypes as register_batch_fuzztypes,
+
+    unregister_fuzztype as unregister_fuzztype,
+    get_fuzztype_strategy as get_fuzztype_strategy,
+    get_fuzztype_backend as get_fuzztype_backend,
+    get_fuzztype_mtypes as get_fuzztype_mtypes
+)
 
 __all__ = [
     'FuzznumStrategy',
-    'Fuzzarray',
-    'Fuzznum',
     'FuzzarrayBackend',
+    'Fuzznum', 'fuzznum',
+    'Fuzzarray', 'fuzzarray',
+    'operate',
     'OperationMixin',
     'OperationTNorm',
-    'operate',
-    'fuzznum',
-    'fuzzarray',
-    'get_operation_registry',
+    'get_registry_operation',
     'register_operation',
-    'get_fuzznum_registry',
-    'get_backend',
-    'register_fuzznum',
-    'batch_register_fuzz',
-    'unregister_fuzznum',
-    'get_fuzznum_registered_mtypes'
+
+    'get_registry_fuzztype',
+    'register_strategy',
+    'register_backend',
+    'register_fuzztype',
+    'register_batch_fuzztypes',
+    'unregister_fuzztype',
+    'get_fuzztype_strategy',
+    'get_fuzztype_backend',
+    'get_fuzztype_mtypes',
 ]

@@ -19,14 +19,10 @@ import numpy as np
 from ..core import Fuzznum, Fuzzarray
 
 from .registry import (
-    get_random_registry,
-    register_random_generator,
-    unregister_random_generator,
     get_random_generator,
-    list_registered_random_mtypes,
-    is_mtype_random_registered
+    list_registered_random,
 )
-from .seed import get_seed, set_seed, get_rng, spawn_rng
+from .seed import get_rng
 
 
 def _resolve_rng(
@@ -114,7 +110,7 @@ def random_fuzz(
 
     generator = get_random_generator(mtype)
     if generator is None:
-        available = list_registered_random_mtypes()
+        available = list_registered_random()
         raise KeyError(f"No random generator registered for mtype '{mtype}'. "
                        f"Available mtypes: {available}")
 
@@ -204,9 +200,11 @@ def beta(
 
 
 rand = random_fuzz
-registry = get_random_registry
-register = register_random_generator
-unregister = unregister_random_generator
-get_generator = get_random_generator
-list_registered = list_registered_random_mtypes
-is_registered = is_mtype_random_registered
+
+# rand = random_fuzz
+# registry = get_registry_random
+# register = register_random_generator
+# unregister = unregister_random
+# get_generator = get_random_generator
+# list_registered = list_registered_random
+# is_registered = is_registered_random

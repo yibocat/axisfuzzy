@@ -114,7 +114,7 @@ def qrofn_distance(fuzz1: Fuzznum, fuzz2: Fuzznum, p: int = 2) -> float:
    - `target_classes=['Fuzznum', 'Fuzzarray']`：这意味着 `distance` 功能将被注入到 `Fuzznum` 和 `Fuzzarray` 类中，作为它们的实例方法。
    - `injection_type='both'`：这意味着 `distance` 功能不仅会作为 Fuzznum 和 `Fuzzarray` 的实例方法，还会作为 `fuzzlab` 模块的顶级函数被注入。
 
-2. 注册过程：当 `_func.py` 模块被导入时（通常在 `fuzzlab` 初始化时），`@extension` 装饰器会执行。它会调用 `get_extension_registry().register(...)`，将 `qrofn_distance` 函数及其元数据注册到全局的 `ExtensionRegistry` 中。
+2. 注册过程：当 `_func.py` 模块被导入时（通常在 `fuzzlab` 初始化时），`@extension` 装饰器会执行。它会调用 `get_registry_extension().register(...)`，将 `qrofn_distance` 函数及其元数据注册到全局的 `ExtensionRegistry` 中。
 
 3. 注入过程：当 `__init__.py` 中的 `apply_extensions()` 被调用时：
    - `ExtensionInjector` 会从 `ExtensionRegistry` 中获取 `distance` 功能的信息。
