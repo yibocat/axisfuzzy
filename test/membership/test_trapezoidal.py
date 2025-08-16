@@ -8,7 +8,7 @@
 import pytest
 import numpy as np
 
-from fuzzlab.membership import TrapezoidalMF
+from axisfuzzy.membership import TrapezoidalMF
 
 
 class TestTrapezoidalMF:

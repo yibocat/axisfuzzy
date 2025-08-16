@@ -8,9 +8,9 @@
 import pytest
 import numpy as np
 
-from fuzzlab.fuzztype.qrofs.fuzzify import QROFNFuzzificationStrategy
-from fuzzlab.membership import TriangularMF, GaussianMF
-from fuzzlab.core import Fuzznum
+from axisfuzzy.fuzztype.qrofs.fuzzify import QROFNFuzzificationStrategy
+from axisfuzzy.membership import TriangularMF, GaussianMF
+from axisfuzzy.core import Fuzznum
 
 
 class TestQROFNFuzzificationStrategyScalar:

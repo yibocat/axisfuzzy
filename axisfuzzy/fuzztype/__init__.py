@@ -13,7 +13,7 @@ subpackages within this directory (e.g., 'qrofs', 'ivfs').
 
 This ensures that all mtype-specific components (strategies, backends,
 operations, extensions, etc.) are automatically registered with their respective
-systems when the `fuzzlab` library is imported. This makes the entire
+systems when the `axisfuzzy` library is imported. This makes the entire
 architecture pluggable.
 """
 import os

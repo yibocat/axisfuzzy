@@ -1,4 +1,4 @@
-# FuzzLab 随机模糊数生成系统 (Random Module)
+# AxisFuzzy 随机模糊数生成系统 (Random Module)
 
 > 版本: 初稿 2025-08-12  
 > 适用范围: 当前主分支 SoA Backend 架构  
@@ -21,7 +21,7 @@
 
 ---
 ## 1. 设计目标与理念
-FuzzLab 随机系统旨在为 **不同 mtype 的模糊数** 提供：
+AxisFuzzy 随机系统旨在为 **不同 mtype 的模糊数** 提供：
 - **高性能**：采用 SoA (Struct of Arrays) 后端，批量生成直接填充组件数组 (Backend)，避免构造临时 Fuzznum 列表。  
 - **可扩展**：通过 mtype 注册机制，每种模糊数类型自定义其生成策略。  
 - **可复现**：全局随机种子 + 局部调用覆盖。  
@@ -33,12 +33,12 @@ FuzzLab 随机系统旨在为 **不同 mtype 的模糊数** 提供：
 ## 2. 架构分层概览
 | 层 | 文件 | 作用 |
 |----|------|------|
-| 种子管理 | `fuzzlab/random/seed.py` | 全局 RNG 状态；设定 / 获取 / 派生 |
-| 注册表 | `fuzzlab/random/registry.py` | mtype → 生成器实例映射 |
-| 抽象基类 | `fuzzlab/random/base.py` | 统一接口：`fuzznum` / `fuzzarray` |
-| 用户 API | `fuzzlab/random/api.py` + `__init__.py` | 工厂函数与辅助方法 |
-| 类型实现 | `fuzzlab/fuzzy/<mtype>/random.py` | 特定 mtype 生成逻辑，如 `qrofn` |
-| 后端结构 | `fuzzlab/fuzzy/<mtype>/backend.py` | SoA 存储组件数组 |
+| 种子管理 | `axisfuzzy/random/seed.py` | 全局 RNG 状态；设定 / 获取 / 派生 |
+| 注册表 | `axisfuzzy/random/registry.py` | mtype → 生成器实例映射 |
+| 抽象基类 | `axisfuzzy/random/base.py` | 统一接口：`fuzznum` / `fuzzarray` |
+| 用户 API | `axisfuzzy/random/api.py` + `__init__.py` | 工厂函数与辅助方法 |
+| 类型实现 | `axisfuzzy/fuzzy/<mtype>/random.py` | 特定 mtype 生成逻辑，如 `qrofn` |
+| 后端结构 | `axisfuzzy/fuzzy/<mtype>/backend.py` | SoA 存储组件数组 |
 
 批量生成流程：  
 `rand()` → 解析 RNG → 取注册生成器 → `generator.fuzzarray()` → 构造 Backend → 返回 Fuzzarray。
@@ -56,8 +56,9 @@ FuzzLab 随机系统旨在为 **不同 mtype 的模糊数** 提供：
 
 ---
 ## 4. 快速开始示例
+
 ```python
-import fuzzlab.random as fr
+import axisfuzzy.random as fr
 
 # 设定全局种子r.set_seed(42)
 
@@ -120,7 +121,7 @@ sample = fr.choice(fa1, size=10, replace=False)
 ---
 ## 8. 扩展：新增自定义随机生成器
 **步骤：**
-1. 创建文件：`fuzzlab/fuzzy/<your_mtype>/random.py`
+1. 创建文件：`axisfuzzy/fuzzy/<your_mtype>/random.py`
 2. 编写类：继承 `ParameterizedRandomGenerator`
 3. 实现方法：`mtype` / `get_default_parameters` / `validate_parameters` / `fuzznum` / `fuzzarray`
 4. 在文件底部注册：
@@ -129,8 +130,10 @@ from ...random import register
 register('your_mtype', YourMtypeRandomGenerator())
 ```
 5. 使用：
+
 ```python
-import fuzzlab.random as fr
+import axisfuzzy.random as fr
+
 fr.rand('your_mtype', shape=512, ...)
 ```
 

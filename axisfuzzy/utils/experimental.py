@@ -25,7 +25,7 @@ def experimental(func):
         callable: The wrapped function that issues a warning on each call.
 
     Example:
-        >>> from fuzzlab.utils.experimental import experimental
+        >>> from axisfuzzy.utils.experimental import experimental
         >>>
         >>> @experimental
         ... def my_experimental_feature(x):

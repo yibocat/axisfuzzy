@@ -15,7 +15,7 @@ data to improve performance.
 from collections import OrderedDict
 from typing import Any, Optional
 
-from fuzzlab.config import get_config
+from axisfuzzy.config import get_config
 
 
 class LruCache:
@@ -40,7 +40,7 @@ class LruCache:
 
         Args:
             maxsize (Optional[int]): The maximum number of items the cache can hold.
-                                     If None, the size is taken from `fuzzlab.config.get_config().CACHE_SIZE`.
+                                     If None, the size is taken from `axisfuzzy.config.get_config().CACHE_SIZE`.
         """
         self._cache = OrderedDict()
         # Set the maximum size of the cache. If maxsize is not provided,

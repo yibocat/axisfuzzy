@@ -11,7 +11,7 @@ from dataclasses import asdict, fields
 from pathlib import Path
 from typing import Any, Union, Optional, Dict, List
 
-from fuzzlab.config.config_file import Config
+from axisfuzzy.config.config_file import Config
 
 
 class ConfigManager:

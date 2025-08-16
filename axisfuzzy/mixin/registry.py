@@ -18,7 +18,7 @@ Example:
     To register a function `my_func` that should be an instance method of `Fuzznum`
     and also a top-level function in the `fuzzlab` module:
 
-    >>> from fuzzlab.mixin.registry import get_registry_mixin
+    >>> from axisfuzzy.mixin.registry import get_registry_mixin
     >>> registry = get_registry_mixin()
 
     >>> @registry.register_mixin(name='my_func', target_classes=['Fuzznum'], injection_type='both')
@@ -28,7 +28,7 @@ Example:
 
     After the registry's `build_and_inject` method is called during FuzzLab's initialization:
 
-    >>> # from fuzzlab import Fuzznum, my_func
+    >>> # from axisfuzzy import Fuzznum, my_func
     >>> # fn = Fuzznum(...)
     >>> # fn.my_func(1, 2) # Calls the instance method
     'Called my_func on Fuzznum with 1, 2'
@@ -46,7 +46,7 @@ class MixinFunctionRegistry:
 
     This class serves as a central hub for registering functions that are intended
     to be dynamically added as methods to FuzzLab's core classes (e.g., `Fuzznum`,
-    `Fuzzarray`) or exposed as top-level functions within the `fuzzlab` package.
+    `Fuzzarray`) or exposed as top-level functions within the `axisfuzzy` package.
     It provides a unified decorator (`register`) to define how each function
     should be injected (as an instance method, a top-level function, or both).
 
@@ -89,7 +89,7 @@ class MixinFunctionRegistry:
                 - `'instance_function'`: The function will only be injected as an
                   instance method into the `target_classes`.
                 - `'top_level_function'`: The function will only be injected as a
-                  top-level function into the `fuzzlab` module's namespace.
+                  top-level function into the `axisfuzzy` module's namespace.
                 - `'both'`: The function will be injected as both an instance method
                   and a top-level function.
 
@@ -175,8 +175,8 @@ class MixinFunctionRegistry:
         Example:
             Assuming `Fuzznum` and `Fuzzarray` classes are defined, and `fuzzlab` is the target module:
 
-            >>> from fuzzlab.core.fuzznums import Fuzznum
-            >>> from fuzzlab.core.fuzzarray import Fuzzarray
+            >>> from axisfuzzy.core.fuzznums import Fuzznum
+            >>> from axisfuzzy.core.fuzzarray import Fuzzarray
             >>> class_map = {"Fuzznum": Fuzznum, "Fuzzarray": Fuzzarray}
             >>> module_namespace = {} # Simulate a module's globals()
 
@@ -230,7 +230,7 @@ class MixinFunctionRegistry:
         Returns a list of names of all functions registered to be injected as top-level functions.
 
         This method is useful for populating the `__all__` list of a package,
-        allowing users to import these functions directly (e.g., `from fuzzlab import sum`).
+        allowing users to import these functions directly (e.g., `from axisfuzzy import sum`).
 
         Returns:
             List[str]: A list of string names for functions that are either

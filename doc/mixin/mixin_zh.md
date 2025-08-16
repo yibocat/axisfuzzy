@@ -1,14 +1,14 @@
-# FuzzLab Mixin 系统
+# AxisFuzzy Mixin 系统
 
-FuzzLab Mixin 系统是一个强大的机制，用于动态扩展核心类（如 `Fuzznum` 和 `Fuzzarray`）的功能。它允许在不直接修改类定义的情况下，为这些类添加新方法，并在 `fuzzlab` 命名空间中创建相应的顶层函数。这是通过一个在库初始化期间管理和注入这些函数的中央注册表来实现的。
+AxisFuzzy Mixin 系统是一个强大的机制，用于动态扩展核心类（如 `Fuzznum` 和 `Fuzzarray`）的功能。它允许在不直接修改类定义的情况下，为这些类添加新方法，并在 `axisfuzzy` 命名空间中创建相应的顶层函数。这是通过一个在库初始化期间管理和注入这些函数的中央注册表来实现的。
 
 ## 核心概念: `MixinFunctionRegistry`
 
-该系统的核心是 `MixinFunctionRegistry`。它提供了一种基于装饰器的方法来注册函数，并指定它们应如何集成到 FuzzLab 生态系统中。
+该系统的核心是 `MixinFunctionRegistry`。它提供了一种基于装饰器的方法来注册函数，并指定它们应如何集成到 AxisFuzzy 生态系统中。
 
 函数可以通过三种方式注入：
 - **`instance_function`**: 函数成为目标类的实例方法（例如，`my_fuzzarray.my_func()`）。
-- **`top_level_function`**: 函数可直接从 `fuzzlab` 模块获得（例如，`fuzzlab.my_func(...)`）。
+- **`top_level_function`**: 函数可直接从 `axisfuzzy` 模块获得（例如，`axisfuzzy.my_func(...)`）。
 - **`both`**: 函数既可作为实例方法，也可作为顶层函数使用。
 
 这种设计保持了核心类定义的整洁，同时允许轻松、有组织地扩展其功能。
@@ -17,7 +17,7 @@ FuzzLab Mixin 系统是一个强大的机制，用于动态扩展核心类（如
 
 以下函数通过 Mixin 系统提供。它们按其源模块分组。
 
-### 数组操作 (`fuzzlab.mixin.function`)
+### 数组操作 (`axisfuzzy.mixin.function`)
 
 这些函数为 `Fuzzarray` 和 `Fuzznum` 对象提供了类似 `numpy` 的数组操作功能。
 
@@ -40,7 +40,7 @@ FuzzLab Mixin 系统是一个强大的机制，用于动态扩展核心类（如
 | `append` | both | 向对象追加元素。 |
 | `pop` | both | 从一维数组中移除并返回一个元素。 |
 
-### 数学与聚合操作 (`fuzzlab.mixin.ops`)
+### 数学与聚合操作 (`axisfuzzy.mixin.ops`)
 
 这些函数提供了类似 `numpy` 的数学和聚合功能。
 

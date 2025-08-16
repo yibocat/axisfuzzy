@@ -8,7 +8,7 @@
 import pytest
 import numpy as np
 
-from fuzzlab.membership import SigmoidMF, SMF, ZMF, GeneralizedBellMF, PiMF
+from axisfuzzy.membership import SigmoidMF, SMF, ZMF, GeneralizedBellMF, PiMF
 
 
 class TestSigmoidMF:

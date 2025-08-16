@@ -55,8 +55,9 @@ Batch path: `rand()` → resolve RNG → lookup generator → `generator.fuzzarr
 
 ---
 ## 4. Quick Start
+
 ```python
-import fuzzlab.random as fr
+import axisfuzzy.random as fr
 
 fr.set_seed(42)
 num = fr.rand('qrofn', q=3)

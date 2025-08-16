@@ -1,11 +1,7 @@
-
-
-
-
-FuzzLab 的扩展系统是一个设计精巧、高度灵活的机制，它允许开发者为不同类型的模糊数（`mtype`）动态地添加和管理功能。其核心思想是基于 `mtype` 的可插拔架构，使得 FuzzLab 能够轻松地扩展以支持新的模糊数类型或为现有类型提供特化的操作，而无需修改核心代码。
+AxisFuzzy 的扩展系统是一个设计精巧、高度灵活的机制，它允许开发者为不同类型的模糊数（`mtype`）动态地添加和管理功能。其核心思想是基于 `mtype` 的可插拔架构，使得 AxisFuzzy 能够轻松地扩展以支持新的模糊数类型或为现有类型提供特化的操作，而无需修改核心代码。
 
 ## 1. 扩展整体架构和运行机制
-FuzzLab 的扩展系统主要由以下几个核心组件构成：
+AxisFuzzy 的扩展系统主要由以下几个核心组件构成：
 
 ### 1. 注册表 (`ExtensionRegistry`)
 - 文件：`registry.py`
@@ -55,7 +51,7 @@ def qrofn_score_ext(obj):
 
 ### 4. 注入器 (`ExtensionInjector`)
 - 文件：`injector.py`
-- 作用：在程序启动时，将注册表中定义的功能动态地“注入”到 `Fuzznum` 和 `Fuzzarray` 类中，或者作为 `fuzzlab` 模块的顶级函数。
+- 作用：在程序启动时，将注册表中定义的功能动态地“注入”到 `Fuzznum` 和 `Fuzzarray` 类中，或者作为 `axisfuzzy` 模块的顶级函数。
 - 核心功能：
   - `inject_all()`：遍历注册表中所有已注册的功能，并根据其 `injection_type` 将它们注入到指定的类（`Fuzznum`, `Fuzzarray`）或模块命名空间中。
 - 运行机制：它通过 `setattr()` 等方式，将分发器创建的代理函数绑定到目标类或模块上，使得这些扩展功能可以像原生方法或函数一样被调用。
@@ -70,14 +66,14 @@ def qrofn_score_ext(obj):
 ### 6. 初始化 (`apply_extensions`)
 - 文件：`__init__.py` 和 `__init__.py`
 - 作用：这是整个扩展系统启动的入口点。
-- 运行机制：在 `FuzzLab` 库被导入时（通过 `__init__.py` 中的 `apply_extensions()` 调用），`apply_extensions()` 函数会被执行。它会获取 `ExtensionInjector` 实例，并调用其 `inject_all()` 方法，从而完成所有已注册功能的动态注入。
+- 运行机制：在 `AxisFuzzy` 库被导入时（通过 `__init__.py` 中的 `apply_extensions()` 调用），`apply_extensions()` 函数会被执行。它会获取 `ExtensionInjector` 实例，并调用其 `inject_all()` 方法，从而完成所有已注册功能的动态注入。
 
 ## 2. 整体思想
-FuzzLab 扩展系统的整体思想可以概括为：“注册-分发-注入”, “注册-分发-注入” 现在同时覆盖 方法调用 与 属性访问两种交互方式。
+AxisFuzzy 扩展系统的整体思想可以概括为：“注册-分发-注入”, “注册-分发-注入” 现在同时覆盖 方法调用 与 属性访问两种交互方式。
 
-- 注册 (Registration)：开发者通过简单的 `@extension` 装饰器，声明一个函数是 FuzzLab 的一个扩展功能，并指定其名称、适用的 `mtype` 和注入方式。这些信息被存储在 `ExtensionRegistry` 中。
+- 注册 (Registration)：开发者通过简单的 `@extension` 装饰器，声明一个函数是 AxisFuzzy 的一个扩展功能，并指定其名称、适用的 `mtype` 和注入方式。这些信息被存储在 `ExtensionRegistry` 中。
 - 分发 (Dispatching)：当用户调用一个扩展功能时（无论是作为实例方法还是顶级函数），实际执行的不是原始函数，而是 `ExtensionDispatcher` 创建的一个代理函数。这个代理函数会根据调用对象的 `mtype`，智能地从 `ExtensionRegistry` 中查找并调用最合适的具体实现。
-- 注入 (Injection)：在 FuzzLab 库加载时，`ExtensionInjector` 会将这些代理函数动态地绑定到 `Fuzznum` 和 `Fuzzarray` 类上，或者作为 `fuzzlab` 模块的顶级函数。这样，用户就可以像调用普通方法或函数一样使用这些扩展功能，而无需关心底层的 `mtype` 分发逻辑。
+- 注入 (Injection)：在 AxisFuzzy 库加载时，`ExtensionInjector` 会将这些代理函数动态地绑定到 `Fuzznum` 和 `Fuzzarray` 类上，或者作为 `axisfuzzy` 模块的顶级函数。这样，用户就可以像调用普通方法或函数一样使用这些扩展功能，而无需关心底层的 `mtype` 分发逻辑。
 
 这种设计带来了以下显著优势：
 
@@ -112,22 +108,22 @@ def qrofn_distance(fuzz1: Fuzznum, fuzz2: Fuzznum, p: int = 2) -> float:
    - `name='distance'`：这表明我们正在注册一个名为 `distance` 的功能。
    - `mtype='qrofn'`：这个 `distance` 功能是专门为 `qrofn` 类型的模糊数实现的。
    - `target_classes=['Fuzznum', 'Fuzzarray']`：这意味着 `distance` 功能将被注入到 `Fuzznum` 和 `Fuzzarray` 类中，作为它们的实例方法。
-   - `injection_type='both'`：这意味着 `distance` 功能不仅会作为 Fuzznum 和 `Fuzzarray` 的实例方法，还会作为 `fuzzlab` 模块的顶级函数被注入。
+   - `injection_type='both'`：这意味着 `distance` 功能不仅会作为 Fuzznum 和 `Fuzzarray` 的实例方法，还会作为 `axisfuzzy` 模块的顶级函数被注入。
 
-2. 注册过程：当 `_func.py` 模块被导入时（通常在 `fuzzlab` 初始化时），`@extension` 装饰器会执行。它会调用 `get_registry_extension().register(...)`，将 `qrofn_distance` 函数及其元数据注册到全局的 `ExtensionRegistry` 中。
+2. 注册过程：当 `_func.py` 模块被导入时（通常在 `axisfuzzy` 初始化时），`@extension` 装饰器会执行。它会调用 `get_registry_extension().register(...)`，将 `qrofn_distance` 函数及其元数据注册到全局的 `ExtensionRegistry` 中。
 
 3. 注入过程：当 `__init__.py` 中的 `apply_extensions()` 被调用时：
    - `ExtensionInjector` 会从 `ExtensionRegistry` 中获取 `distance` 功能的信息。
    - 由于 `injection_type='both'`，`ExtensionInjector` 会：
      - 为 `Fuzznum` 和 `Fuzzarray` 类创建 `distance` 的实例方法分发器（通过 `ExtensionDispatcher.create_instance_method()`）。
-     - 为 `fuzzlab` 模块创建 `distance` 的顶级函数分发器（通过 `ExtensionDispatcher.create_top_level_function()`）。
-     - 将这些分发器动态地绑定到 `Fuzznum`、`Fuzzarray` 类和 `fuzzlab` 模块的命名空间中。
+     - 为 `axisfuzzy` 模块创建 `distance` 的顶级函数分发器（通过 `ExtensionDispatcher.create_top_level_function()`）。
+     - 将这些分发器动态地绑定到 `Fuzznum`、`Fuzzarray` 类和 `axisfuzzy` 模块的命名空间中。
 
 4. 调用过程：
    - 作为实例方法：当您调用 `my_qrofn_fuzznum.distance(another_fuzznum)` 时，实际调用的是 `ExtensionDispatcher` 创建的代理方法。这个代理方法会检测 `my_qrofn_fuzznum` 的 `mtype`（例如 `qrofn`），然后从注册表中找到 `qrofn_distance` 函数并执行它。
-   - 作为顶级函数：当您调用 `fuzzlab.distance(my_qrofn_fuzznum, another_fuzznum)` 时，实际调用的是 `ExtensionDispatcher` 创建的代理顶级函数。这个代理函数会检测传入的第一个参数 `my_qrofn_fuzznum` 的 `mtype`，然后同样从注册表中找到 `qrofn_distance` 函数并执行它。
+   - 作为顶级函数：当您调用 `axisfuzzy.distance(my_qrofn_fuzznum, another_fuzznum)` 时，实际调用的是 `ExtensionDispatcher` 创建的代理顶级函数。这个代理函数会检测传入的第一个参数 `my_qrofn_fuzznum` 的 `mtype`，然后同样从注册表中找到 `qrofn_distance` 函数并执行它。
 
-通过这种机制，`FuzzLab` 实现了高度的模块化和可扩展性。您可以为任何 `mtype` 定义 `distance` 函数，甚至可以定义一个通用的 `distance` 默认实现，系统会根据对象的实际 `mtype` 自动选择最合适的实现。
+通过这种机制，`AxisFuzzy` 实现了高度的模块化和可扩展性。您可以为任何 `mtype` 定义 `distance` 函数，甚至可以定义一个通用的 `distance` 默认实现，系统会根据对象的实际 `mtype` 自动选择最合适的实现。
 
 ## 3. 新示例：分发属性 (score / acc / ind)
 

@@ -10,8 +10,8 @@ from contextlib import contextmanager
 
 from typing import Optional, Dict, Type, List, Any, Callable, Tuple
 
-from fuzzlab.core.base import FuzznumStrategy
-from fuzzlab.core.backend import FuzzarrayBackend
+from axisfuzzy.core.base import FuzznumStrategy
+from axisfuzzy.core.backend import FuzzarrayBackend
 
 
 class FuzznumRegistry:

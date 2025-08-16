@@ -8,7 +8,7 @@
 import pytest
 import numpy as np
 
-from fuzzlab.membership import (
+from axisfuzzy.membership import (
     TriangularMF, TrapezoidalMF, GaussianMF,
     SigmoidMF, SMF, ZMF, GeneralizedBellMF,
     PiMF, DoubleGaussianMF

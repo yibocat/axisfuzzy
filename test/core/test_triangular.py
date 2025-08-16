@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from unittest.mock import patch
 import warnings
-from fuzzlab.config import get_config
+from axisfuzzy.config import get_config
 
-# filepath: /Users/yibow/Project/FuzzLab/fuzzlab/test/core/test_triangular.py
+# filepath: /Users/yibow/Project/FuzzLab/axisfuzzy/test/core/test_triangular.py
 """
 Comprehensive test suite for fuzzy t-norm framework module
 
@@ -12,7 +12,7 @@ This module provides extensive testing for all t-norm types, their properties,
 and the unified framework functionality.
 """
 
-from fuzzlab.core.triangular import (
+from axisfuzzy.core.triangular import (
     OperationTNorm, BaseNormOperation, TypeNormalizer, create_tnorm,
     AlgebraicNorm, LukasiewiczNorm, EinsteinNorm, HamacherNorm,
     YagerNorm, SchweizerSklarNorm, DombiNorm, AczelAlsinaNorm,

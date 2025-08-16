@@ -1,14 +1,14 @@
-# FuzzLab Mixin System
+# AxisFuzzy Mixin System
 
-The FuzzLab Mixin System is a powerful mechanism that dynamically extends the functionality of core classes like `Fuzznum` and `Fuzzarray`. It allows for adding new methods to these classes and creating corresponding top-level functions in the `fuzzlab` namespace without directly modifying the class definitions. This is achieved through a central registry that manages and injects these functions during the library's initialization.
+The AxisFuzzy Mixin System is a powerful mechanism that dynamically extends the functionality of core classes like `Fuzznum` and `Fuzzarray`. It allows for adding new methods to these classes and creating corresponding top-level functions in the `axisfuzzy` namespace without directly modifying the class definitions. This is achieved through a central registry that manages and injects these functions during the library's initialization.
 
 ## Core Concept: `MixinFunctionRegistry`
 
-The heart of the system is the `MixinFunctionRegistry`. It provides a decorator-based approach to register functions and specify how they should be integrated into the FuzzLab ecosystem.
+The heart of the system is the `MixinFunctionRegistry`. It provides a decorator-based approach to register functions and specify how they should be integrated into the AxisFuzzy ecosystem.
 
 A function can be injected in three ways:
 - **`instance_function`**: The function becomes an instance method of the target class (e.g., `my_fuzzarray.my_func()`).
-- **`top_level_function`**: The function is available directly from the `fuzzlab` module (e.g., `fuzzlab.my_func(...)`).
+- **`top_level_function`**: The function is available directly from the `axisfuzzy` module (e.g., `axisfuzzy.my_func(...)`).
 - **`both`**: The function is available as both an instance method and a top-level function.
 
 This design keeps the core class definitions clean while allowing for easy and organized extension of their capabilities.
@@ -17,7 +17,7 @@ This design keeps the core class definitions clean while allowing for easy and o
 
 The following functions are available through the mixin system. They are grouped by their source module.
 
-### Array Manipulation (`fuzzlab.mixin.function`)
+### Array Manipulation (`axisfuzzy.mixin.function`)
 
 These functions provide `numpy`-like array manipulation capabilities for `Fuzzarray` and `Fuzznum` objects.
 
@@ -41,7 +41,7 @@ These functions provide `numpy`-like array manipulation capabilities for `Fuzzar
 | `pop` | both | Removes and returns an element from a 1-D array. |
 
 
-### Mathematical & Aggregation Operations (`fuzzlab.mixin.ops`)
+### Mathematical & Aggregation Operations (`axisfuzzy.mixin.ops`)
 
 These functions provide `numpy`-like mathematical and aggregation capabilities.
 

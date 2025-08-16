@@ -14,9 +14,9 @@ to default implementations, and priority-based selection.
 
 The registry is thread-safe and serves as the central repository for all
 extension metadata and callable functions, which are registered via the
-`@extension` decorator defined in `fuzzlab.extension.decorator.py`.
+`@extension` decorator defined in `axisfuzzy.extension.decorator.py`.
 These registered functions are later injected into `Fuzznum` and `Fuzzarray`
-classes or the `fuzzlab` top-level namespace by `fuzzlab.extension.injector.py`.
+classes or the `axisfuzzy` top-level namespace by `axisfuzzy.extension.injector.py`.
 """
 
 import threading
@@ -40,7 +40,7 @@ class FunctionMetadata:
             that this extension is intended to be injected into as an instance method.
         injection_type: Specifies how the function should be injected:
             'instance_method': As a method of `target_classes`.
-            'top_level_function': As a function in the `fuzzlab` module namespace.
+            'top_level_function': As a function in the `axisfuzzy` module namespace.
             'both': Both as an instance method and a top-level function.
         is_default: A boolean indicating if this is a default implementation
             for the given `name`. Default implementations are used when no
@@ -75,8 +75,8 @@ class ExtensionRegistry:
            and an `mtype`, with fallback to default if no specialized implementation exists.
         4. Ensure thread-safe operations for registration and retrieval.
 
-    It works in conjunction with `fuzzlab.extension.decorator.py` for registration
-    and `fuzzlab.extension.dispatcher.py` and `fuzzlab.extension.injector.py`
+    It works in conjunction with `axisfuzzy.extension.decorator.py` for registration
+    and `axisfuzzy.extension.dispatcher.py` and `axisfuzzy.extension.injector.py`
     for function dispatching and injection.
     """
 
@@ -111,7 +111,7 @@ class ExtensionRegistry:
         Decorator factory to register an external function.
 
         This method is typically called by the `@extension` decorator
-        (from `fuzzlab.extension.decorator.py`) to register a function
+        (from `axisfuzzy.extension.decorator.py`) to register a function
         with the registry. It returns a decorator that, when applied to a function,
         stores that function and its metadata.
 
@@ -146,9 +146,9 @@ class ExtensionRegistry:
         Examples:
             Registering a specialized 'distance' function for 'qrofn' mtype:
             ```python
-            # In fuzzlab/fuzzy/qrofs/_func.py
-            from fuzzlab.extension import extension
-            from fuzzlab.core import Fuzznum
+            # In axisfuzzy/fuzzy/qrofs/_func.py
+            from axisfuzzy.extension import extension
+            from axisfuzzy.core import Fuzznum
 
             @extension('distance', mtype='qrofn', target_classes=['Fuzznum'])
             def qrofn_distance(fuzz1: Fuzznum, fuzz2: Fuzznum) -> float:
@@ -159,8 +159,8 @@ class ExtensionRegistry:
             Registering a default 'distance' function:
             ```python
             # In a general extension module
-            from fuzzlab.extension import extension
-            from fuzzlab.core import Fuzznum
+            from axisfuzzy.extension import extension
+            from axisfuzzy.core import Fuzznum
 
             @extension('distance', is_default=True, target_classes=['Fuzznum'])
             def default_distance(fuzz1: Fuzznum, fuzz2: Fuzznum) -> float:

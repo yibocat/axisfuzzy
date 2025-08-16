@@ -7,9 +7,9 @@
 
 
 """
-Type stubs for the top-level `fuzzlab` package.
+Type stubs for the top-level `axisfuzzy` package.
 
-This file provides type hints for all public APIs exposed in the `fuzzlab`
+This file provides type hints for all public APIs exposed in the `axisfuzzy`
 namespace, including dynamically injected functions from the mixin system.
 """
 from typing import List, Any

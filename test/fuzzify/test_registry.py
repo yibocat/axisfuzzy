@@ -6,14 +6,14 @@
 #  Software: FuzzLab
 
 import pytest
-from fuzzlab.fuzzify.registry import (
+from axisfuzzy.fuzzify.registry import (
     get_registry_fuzzify,
     register_fuzzify,
     FuzzificationRegistry
 )
-from fuzzlab.fuzzify.base import FuzzificationStrategy
-from fuzzlab.core import Fuzznum, Fuzzarray
-from fuzzlab.membership import MembershipFunction
+from axisfuzzy.fuzzify.base import FuzzificationStrategy
+from axisfuzzy.core import Fuzznum, Fuzzarray
+from axisfuzzy.membership import MembershipFunction
 import numpy as np
 
 
@@ -27,12 +27,12 @@ class MockStrategy(FuzzificationStrategy):
 
     def fuzzify_scalar(self, x, mf=None):
         # 简单模拟实现
-        from fuzzlab.core import Fuzznum
+        from axisfuzzy.core import Fuzznum
         return Fuzznum(mtype='qrofn', q=2).create(md=0.5, nmd=0.3)
 
     def fuzzify_array(self, x, mf=None):
         # 简单模拟实现
-        from fuzzlab.core import Fuzzarray, get_registry_fuzztype
+        from axisfuzzy.core import Fuzzarray, get_registry_fuzztype
         registry = get_registry_fuzztype()
         backend_cls = registry.get_backend('qrofn')
         backend = backend_cls.from_arrays(md=np.array([0.5]), nmd=np.array([0.3]), q=2)

@@ -15,8 +15,8 @@ to integrate their specialized or general fuzzy number operations into the
 FuzzLab framework.
 
 Functions registered via these decorators are later injected into `Fuzznum`
-and `Fuzzarray` classes or the `fuzzlab` top-level namespace by the
-`fuzzlab.extension.injector.py` module, based on the provided metadata.
+and `Fuzzarray` classes or the `axisfuzzy` top-level namespace by the
+`axisfuzzy.extension.injector.py` module, based on the provided metadata.
 """
 
 from typing import Optional, Union, List, Literal
@@ -54,7 +54,7 @@ def extension(name: str,
             it defaults to `['Fuzznum', 'Fuzzarray']`.
         injection_type: Specifies how the function should be injected:
             'instance_method': As a method of `target_classes`.
-            'top_level_function': As a function in the `fuzzlab` module namespace.
+            'top_level_function': As a function in the `axisfuzzy` module namespace.
             'both': Both as an instance method and a top-level function.
         is_default: A boolean indicating if this is a default implementation
             for the given `name`. Default implementations are used when no
@@ -72,9 +72,9 @@ def extension(name: str,
     Examples:
         Registering a specialized 'distance' function for 'qrofn' mtype:
         ```python
-        # In fuzzlab/fuzzy/qrofs/_func.py
-        from fuzzlab.extension import extension
-        from fuzzlab.core import Fuzznum
+        # In axisfuzzy/fuzzy/qrofs/_func.py
+        from axisfuzzy.extension import extension
+        from axisfuzzy.core import Fuzznum
 
         @extension('distance', mtype='qrofn', target_classes=['Fuzznum'])
         def qrofn_distance(fuzz1: Fuzznum, fuzz2: Fuzznum, p: int = 2) -> float:
@@ -87,9 +87,9 @@ def extension(name: str,
 
         Registering a general 'distance' function as a default implementation:
         ```python
-        # In a general extension module (e.g., fuzzlab/extension/general_funcs.py)
-        from fuzzlab.extension import extension
-        from fuzzlab.core import Fuzznum
+        # In a general extension module (e.g., axisfuzzy/extension/general_funcs.py)
+        from axisfuzzy.extension import extension
+        from axisfuzzy.core import Fuzznum
 
         @extension('distance', is_default=True, target_classes=['Fuzznum'])
         def default_distance(fuzz1: Fuzznum, fuzz2: Fuzznum) -> float:
@@ -100,9 +100,9 @@ def extension(name: str,
 
         Registering a constructor-like function as a top-level function:
         ```python
-        # In fuzzlab/fuzzy/qrofs/_func.py
-        from fuzzlab.extension import extension
-        from fuzzlab.core import Fuzznum
+        # In axisfuzzy/fuzzy/qrofs/_func.py
+        from axisfuzzy.extension import extension
+        from axisfuzzy.core import Fuzznum
         import _random
 
         @extension('random_qrofn', mtype='qrofn', injection_type='top_level_function')
@@ -148,9 +148,9 @@ def batch_extension(registrations: List[dict]):
         Registering a function that serves as a specialized 'normalize' for 'qrofn'
         and a default 'normalize' for other types:
         ```python
-        # In fuzzlab/fuzzy/qrofs/_func.py
-        from fuzzlab.extension import batch_extension
-        from fuzzlab.core import Fuzznum
+        # In axisfuzzy/fuzzy/qrofs/_func.py
+        from axisfuzzy.extension import batch_extension
+        from axisfuzzy.core import Fuzznum
 
         @batch_extension([
             {'name': 'normalize', 'mtype': 'qrofn', 'target_classes': ['Fuzznum']},
@@ -165,9 +165,9 @@ def batch_extension(registrations: List[dict]):
         Registering a function as both an instance method and a top-level function
         for a specific mtype:
         ```python
-        # In fuzzlab/fuzzy/ivfns/_func.py
-        from fuzzlab.extension import batch_extension
-        from fuzzlab.core import Fuzznum
+        # In axisfuzzy/fuzzy/ivfns/_func.py
+        from axisfuzzy.extension import batch_extension
+        from axisfuzzy.core import Fuzznum
 
         @batch_extension([
             {'name': 'ivfn_transform', 'mtype': 'ivfn', 'injection_type': 'instance_method', 'target_classes': ['Fuzznum']},

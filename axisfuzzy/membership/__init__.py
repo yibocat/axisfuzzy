@@ -9,7 +9,7 @@ from .base import MembershipFunction
 from .factory import create_mf, get_mf_class
 from . import function
 
-# 方便用户直接从 fuzzlab.membership 导入具体的函数类
+# 方便用户直接从 axisfuzzy.membership 导入具体的函数类
 from .function import (
     SigmoidMF,
     TriangularMF,

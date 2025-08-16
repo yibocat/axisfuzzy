@@ -62,7 +62,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from matplotlib import pyplot as plt
 
-from fuzzlab.config import get_config
+from axisfuzzy.config import get_config
 
 
 class TypeNormalizer:

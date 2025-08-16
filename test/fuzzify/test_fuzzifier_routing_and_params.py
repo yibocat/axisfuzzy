@@ -9,9 +9,9 @@ import pytest
 import numpy as np
 from unittest.mock import Mock, patch
 
-from fuzzlab.fuzzify import Fuzzifier, fuzzify
-from fuzzlab.membership import TriangularMF, GaussianMF, MembershipFunction
-from fuzzlab.core import Fuzznum, Fuzzarray
+from axisfuzzy.fuzzify import Fuzzifier, fuzzify
+from axisfuzzy.membership import TriangularMF, GaussianMF, MembershipFunction
+from axisfuzzy.core import Fuzznum, Fuzzarray
 
 
 class MockMembershipFunction(MembershipFunction):
@@ -68,7 +68,7 @@ class TestFuzzifierInitialization:
 
     def test_init_default_mtype(self):
         """测试默认 mtype"""
-        with patch('fuzzlab.config.get_config') as mock_config:
+        with patch('axisfuzzy.config.get_config') as mock_config:
             mock_config.return_value.DEFAULT_MTYPE = 'qrofn'
 
             fuzzifier = Fuzzifier(
@@ -93,7 +93,7 @@ class TestFuzzifierInitialization:
     def test_parameter_separation(self):
         """测试参数自动分拣"""
         # 这里我们需要 mock 一些内部机制来测试参数分拣
-        with patch('fuzzlab.fuzzify.fuzzifier.inspect') as mock_inspect:
+        with patch('axisfuzzy.fuzzify.fuzzifier.inspect') as mock_inspect:
             # Mock strategy 参数
             mock_strategy_sig = Mock()
             mock_strategy_sig.parameters.keys.return_value = ['self', 'q', 'pi']

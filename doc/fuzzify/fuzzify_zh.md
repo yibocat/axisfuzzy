@@ -1,8 +1,8 @@
 好的，我将先提交中文文档草案，落在文档目录 doc/fuzzify 下的 fuzzify_zh.md。
 
-# FuzzLab 模糊化（Fuzzification）系统说明
+# AxisFuzzy 模糊化（Fuzzification）系统说明
 
-本文档全面介绍 FuzzLab 的模糊化系统（fuzzify）与隶属函数系统（membership）：架构设计、核心 API、扩展方法、性能注意事项以及示例代码。
+本文档全面介绍 AxisFuzzy 的模糊化系统（fuzzify）与隶属函数系统（membership）：架构设计、核心 API、扩展方法、性能注意事项以及示例代码。
 
 适用版本：2025-08-14 之后的主干版本
 
@@ -10,7 +10,7 @@
 
 ## 1. 模块概览
 
-FuzzLab 从高性能模糊数计算出发，提供了“将精确值转为模糊数（或模糊数组）”的统一入口，即模糊化（Fuzzification）系统。核心能力包括：
+AxisFuzzy 从高性能模糊数计算出发，提供了“将精确值转为模糊数（或模糊数组）”的统一入口，即模糊化（Fuzzification）系统。核心能力包括：
 
 - 通过“隶属函数”将输入 x → 隶属度 `md`；
 - 基于目标 `mtype` 的模糊化策略，将 `md`（以及策略参数）→ 模糊数组件；
@@ -19,15 +19,15 @@ FuzzLab 从高性能模糊数计算出发，提供了“将精确值转为模糊
 当前内置 `mtype`：q-rofn（q-rung orthopair fuzzy number）
 
 目录结构（与本说明相关的主要文件）：
-- fuzzlab/fuzzify/
+- axisfuzzy/fuzzify/
   - `base.py`：模糊化策略抽象基类 `FuzzificationStrategy`
   - `fuzzifier.py`：调度器 `Fuzzifier` 与便捷函数 `fuzzify`
   - `registry.py`：策略注册表与装饰器
-- fuzzlab/membership/
+- axisfuzzy/membership/
   - `base.py`：隶属函数基类 `MembershipFunction`
   - `function.py`：内置隶属函数实现（`TriangularMF`, `GaussianMF`, ...）
   - `factory.py`：隶属函数工厂与别名解析
-- fuzzlab/fuzztype/qrofs/fuzzify.py：`QROFNFuzzificationStrategy`（`qrofn` 的默认策略）
+- axisfuzzy/fuzztype/qrofs/fuzzify.py：`QROFNFuzzificationStrategy`（`qrofn` 的默认策略）
 
 ---
 
@@ -74,15 +74,15 @@ FuzzLab 从高性能模糊数计算出发，提供了“将精确值转为模糊
 
 ````python
 # 单值 -> Fuzznum
-from fuzzlab.fuzzify import fuzzify
+from axisfuzzy.fuzzify import fuzzify
 
 x = 0.7
 fz = fuzzify(
     x=x,
-    mf='trimf',     # 三角形隶属函数别名
+    mf='trimf',  # 三角形隶属函数别名
     mtype='qrofn',  # 目标模糊数类型
-    q=2,            # 策略参数：q
-    pi=0.2,         # 策略参数：犹豫因子（必填）
+    q=2,  # 策略参数：q
+    pi=0.2,  # 策略参数：犹豫因子（必填）
     a=0.0, b=0.8, c=1.0  # 隶属函数参数
 )
 print(fz.get_info())
@@ -92,7 +92,7 @@ print(fz.get_info())
 
 ````python
 import numpy as np
-from fuzzlab.fuzzify import fuzzify
+from axisfuzzy.fuzzify import fuzzify
 
 X = np.array([10, 25, 40], dtype=float)
 fa = fuzzify(
@@ -109,23 +109,23 @@ print(fa.shape, fa.mtype)
 示例 3：使用可复用引擎 `Fuzzifier`
 
 ````python
-from fuzzlab.fuzzify import Fuzzifier
-from fuzzlab.membership import GaussianMF
+from axisfuzzy.fuzzify import Fuzzifier
+from axisfuzzy.membership import GaussianMF
 
 # 预构建隶属函数实例
 mf = GaussianMF(sigma=4.0, c=20.0)
 
 # 配置阶段（只做一次）
 fuzz_engine = Fuzzifier(
-    mf=mf,          # 已实例化的隶属函数
+    mf=mf,  # 已实例化的隶属函数
     mtype='qrofn',  # 省略 method 使用默认
-    q=3,            # 策略参数
-    pi=0.15         # 策略参数
+    q=3,  # 策略参数
+    pi=0.15  # 策略参数
 )
 
 # 执行阶段（可重复）
-print(fuzz_engine(18.0))           # -> Fuzznum
-print(fuzz_engine([15.0, 20.0]))   # -> Fuzzarray
+print(fuzz_engine(18.0))  # -> Fuzznum
+print(fuzz_engine([15.0, 20.0]))  # -> Fuzzarray
 ````
 
 注意：
@@ -201,7 +201,7 @@ print(fuzz_engine([15.0, 20.0]))   # -> Fuzzarray
 
 ## 5. `qrofn` 默认策略详解：`QROFNFuzzificationStrategy`
 
-位置：`fuzzlab/fuzztype/qrofs/fuzzify.py`  
+位置：`axisfuzzy/fuzztype/qrofs/fuzzify.py`  
 注册：`@register_fuzzify('qrofn', 'default')`
 
 参数：
@@ -232,44 +232,46 @@ print(fuzz_engine([15.0, 20.0]))   # -> Fuzzarray
 
 ````python
 # 示例：新增 qrofn 的另一策略（示意）
-from fuzzlab.fuzzify import FuzzificationStrategy, register_fuzzify
-from fuzzlab.membership import MembershipFunction
-from fuzzlab.core import Fuzznum, Fuzzarray, get_registry_fuzztype
+from axisfuzzy.fuzzify import FuzzificationStrategy, register_fuzzify
+from axisfuzzy.membership import MembershipFunction
+from axisfuzzy.core import Fuzznum, Fuzzarray, get_registry_fuzztype
 import numpy as np
 
 
 @register_fuzzify('qrofn', 'my_method')
 class QROFNMyStrategy(FuzzificationStrategy):
-  def __init__(self, q: int = 2, alpha: float = 0.1):
-    super().__init__(q=q, alpha=alpha)
+    def __init__(self, q: int = 2, alpha: float = 0.1):
+        super().__init__(q=q, alpha=alpha)
 
-  def fuzzify_scalar(self, x: float, mf: MembershipFunction) -> Fuzznum:
-    md = mf.compute(x)
-    # 示例：用 alpha 导出一个“自定义犹豫度”，再计算 nmd
-    pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
-    nmd = np.maximum(1.0 - md ** self.q - pi ** self.q, 0.0) ** (1.0 / self.q)
-    return Fuzznum(mtype='qrofn', q=self.q).create(md=float(md), nmd=float(nmd))
+    def fuzzify_scalar(self, x: float, mf: MembershipFunction) -> Fuzznum:
+        md = mf.compute(x)
+        # 示例：用 alpha 导出一个“自定义犹豫度”，再计算 nmd
+        pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
+        nmd = np.maximum(1.0 - md ** self.q - pi ** self.q, 0.0) ** (1.0 / self.q)
+        return Fuzznum(mtype='qrofn', q=self.q).create(md=float(md), nmd=float(nmd))
 
-  def fuzzify_array(self, x: np.ndarray, mf: MembershipFunction) -> Fuzzarray:
-    md = mf.compute(x)
-    pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
-    nmd = np.maximum(1.0 - md ** self.q - pi ** self.q, 0.0) ** (1.0 / self.q)
+    def fuzzify_array(self, x: np.ndarray, mf: MembershipFunction) -> Fuzzarray:
+        md = mf.compute(x)
+        pi = np.clip(self.kwargs['alpha'] * (1.0 - md), 0.0, 1.0)
+        nmd = np.maximum(1.0 - md ** self.q - pi ** self.q, 0.0) ** (1.0 / self.q)
 
-    backend_cls = get_registry_fuzztype().get_fuzztype_backend('qrofn')
-    backend = backend_cls.from_arrays(md=md, nmd=nmd, q=self.q)
-    return Fuzzarray(backend=backend, mtype='qrofn', q=self.q)
+        backend_cls = get_registry_fuzztype().get_fuzztype_backend('qrofn')
+        backend = backend_cls.from_arrays(md=md, nmd=nmd, q=self.q)
+        return Fuzzarray(backend=backend, mtype='qrofn', q=self.q)
 ````
 
 使用：
+
 ````python
-from fuzzlab.fuzzify import Fuzzifier
+from axisfuzzy.fuzzify import Fuzzifier
+
 fzr = Fuzzifier(mf='gaussmf', mtype='qrofn', method='my_method', q=2, alpha=0.2, sigma=3.0, c=10.0)
 y = fzr([9.0, 10.0, 11.0])
 ````
 
 ### 6.2 新增 mtype
 
-- 在 fuzzlab/fuzzy/<your_mtype>/ 下实现：
+- 在 axisfuzzy/fuzzy/<your_mtype>/ 下实现：
   - `backend.py`（SoA 后端）
   - `qrofn` 类似的策略实现并注册
 - 在 core/registry 中注册 `mtype` 对应的 strategy/backend
@@ -278,7 +280,8 @@ y = fzr([9.0, 10.0, 11.0])
 ### 6.3 新增隶属函数
 
 ````python
-from fuzzlab.membership import MembershipFunction
+from axisfuzzy.membership import MembershipFunction
+
 
 class MyMF(MembershipFunction):
     def __init__(self, p: float = 2.0, name: str = None):
@@ -291,7 +294,7 @@ class MyMF(MembershipFunction):
         # 这里只是演示
         import numpy as np
         x = np.asarray(x, dtype=float)
-        y = np.clip(1.0 - np.abs(x)/self.p, 0.0, 1.0)
+        y = np.clip(1.0 - np.abs(x) / self.p, 0.0, 1.0)
         return y
 
     def set_parameters(self, **kwargs):
@@ -351,7 +354,7 @@ class MyMF(MembershipFunction):
 
 ````python
 import numpy as np
-from fuzzlab.fuzzify import Fuzzifier, fuzzify
+from axisfuzzy.fuzzify import Fuzzifier, fuzzify
 
 # 1) 便捷函数：一次性调用
 fz = fuzzify(x=0.4, mf='trimf', mtype='qrofn', q=2, pi=0.25, a=0.0, b=0.5, c=1.0)
@@ -364,7 +367,8 @@ fa = fzr(arr)
 print("Array:", fa.shape, fa.mtype)
 
 # 3) 传入自定义隶属函数实例
-from fuzzlab.membership import TriangularMF
+from axisfuzzy.membership import TriangularMF
+
 mf_ins = TriangularMF(a=0.0, b=1.0, c=2.0)
 fzr2 = Fuzzifier(mf=mf_ins, mtype='qrofn', q=2, pi=0.2)
 print(fzr2(1.3))

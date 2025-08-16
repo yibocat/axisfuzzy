@@ -1,6 +1,6 @@
-# FuzzLab Fuzzification System Guide
+# AxisFuzzy Fuzzification System Guide
 
-This document describes the FuzzLab fuzzification system (`fuzzify`) and the membership subsystem (`membership`): architecture, core APIs, extensibility, performance notes, and usage examples.
+This document describes the AxisFuzzy fuzzification system (`fuzzify`) and the membership subsystem (`membership`): architecture, core APIs, extensibility, performance notes, and usage examples.
 
 Target branch: 2025-08-14 and later
 
@@ -8,7 +8,7 @@ Target branch: 2025-08-14 and later
 
 ## 1. Module Overview
 
-FuzzLab provides a unified entry to convert crisp values into fuzzy numbers/arrays: the fuzzification system. It builds on:
+AxisFuzzy provides a unified entry to convert crisp values into fuzzy numbers/arrays: the fuzzification system. It builds on:
 
 - Membership functions: x → membership degree md ∈ `[0, 1]`
 - Fuzzification strategies: md (+ strategy params) → target fuzzy-number components
@@ -17,15 +17,15 @@ FuzzLab provides a unified entry to convert crisp values into fuzzy numbers/arra
 Current built-in mtype: `qrofn` (q-rung orthopair fuzzy number)
 
 Related files:
-- fuzzlab/fuzzify/
+- axisfuzzy/fuzzify/
   - `base.py`: abstract strategy base class FuzzificationStrategy
   - `fuzzifier.py`: scheduler Fuzzifier and convenience function fuzzify
   - `registry.py`: strategy registry and decorator
-- fuzzlab/membership/
+- axisfuzzy/membership/
   - `base.py`: membership base class MembershipFunction
   - `function.py`: built-ins (`TriangularMF`, `GaussianMF`, ...)
   - `factory.py`: factory and alias resolution for membership functions
-- fuzzlab/fuzztype/qrofs/fuzzify.py: `QROFNFuzzificationStrategy` (default for `qrofn`)
+- axisfuzzy/fuzztype/qrofs/fuzzify.py: `QROFNFuzzificationStrategy` (default for `qrofn`)
 
 ---
 
@@ -68,16 +68,16 @@ Use `fuzzify` for one-off conversions; use `Fuzzifier` if you’ll reuse the sam
 Example 1: Single value → `qrofn` (default strategy, triangular MF)
 
 ````python
-from fuzzlab.fuzzify import fuzzify
+from axisfuzzy.fuzzify import fuzzify
 
 x = 0.7
 fz = fuzzify(
-    x=x,
-    mf='trimf',
-    mtype='qrofn',
-    q=2,          # strategy param
-    pi=0.2,       # strategy param (required)
-    a=0.0, b=0.8, c=1.0  # membership params
+  x=x,
+  mf='trimf',
+  mtype='qrofn',
+  q=2,  # strategy param
+  pi=0.2,  # strategy param (required)
+  a=0.0, b=0.8, c=1.0  # membership params
 )
 print(fz.get_info())
 ````
@@ -86,16 +86,16 @@ Example 2: Batch → `Fuzzarray` (Gaussian MF)
 
 ````python
 import numpy as np
-from fuzzlab.fuzzify import fuzzify
+from axisfuzzy.fuzzify import fuzzify
 
 X = np.array([10, 25, 40], dtype=float)
 fa = fuzzify(
-    x=X,
-    mf='gaussmf',
-    mtype='qrofn',
-    q=3,
-    pi=0.1,
-    sigma=5.0, c=25.0
+  x=X,
+  mf='gaussmf',
+  mtype='qrofn',
+  q=3,
+  pi=0.1,
+  sigma=5.0, c=25.0
 )
 print(fa.shape, fa.mtype)
 ````
@@ -103,18 +103,18 @@ print(fa.shape, fa.mtype)
 Example 3: Reusable engine Fuzzifier
 
 ````python
-from fuzzlab.fuzzify import Fuzzifier
-from fuzzlab.membership import GaussianMF
+from axisfuzzy.fuzzify import Fuzzifier
+from axisfuzzy.membership import GaussianMF
 
 mf = GaussianMF(sigma=4.0, c=20.0)
 engine = Fuzzifier(
-    mf=mf,
-    mtype='qrofn',
-    q=3,
-    pi=0.15
+  mf=mf,
+  mtype='qrofn',
+  q=3,
+  pi=0.15
 )
-print(engine(18.0))           # -> Fuzznum
-print(engine([15.0, 20.0]))   # -> Fuzzarray
+print(engine(18.0))  # -> Fuzznum
+print(engine([15.0, 20.0]))  # -> Fuzzarray
 ````
 
 Notes:
@@ -187,7 +187,7 @@ Implementation tips:
 
 ## 5. qrofn Default Strategy: `QROFNFuzzificationStrategy`
 
-Location: fuzzlab/fuzztype/qrofs/fuzzify.py  
+Location: axisfuzzy/fuzztype/qrofs/fuzzify.py  
 Registration: `@register_fuzzify('qrofn', 'default')`
 
 Parameters:
@@ -213,9 +213,9 @@ Stability:
 ### 6.1 Add a new strategy (for the same mtype)
 
 ````python
-from fuzzlab.fuzzify import FuzzificationStrategy, register_fuzzify
-from fuzzlab.membership import MembershipFunction
-from fuzzlab.core import Fuzznum, Fuzzarray, get_registry_fuzztype
+from axisfuzzy.fuzzify import FuzzificationStrategy, register_fuzzify
+from axisfuzzy.membership import MembershipFunction
+from axisfuzzy.core import Fuzznum, Fuzzarray, get_registry_fuzztype
 import numpy as np
 
 
@@ -241,8 +241,10 @@ class QROFNMyStrategy(FuzzificationStrategy):
 ````
 
 Usage:
+
 ````python
-from fuzzlab.fuzzify import Fuzzifier
+from axisfuzzy.fuzzify import Fuzzifier
+
 fzr = Fuzzifier(mf='gaussmf', mtype='qrofn', method='my_method',
                 q=2, alpha=0.2, sigma=3.0, c=10.0)
 y = fzr([9.0, 10.0, 11.0])
@@ -250,7 +252,7 @@ y = fzr([9.0, 10.0, 11.0])
 
 ### 6.2 Add a new mtype
 
-- Implement your mtype under fuzzlab/fuzzy/<your_mtype>/:
+- Implement your mtype under axisfuzzy/fuzzy/<your_mtype>/:
   - `backend.py` (SoA backend)
   - `fuzzify.py` with strategy implementations; register them via the decorator
 - Register the mtype in the core registry if needed
@@ -259,23 +261,24 @@ y = fzr([9.0, 10.0, 11.0])
 ### 6.3 Add a new membership function
 
 ````python
-from fuzzlab.membership import MembershipFunction
+from axisfuzzy.membership import MembershipFunction
 import numpy as np
 
+
 class MyMF(MembershipFunction):
-    def __init__(self, p: float = 2.0, name: str = None):
-        super().__init__(name)
-        self.p = p
-        self.parameters = {'p': p}
+  def __init__(self, p: float = 2.0, name: str = None):
+    super().__init__(name)
+    self.p = p
+    self.parameters = {'p': p}
 
-    def compute(self, x):
-        x = np.asarray(x, dtype=float)
-        return np.clip(1.0 - np.abs(x)/self.p, 0.0, 1.0)
+  def compute(self, x):
+    x = np.asarray(x, dtype=float)
+    return np.clip(1.0 - np.abs(x) / self.p, 0.0, 1.0)
 
-    def set_parameters(self, **kwargs):
-        if 'p' in kwargs:
-            self.p = kwargs['p']
-            self.parameters['p'] = self.p
+  def set_parameters(self, **kwargs):
+    if 'p' in kwargs:
+      self.p = kwargs['p']
+      self.parameters['p'] = self.p
 ````
 
 - To enable string alias creation, add it in `membership/factory.py`.
@@ -326,8 +329,8 @@ class MyMF(MembershipFunction):
 
 ````python
 import numpy as np
-from fuzzlab.fuzzify import Fuzzifier, fuzzify
-from fuzzlab.membership import TriangularMF
+from axisfuzzy.fuzzify import Fuzzifier, fuzzify
+from axisfuzzy.membership import TriangularMF
 
 # 1) One-shot convenience
 fz = fuzzify(x=0.4, mf='trimf', mtype='qrofn',

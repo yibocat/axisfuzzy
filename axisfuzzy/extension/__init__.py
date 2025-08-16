@@ -53,17 +53,17 @@ def apply_extensions(target_module_globals: Dict[str, Any] | None = None) -> boo
 
     This process makes the specialized and default extension functions
     available as methods on `Fuzznum` and `Fuzzarray` instances, and as
-    top-level functions within the `fuzzlab` module.
+    top-level functions within the `axisfuzzy` module.
 
     This function is typically called once during the initial import
-    of the `fuzzlab` library.
+    of the `axisfuzzy` library.
 
     Examples:
         ```python
-        # This function is called automatically when 'import fuzzlab' is executed.
+        # This function is called automatically when 'import axisfuzzy' is executed.
         # Developers usually don't need to call it manually.
         # Its effect is to make methods like fuzznum_instance.distance()
-        # and functions like fuzzlab.distance() available.
+        # and functions like axisfuzzy.distance() available.
         ```
     """
     global _applied
@@ -77,8 +77,8 @@ def apply_extensions(target_module_globals: Dict[str, Any] | None = None) -> boo
         'Fuzzarray': Fuzzarray,
     }
 
-    # Get the namespace of the 'fuzzlab' module for injecting top-level functions.
-    import fuzzlab
+    # Get the namespace of the 'axisfuzzy' module for injecting top-level functions.
+    import axisfuzzy
 
     injectors = get_extension_injector()
     try:

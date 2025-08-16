@@ -14,8 +14,8 @@ intelligently dispatch the call to the correct underlying extension
 implementation based on the `mtype` of the `Fuzznum` or `Fuzzarray` object
 involved in the operation.
 
-The dispatcher works in conjunction with `fuzzlab.extension.registry.py`
-(to look up implementations) and `fuzzlab.extension.injector.py` (to inject
+The dispatcher works in conjunction with `axisfuzzy.extension.registry.py`
+(to look up implementations) and `axisfuzzy.extension.injector.py` (to inject
 these proxy functions into classes or the top-level namespace).
 """
 from typing import Callable
@@ -118,7 +118,7 @@ class ExtensionDispatcher:
         Creates a dispatching function suitable for a top-level module function.
 
         This function returns a closure that, when called as a global function
-        (e.g., `fuzzlab.distance(...)`), will expect a `Fuzznum` or `Fuzzarray`
+        (e.g., `axisfuzzy.distance(...)`), will expect a `Fuzznum` or `Fuzzarray`
         object as its first argument. It then extracts the `mtype` from this
         object to find and call the correct registered extension implementation.
 
@@ -138,19 +138,19 @@ class ExtensionDispatcher:
         Examples:
             ```python
             # This method is typically called by ExtensionInjector
-            # to create top-level functions like fuzzlab.distance.
+            # to create top-level functions like axisfuzzy.distance.
             dispatcher = get_extension_dispatcher()
             distance_func = dispatcher.create_top_level_function('distance')
 
-            # Later, this 'distance_func' would be set as fuzzlab.distance
-            # fuzzlab.distance(fuzznum_instance, other_fuzznum) would then call function_dispatcher
+            # Later, this 'distance_func' would be set as axisfuzzy.distance
+            # axisfuzzy.distance(fuzznum_instance, other_fuzznum) would then call function_dispatcher
             ```
         """
         def function_dispatcher(*args, **kwargs):
             """
             The actual dispatching logic for top-level functions.
 
-            This function is dynamically attached to the fuzzlab module namespace.
+            This function is dynamically attached to the axisfuzzy module namespace.
             It expects the first argument to be a Fuzznum/Fuzzarray instance
             to extract its mtype and find the correct extension implementation.
             """

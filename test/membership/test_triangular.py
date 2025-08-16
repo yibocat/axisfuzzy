@@ -8,7 +8,7 @@
 import pytest
 import numpy as np
 
-from fuzzlab.membership import TriangularMF
+from axisfuzzy.membership import TriangularMF
 
 
 class TestTriangularMF:

@@ -30,10 +30,10 @@ import weakref
 from abc import ABC
 from typing import Optional, Set, Dict, Callable, Any, Union, List
 
-from fuzzlab.config import get_config
-from fuzzlab.core.cache import LruCache
-from fuzzlab.core.operation import get_registry_operation
-from fuzzlab.core._triangular import OperationTNorm
+from axisfuzzy.config import get_config
+from axisfuzzy.core.cache import LruCache
+from axisfuzzy.core.operation import get_registry_operation
+from axisfuzzy.core._triangular import OperationTNorm
 
 
 class FuzznumStrategy(ABC):

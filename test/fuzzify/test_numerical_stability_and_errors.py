@@ -9,8 +9,8 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock
 
-from fuzzlab.fuzzify import Fuzzifier, fuzzify
-from fuzzlab.membership import TriangularMF, GaussianMF
+from axisfuzzy.fuzzify import Fuzzifier, fuzzify
+from axisfuzzy.membership import TriangularMF, GaussianMF
 
 
 class TestNumericalStability:

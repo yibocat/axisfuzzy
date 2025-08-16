@@ -43,8 +43,8 @@ def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
                    given operation.
 
     Examples:
-        >>> from fuzzlab.core.fuzznums import Fuzznum
-        >>> from fuzzlab.core.fuzzarray import Fuzzarray, fuzzarray
+        >>> from axisfuzzy.core.fuzznums import Fuzznum
+        >>> from axisfuzzy.core.fuzzarray import Fuzzarray, fuzzarray
         >>> # Assuming Fuzznum and Fuzzarray are properly initialized
         >>> # Fuzznum + Fuzznum
         >>> # result = operate('add', Fuzznum(1), Fuzznum(2))

@@ -88,7 +88,7 @@ def random_fuzz(
     The random seed is determined with the following priority:
     1. `rng`: An existing NumPy generator instance, for advanced control.
     2. `seed`: A local seed for this specific function call, ensuring local reproducibility.
-    3. Global seed: Set via `fuzzlab.random.set_seed()`, for global reproducibility.
+    3. Global seed: Set via `axisfuzzy.random.set_seed()`, for global reproducibility.
 
     Args:
         mtype: The fuzzy number type to generate (e.g., 'qrofn').
@@ -152,7 +152,7 @@ def choice(
         The generated random samples as a Fuzzarray or NumPy array.
     """
     if not isinstance(obj, Fuzzarray):
-        raise TypeError(f"Input for fuzzlab.random.choice must be a Fuzzarray, got {type(obj)}")
+        raise TypeError(f"Input for axisfuzzy.random.choice must be a Fuzzarray, got {type(obj)}")
 
     resolved_rng = _resolve_rng(seed, rng)
 

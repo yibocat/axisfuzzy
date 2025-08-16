@@ -897,8 +897,8 @@ class Fuzzarray:
             str: The formatted string representation of the Fuzzarray.
 
         Examples:
-            >>> from fuzzlab.core.fuzznums import Fuzznum
-            >>> from fuzzlab.fuzzy.qrofs.qrofn import QROFNStrategy, QROFNTemplate
+            >>> from axisfuzzy.core.fuzznums import Fuzznum
+            >>> from axisfuzzy.fuzzy.qrofs.qrofn import QROFNStrategy, QROFNTemplate
             >>> # Assuming QROFNTemplate supports 's' (score) and 'j' (JSON) format specifiers
             >>> f1 = Fuzznum(mtype='qrofn', q=2).create(md=0.8, nmd=0.3)
             >>> f2 = Fuzznum(mtype='qrofn', q=2).create(md=0.6, nmd=0.4)

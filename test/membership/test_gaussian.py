@@ -8,7 +8,7 @@
 import pytest
 import numpy as np
 
-from fuzzlab.membership import GaussianMF, DoubleGaussianMF
+from axisfuzzy.membership import GaussianMF, DoubleGaussianMF
 
 
 class TestGaussianMF:

@@ -10,11 +10,11 @@ Extension Injector for FuzzLab.
 
 This module defines the `ExtensionInjector` class, which is responsible for
 dynamically injecting registered extension functions into `Fuzznum`, `Fuzzarray`
-classes, and the `fuzzlab` top-level namespace.
+classes, and the `axisfuzzy` top-level namespace.
 
 It acts as the "activator" of the extension system, taking the metadata from
-`fuzzlab.extension.registry.py` and the proxy functions from
-`fuzzlab.extension.dispatcher.py` to make extensions callable as methods
+`axisfuzzy.extension.registry.py` and the proxy functions from
+`axisfuzzy.extension.dispatcher.py` to make extensions callable as methods
 or functions.
 """
 
@@ -31,7 +31,7 @@ class ExtensionInjector:
     The injector reads registered function metadata from the `ExtensionRegistry`
     and uses the `ExtensionDispatcher` to create callable proxies. These proxies
     are then attached to the specified target classes (like `Fuzznum` and `Fuzzarray`)
-    or the `fuzzlab` module's global namespace, making the extensions
+    or the `axisfuzzy` module's global namespace, making the extensions
     seamlessly available to users.
     """
 
@@ -59,18 +59,18 @@ class ExtensionInjector:
                 actual class objects (e.g., `{'Fuzznum': Fuzznum, 'Fuzzarray': Fuzzarray}`).
                 This is used to resolve target classes for method injection.
             module_namespace: The dictionary representing the target module's
-                namespace (e.g., `fuzzlab.__dict__`) where top-level functions
+                namespace (e.g., `axisfuzzy.__dict__`) where top-level functions
                 should be injected.
 
         Examples:
             ```python
-            # This is typically called internally by fuzzlab.extension.apply_extensions()
-            from fuzzlab.core import Fuzznum, Fuzzarray
-            import fuzzlab
+            # This is typically called internally by axisfuzzy.extension.apply_extensions()
+            from axisfuzzy.core import Fuzznum, Fuzzarray
+            import axisfuzzy
 
             injector = get_extension_injector()
             class_map = {'Fuzznum': Fuzznum, 'Fuzzarray': Fuzzarray}
-            module_namespace = fuzzlab.__dict__
+            module_namespace = axisfuzzy.__dict__
             injector.inject_all(class_map, module_namespace)
             ```
         """
