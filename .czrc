@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/commitizen/cz-cli/master/commitizen-schema.json",
+  "path": "cz-conventional-changelog",
+  "maxHeaderWidth": 72,
+  "minHeaderWidth": 10,
+  "types": [
+    { "value": "feat", "name": "feat:     ✨ New feature" },
+    { "value": "fix", "name": "fix:      🐛 Bug fix" },
+    { "value": "docs", "name": "docs:     📝 Documentation change (documentation only)" },
+    { "value": "style", "name": "style:    💄 Code style change (formatting, no logic change)" },
+    { "value": "refactor", "name": "refactor: ♻️  Refactor (neither bug fix nor feature)" },
+    { "value": "perf", "name": "perf:     ⚡ Performance improvement" },
+    { "value": "test", "name": "test:     ✅ Add or modify tests" },
+    { "value": "chore", "name": "chore:    🔧 Other chores (build, CI, dependencies)" }
+  ],
+  "scopes": [
+    { "name": "core" },
+    { "name": "fuzznum" },
+    { "name": "fuzzarray" },
+    { "name": "strategy" },
+    { "name": "registry" },
+    { "name": "operation" },
+    { "name": "dispatcher" },
+    { "name": "tnorm" },
+    { "name": "membership" },
+    { "name": "fuzzify" },
+    { "name": "extension" },
+    { "name": "mixin" },
+    { "name": "random" },
+    { "name": "qrofs" },
+    { "name": "ivfn" },
+    { "name": "type2" },
+    { "name": "tests" },
+    { "name": "docs" },
+    { "name": "build" },
+    { "name": "infra" }
+  ],
+  "messages": {
+    "type": "Select the type of change that you’re committing:",
+    "scope": "Select the scope this change affects (scope, leave empty for global):",
+    "customScope": "Enter a custom scope:",
+    "subject": "Write a short, imperative description of the change:\n",
+    "body": "Provide a longer description (optional, use line breaks):\n",
+    "breaking": "List any BREAKING CHANGES (optional):\n",
+    "footer": "List any issues closed by this change (e.g.: Closes #123, #456) (optional):\n",
+    "confirmCommit": "Are you sure you want to proceed with the commit above? (y/n)"
+  }
+}

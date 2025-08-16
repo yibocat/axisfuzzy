@@ -10,3 +10,7 @@ __pycache__
 /notebook/
 /.github/
 /doc/todo/
+docs/_build/
+docs/build/
+/doc/private/
+
