@@ -1,125 +1,126 @@
 # Contributing to AxisFuzzy
 
-首先，感谢你对 AxisFuzzy 的贡献兴趣！  
-为了保持代码库整洁和开发流程有序，请在提交代码前遵循以下 **Commit Message 规范**。
+First of all, thank you for your interest in contributing to AxisFuzzy!  
+To keep the codebase clean and the development process organized, please follow the guidelines below before submitting your code.
 
 ---
 
-## 📝 Commit Message 规范
+## 📝 Commit Message Guidelines
 
-我们采用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。每一条提交消息需符合以下格式：
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. Each commit message must adhere to the following format:
 
 `<type>(<scope>): <subject>`
 
+### 1. Commit Type (`type`)
 
-### 1. 提交类型 (type)
+The following is a list of common `types`:
 
-以下是常见的 `type` 列表：
-
-- **feat**: 新功能 (feature)
-- **fix**: 修复 bug
-- **docs**: 文档修改 (仅限文档，不修改代码)
-- **style**: 代码风格修改 (格式化、空格、注释调整，不影响逻辑)
-- **refactor**: 重构 (不新增功能、不修 bug，而是优化/改善代码/架构)
-- **perf**: 提升性能的修改
-- **test**: 测试相关修改 (新增测试、修改已有测试)
-- **chore**: 杂务 (构建系统、CI 配置、更改依赖、不影响最终产物的脚本)
-
----
-
-### 2. 作用范围 (scope)
-
-`scope` 用于指定影响到的模块或子系统。在 AxisFuzzy 项目中推荐使用以下 scope：
-
-#### 核心 (core 层)
-- `core` → 核心框架通用改动
-- `fuzznum` → `Fuzznum` 抽象与策略
-- `fuzzarray` → `Fuzzarray` 容器与后端
-- `strategy` → `FuzznumStrategy` 抽象
-- `registry` → 核心注册表
-- `operation` → 运算系统核心 (`OperationMixin`, `OperationScheduler`)
-- `dispatcher` → 运算分发器
-- `tnorm` → t-范数与协范数函数
-
-#### 功能扩展层
-- `membership` → 隶属函数系统
-- `fuzzify` → 模糊化系统
-- `extension` → 扩展系统 (注册、分发、注入)
-- `mixin` → Mixin 系统 (通用数组方法)
-- `random` → 随机系统
-
-#### 类型实现层
-- 各种具体 `mtype` → 直接用缩写作为 scope，例如：
-  - `qrofs` → q-rung 直觉模糊数
-  - `ivfn` → 区间值模糊数
-  - `type2` → 二型模糊数
-
-#### 辅助与基础设施
-- `tests` → 测试
-- `docs` → 文档
-- `build` → 构建系统、打包配置
-- `infra` → 基础设施 (脚本、CI/CD、工具链)
+- **feat**: New feature
+- **fix**: Bug fix
+- **docs**: Documentation changes (documentation only, no code changes)
+- **style**: Code style changes (formatting, spacing, comment adjustments, does not affect logic)
+- **refactor**: Refactoring (not adding new features or fixing bugs, but optimizing/improving code/architecture)
+- **perf**: Performance improvements
+- **test**: Test-related changes (adding new tests, modifying existing tests)
+- **chore**: Miscellaneous tasks (build system, CI configuration, dependency changes, scripts that do not affect the final product)
 
 ---
 
-### 3. 标题 (subject)
+### 2. Scope (`scope`)
 
-- 使用 **命令式语气** (建议英文)：  
+`scope` specifies the module or subsystem affected by the change. In the AxisFuzzy project, we recommend the following scopes:
+
+#### Core Layer
+- `core` → General changes to the core framework
+- `fuzznum` → `Fuzznum` abstraction and strategy
+- `fuzzarray` → `Fuzzarray` container and backend
+- `strategy` → `FuzznumStrategy` abstraction
+- `registry` → Core registry
+- `operation` → Operation system core (`OperationMixin`, `OperationScheduler`)
+- `dispatcher` → Operation dispatcher
+- `tnorm` → t-norm and co-norm functions
+
+#### Functional Extension Layer
+- `membership` → Membership function system
+- `fuzzify` → Fuzzification system
+- `extension` → Extension system (registration, dispatch, injection)
+- `mixin` → Mixin system (general array methods)
+- `random` → Random system
+
+#### Type Implementation Layer
+- Various specific `mtype` → Use the abbreviation as the scope, for example:
+  - `qrofs` → q-rung orthopair fuzzy set
+  - `ivfn` → interval-valued fuzzy number
+  - `type2` → type-2 fuzzy number
+
+#### Auxiliary & Infrastructure
+- `tests` → Tests
+- `docs` → Documentation
+- `build` → Build system, packaging configuration
+- `infra` → Infrastructure (scripts, CI/CD, toolchain)
+
+---
+
+### 3. Subject
+
+- Use **imperative mood** (recommended in English):  
   - ✅ `fix(dispatcher): correct type promotion`  
   - ❌ `fixed dispatcher bug`  
-- 不要超过 72 个字符  
-- 简洁清晰地说明 **做了什么**（而不是怎么做）
+- Do not exceed 72 characters  
+- Clearly and concisely state **what was done** (not how)
 
 ---
 
-### 4. 可选部分
+### 4. Optional Sections
 
-完整的 commit message 可以包含三部分：
+A complete commit message can include three parts:
 
 ```
 <type>(<scope>): <subject>
-[Body - 可选: 补充说明、动机、影响范围]
-[Footer - 可选: issue 关联、重大声明]
+[Body - optional: additional explanation, motivation, impact]
+[Footer - optional: issue references, breaking changes]
 ```
 
-示例：
+Example:
 
 ```
 feat(membership): add Gaussian membership function
 
-Implement GaussianMF class
-Register into factory for string-based creation
-Update fuzzifier to support Gaussian as an option
+- Implement GaussianMF class
+- Register into factory for string-based creation
+- Update fuzzifier to support Gaussian as an option
+
 Closes #42
 ```
 
+---
+
+## 🚦 Tooling
+
+To help developers follow the convention more easily, we recommend the following tools:
+
+- [Commitizen](https://github.com/commitizen/cz-cli): interactively generate standardized commit messages
+- [commitlint](https://github.com/conventional-changelog/commitlint): validate commit messages in CI/CD
+- [semantic-release](https://semantic-release.gitbook.io/semantic-release/): automatically generate version & changelog based on conventional commits
 
 ---
 
-## 🚦 规范化工具
-
-为了帮助开发者更轻松遵循规范，推荐使用以下工具：
-
-- [Commitizen](https://github.com/commitizen/cz-cli)：交互式生成符合规范的提交消息
-- [commitlint](https://github.com/conventional-changelog/commitlint)：在 CI/CD 中校验提交消息
-- [semantic-release](https://semantic-release.gitbook.io/semantic-release/)：基于规范提交自动生成版本 & Changelog
-
----
-
-## ✅ 提交示例
+## ✅ Commit Examples
 
 ```
-feat(core): add FuzznumStrategy base class fix(dispatcher): resolve broadcasting issue in binary ops docs: update README with installation instructions refactor(fuzzarray): improve backend SoA performance test(extension): add unit tests for similarity function
+feat(core): add FuzznumStrategy base class
+fix(dispatcher): resolve broadcasting issue in binary ops
+docs: update README with installation instructions
+refactor(fuzzarray): improve backend SoA performance
+test(extension): add unit tests for similarity function
 ```
-
 
 ---
 
-> **注意**: 如果提交包含破坏性变更 (Breaking Change)，请在 Body 或 Footer 中注明：
+> **Note**: If your commit contains a breaking change, please indicate it in the Body or Footer:
 >
 > ```
 > BREAKING CHANGE: Fuzznum interface changed, requires mtype args explicitly
 > ```
 
-
-这样在自动生成 Changelog 和版本号时，可以正确地 bump major version。
+This ensures that changelogs and version numbers are correctly bumped during automated release.
