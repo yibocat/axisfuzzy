@@ -5,7 +5,7 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 
-from typing import Any, Optional, Sequence, Tuple, Union, List, Type
+from typing import Any, Optional, Sequence, Tuple, Union, List, Type, overload
 import numpy as np
 
 from ..core import Fuzznum, Fuzzarray
@@ -19,14 +19,25 @@ def get_rng() -> np.random.Generator: ...
 def spawn_rng() -> np.random.Generator: ...
 
 # --- Core Generation API ---
+@overload
 def random_fuzz(
     mtype: Optional[str] = ...,
     q: int = ...,
-    shape: Optional[Union[int, Tuple[int, ...]]] = ...,
+    shape: None = ...,
     seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
     rng: Optional[np.random.Generator] = ...,
     **params: Any
-) -> Union[Fuzznum, Fuzzarray]: ...
+) -> Fuzznum: ...
+
+@overload
+def random_fuzz(
+    mtype: Optional[str] = ...,
+    q: int = ...,
+    shape: Union[int, Tuple[int, ...]] = ...,
+    seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
+    rng: Optional[np.random.Generator] = ...,
+    **params: Any
+) -> Fuzzarray: ...
 
 def choice(
     obj: Fuzzarray,
@@ -75,12 +86,22 @@ def is_registered(mtype: str) -> bool: ...
 # rand = random_fuzz
 
 # Explicitly define the alias 'rand' with the full signature of 'random_fuzz'
+@overload
 def rand(
     mtype: Optional[str] = ...,
     q: int = ...,
-    shape: Optional[Union[int, Tuple[int, ...]]] = ...,
+    shape: None = ...,
     seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
     rng: Optional[np.random.Generator] = ...,
     **params: Any
-) -> Union[Fuzznum, Fuzzarray]: ...
+) -> Fuzznum: ...
 
+@overload
+def rand(
+    mtype: Optional[str] = ...,
+    q: int = ...,
+    shape: Union[int, Tuple[int, ...]] = ...,
+    seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
+    rng: Optional[np.random.Generator] = ...,
+    **params: Any
+) -> Fuzzarray: ...

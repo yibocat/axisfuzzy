@@ -13,7 +13,7 @@ Fuzznum and Fuzzarray instances, as well as other utility functions
 for random sampling.
 """
 
-from typing import Any, Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Sequence, Tuple, Union, overload
 import numpy as np
 
 from ..core import Fuzznum, Fuzzarray
@@ -50,6 +50,28 @@ def _resolve_rng(
     if seed is not None:
         return np.random.default_rng(seed)
     return get_rng()
+
+
+@overload
+def random_fuzz(
+    mtype: Optional[str] = ...,
+    q: int = ...,
+    shape: None = ...,
+    seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
+    rng: Optional[np.random.Generator] = ...,
+    **params: Any
+) -> Fuzznum: ...
+
+
+@overload
+def random_fuzz(
+    mtype: Optional[str] = ...,
+    q: int = ...,
+    shape: Union[int, Tuple[int, ...]] = ...,
+    seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
+    rng: Optional[np.random.Generator] = ...,
+    **params: Any
+) -> Fuzzarray: ...
 
 
 def random_fuzz(
@@ -108,7 +130,7 @@ def random_fuzz(
         raise TypeError(f"Shape must be an int or a tuple of ints, but got {type(shape)}")
 
     # Generate a Fuzzarray using the high-performance method
-    return generator.fuzzarray(resolved_rng, shape, **params)
+    return generator.fuzzarray(resolved_rng, shape, **params)       # type: ignore[return-value]
 
 
 def choice(

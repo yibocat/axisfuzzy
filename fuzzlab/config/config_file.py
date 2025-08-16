@@ -23,19 +23,10 @@ class Config:
         default='qrofn',
         metadata={
             'category': 'basic',
-            'description': '默认模糊数类型，影响 Fuzznum 无参构造时的类型选择',
+            'description': 'Default fuzzy number type, affects the type selection '
+                           'when Fuzznum is constructed without parameters',
             'validator': lambda x: isinstance(x, str) and len(x) > 0,
-            'error_msg': "必须是非空字符串。"
-        }
-    )
-
-    DEFAULT_T_NORM: str = field(
-        default='algebraic',
-        metadata={
-            'category': 'basic',
-            'description': '默认t-范数类型，影响 Fuzznum 的运算规则',
-            'validator': lambda x: isinstance(x, str) and len(x) > 0,
-            'error_msg': "必须是非空字符串。"
+            'error_msg': "Must be a non-empty string."
         }
     )
 
@@ -43,39 +34,21 @@ class Config:
         default=4,
         metadata={
             'category': 'basic',
-            'description': '默认计算精度（小数位数），影响所有数值计算和显示',
+            'description': 'Default calculation precision (number of decimal places), '
+                           'affects all numeric calculations and display',
             'validator': lambda x: isinstance(x, int) and x >= 0,
-            'error_msg': "必须是非负整数。"
+            'error_msg': "Must be a non-negative integer."
         }
     )
-
+    #
     DEFAULT_EPSILON: float = field(
         default=1e-12,
         metadata={
             'category': 'basic',
-            'description': '默认数值容差，用于浮点数比较和零值判断',
+            'description': 'Default numerical tolerance, used for floating-point '
+                           'number comparison and zero value judgment',
             'validator': lambda x: isinstance(x, (int, float)) and x > 0,
-            'error_msg': "必须是正数。"
-        }
-    )
-
-    STRICT_ATTRIBUTE_MODE: bool = field(
-        default=True,
-        metadata={
-            'category': 'basic',
-            'description': '严格属性检查，主要用于 FuzznumStrategy 中 __setattr__ 方法的属性检查',
-            'validator': lambda x: isinstance(x, bool),
-            'error_msg': "必须是布尔值 (True/False)。"
-        }
-    )
-
-    ENABLE_CACHE: bool = field(
-        default=True,
-        metadata={
-            'category': 'performance',
-            'description': '是否启用运算缓存，影响工厂类和执行器等计算和创建实例的缓存行为',
-            'validator': lambda x: isinstance(x, bool),
-            'error_msg': "必须是布尔值 (True/False)。"
+            'error_msg': "Must be a positive number."
         }
     )
 
@@ -83,49 +56,10 @@ class Config:
         default=256,
         metadata={
             'category': 'performance',
-            'description': '运算缓存的最大条目数，控制内存使用',
+            'description': 'Maximum number of entries in the operation cache, '
+                           'which controls memory usage',
             'validator': lambda x: isinstance(x, int) and x >= 0,
-            'error_msg': "必须是非负整数。。"
-        }
-    )
-
-    ENABLE_FUZZNUM_CACHE: bool = field(
-        default=True,
-        metadata={
-            'category': 'performance',
-            'description': '是否启用模糊数缓存，影响模糊数实例的缓存行为',
-            'validator': lambda x: isinstance(x, bool),
-            'error_msg': "必须是布尔值 (True/False)。"
-        }
-    )
-
-    ENABLE_PERFORMANCE_MONITORING: bool = field(
-        default=True,
-        metadata={
-            'category': 'debug',
-            'description': '启动性能监控，用于调制监控一些计算的性能信息',
-            'validator': lambda x: isinstance(x, bool),
-            'error_msg': "必须是布尔值 (True/False)。"
-        }
-    )
-
-    ENABLE_LOGGING: bool = field(
-        default=True,
-        metadata={
-            'category': 'debug',
-            'description': '启动日志记录',
-            'validator': lambda x: isinstance(x, bool),
-            'error_msg': "必须是布尔值 (True/False)。"
-        }
-    )
-
-    DEBUG_MODE: bool = field(
-        default=True,
-        metadata={
-            'category': 'debug',
-            'description': '调试模式开关，启用详细的调试信息',
-            'validator': lambda x: isinstance(x, bool),
-            'error_msg': "必须是布尔值 (True/False)。"
+            'error_msg': "Must be a non-negative integer."
         }
     )
 
@@ -133,9 +67,83 @@ class Config:
         default=False,
         metadata={
             'category': 'debug',
-            'description': 'T-范数验证开关，用来对T-范数初始化完成后的数学性质验证。一般为默认为关闭(False)以提高模糊数计算效率。',
+            'description': 'T-Norm verification switch, used to verify the mathematical '
+                           'properties after T-Norm initialization. It is generally set '
+                           'to default off (False) to improve the computational efficiency '
+                           'of fuzzy numbers.',
             'validator': lambda x: isinstance(x, bool),
-            'error_msg': "必须是布尔值 (True/False)。"
+            'error_msg': "Must be a boolean value (True/False)."
         }
     )
+
+    # DEFAULT_T_NORM: str = field(
+    #     default='algebraic',
+    #     metadata={
+    #         'category': 'basic',
+    #         'description': '默认t-范数类型，影响 Fuzznum 的运算规则',
+    #         'validator': lambda x: isinstance(x, str) and len(x) > 0,
+    #         'error_msg': "必须是非空字符串。"
+    #     }
+    # )
+    #
+
+    # STRICT_ATTRIBUTE_MODE: bool = field(
+    #     default=True,
+    #     metadata={
+    #         'category': 'basic',
+    #         'description': '严格属性检查，主要用于 FuzznumStrategy 中 __setattr__ 方法的属性检查',
+    #         'validator': lambda x: isinstance(x, bool),
+    #         'error_msg': "必须是布尔值 (True/False)。"
+    #     }
+    # )
+
+    # ENABLE_CACHE: bool = field(
+    #     default=True,
+    #     metadata={
+    #         'category': 'performance',
+    #         'description': '是否启用运算缓存，影响工厂类和执行器等计算和创建实例的缓存行为',
+    #         'validator': lambda x: isinstance(x, bool),
+    #         'error_msg': "必须是布尔值 (True/False)。"
+    #     }
+    # )
+
+    # ENABLE_FUZZNUM_CACHE: bool = field(
+    #     default=True,
+    #     metadata={
+    #         'category': 'performance',
+    #         'description': '是否启用模糊数缓存，影响模糊数实例的缓存行为',
+    #         'validator': lambda x: isinstance(x, bool),
+    #         'error_msg': "必须是布尔值 (True/False)。"
+    #     }
+    # )
+
+    # ENABLE_PERFORMANCE_MONITORING: bool = field(
+    #     default=True,
+    #     metadata={
+    #         'category': 'debug',
+    #         'description': '启动性能监控，用于调制监控一些计算的性能信息',
+    #         'validator': lambda x: isinstance(x, bool),
+    #         'error_msg': "必须是布尔值 (True/False)。"
+    #     }
+    # )
+
+    # ENABLE_LOGGING: bool = field(
+    #     default=True,
+    #     metadata={
+    #         'category': 'debug',
+    #         'description': '启动日志记录',
+    #         'validator': lambda x: isinstance(x, bool),
+    #         'error_msg': "必须是布尔值 (True/False)。"
+    #     }
+    # )
+
+    # DEBUG_MODE: bool = field(
+    #     default=True,
+    #     metadata={
+    #         'category': 'debug',
+    #         'description': '调试模式开关，启用详细的调试信息',
+    #         'validator': lambda x: isinstance(x, bool),
+    #         'error_msg': "必须是布尔值 (True/False)。"
+    #     }
+    # )
 
