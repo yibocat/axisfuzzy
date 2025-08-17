@@ -14,6 +14,7 @@ This module defines the `FuzzarrayBackend` abstract base class which is the
 primary contract between high-level `Fuzzarray` containers and concrete,
 mtype-specific, NumPy-backed implementations.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Tuple, Optional
 

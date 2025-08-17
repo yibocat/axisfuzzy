@@ -5,12 +5,12 @@ API
 Complete AxisFuzzy API documentation and user guide.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    
-   config
-   core
+   config/index
+   core/index
    fuzzify
-   extension
+   extension/index
    mixin
    random
 

@@ -7,4 +7,5 @@ dependencies = [
     "notebook>=7.4.5",
     "numpy>=2.2.6",
     "matplotlib>=3.10.5",
+    "pytest>=8.4.1",
 ]

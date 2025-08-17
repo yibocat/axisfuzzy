@@ -5,6 +5,9 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 """
+core.dispatcher
+-----------------
+
 Central operation dispatcher for AxisFuzzy.
 
 This module provides a central dispatcher for performing operations between
@@ -14,6 +17,7 @@ It handles type-based dispatching to ensure that operations like addition,
 multiplication, and comparisons are correctly applied across different
 combinations of fuzzy numbers, fuzzy arrays, scalars, and NumPy arrays.
 """
+
 from typing import Any, Optional
 
 import numpy as np

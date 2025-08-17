@@ -1,29 +1,19 @@
 ==============
-axisfuzzy.config
+config(axisfuzzy.config)
 ==============
 
 Introduction
 ----
 The configuration subsystem of AxisFuzzy is responsible for maintaining global and local configuration items (such as default `mtype`, numerical precision, backend selection, etc.), and provides a unified access interface for various subsystems of the library. The configuration module includes user-facing APIs (convenience functions) and a lower-level configuration manager (used for programmatic and persistent operations).
 
-configuration module
----------------------
 .. toctree::
 
-.. automodule:: axisfuzzy.config.api
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :noindex:
+    :maxdepth: 2
+    :caption: Configuration Modules
 
-Config Manager
----------------------------
-
-.. automodule:: axisfuzzy.config.manager
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :noindex:
+    manager
+    api
+    defaults
 
 手动补充说明与使用示例
 ----------------------
