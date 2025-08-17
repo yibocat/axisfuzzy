@@ -16,12 +16,16 @@ from axisfuzzy.config.config_file import Config
 
 class ConfigManager:
     """
-    Global Configuration Manager.
+    Singleton manager for application configuration.
 
-    This class implements the singleton pattern, ensuring that there is
-    only one configuration instance throughout the application.It is
-    responsible for loading, saving, setting, retrieving,
-    and validating the configuration.
+    The manager holds a single :class:`~axisfuzzy.config.config_file.Config`
+    instance, provides load/save/reset operations, and validates updates
+    against field metadata.
+
+    Notes
+    -----
+    The class implements a thread-safe singleton pattern: multiple imports
+    will share the same manager instance.
     """
 
     _instance = None
@@ -29,11 +33,12 @@ class ConfigManager:
 
     def __new__(cls):
         """
-        Implement the singleton pattern to ensure that there is
-        only one instance of ConfigManager.
+        Create or return the singleton instance.
 
-        Returns:
-            ConfigManager: The sole instance of ConfigManager。
+        Returns
+        -------
+        ConfigManager
+            The unique ConfigManager instance.
         """
         if cls._instance is None:
             with cls._lock:
@@ -59,28 +64,35 @@ class ConfigManager:
 
     def get_config(self) -> Config:
         """
-        Get the current configuration instance.
+        Return the active Config instance.
 
-        Returns:
-            Config: Current configuration instance.
+        Returns
+        -------
+        Config
+            The current configuration dataclass.
         """
         return self._config
 
     def set_config(self, **kwargs):
         """
-        Set the value of one or more configuration parameters.
+        Set one or more configuration fields.
 
-        Args:
-            **kwargs: Configuration parameters in key-value pair form,
-                where the key is the configuration item name
-                and the value is the new value to be set.
+        Parameters
+        ----------
+        **kwargs
+            Mapping of configuration field names to desired values.
 
-        Raises:
-            ValueError: If an unknown parameter is passed or the
-                parameter value does not meet the validation rules.
+        Raises
+        ------
+        ValueError
+            If an unknown key is provided or a value fails validation.
+
+        Examples
+        --------
+        >>> mgr = ConfigManager()
+        >>> mgr.set_config(DEFAULT_PRECISION=6)
         """
         for key, value in kwargs.items():
-            # 查找 Config dataclass 中是否存在该参数
             config_field = None
             for f in fields(self._config):
                 if f.name == key:
@@ -92,85 +104,92 @@ class ConfigManager:
                     field.name
                     for field in fields(self._config)]
                 raise ValueError(
-                    f"未知配置参数: '{key}'。 "
-                    f"可用参数: {', '.join(available_params)}"
+                    f"Unknown configuration parameter: '{key}'. "
+                    f"Available Parameters: {', '.join(available_params)}"
                 )
 
-            # 参数验证
             self._validate_parameter(key, value)
-
-            # 设置参数
             setattr(self._config, key, value)
             self._is_modified = True
 
-    # ==================== 配置文件操作 ====================
+    # ==================== Configuration file operations ====================
 
     def load_config_file(self, file_path: Union[str, Path]):
         """
-        从指定路径加载配置文件并更新当前配置。
+        Load configuration from a JSON file and apply it.
 
-        Args:
-            file_path (Union[str, Path]): 配置文件的路径。
+        Parameters
+        ----------
+        file_path : str or pathlib.Path
+            Path to the JSON configuration file.
 
-        Raises:
-            FileNotFoundError: 如果指定路径的文件不存在。
-            ValueError: 如果文件内容不是有效的 JSON 格式，或 JSON 结构不正确，
-                        或文件中包含的配置值不符合验证规则。
-            RuntimeError: 如果加载过程中发生其他不可预期的错误。
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        ValueError
+            If the file content is not a dict or a validation error occurs.
+        RuntimeError
+            For unexpected IO/parse errors.
         """
         file_path = Path(file_path)
 
         if not file_path.exists():
-            raise FileNotFoundError(f"配置文件未找到: {file_path}")
+            raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
 
             if not isinstance(config_data, dict):
-                raise ValueError("配置文件内容必须是一个 JSON 对象 (字典)。")
+                raise ValueError("The content of the configuration file must be a JSON object (dictionary).。")
 
-            # 批量设置配置，这将触发每个参数的验证
             self.set_config(**config_data)
             self._config_source = str(file_path)
 
         except json.JSONDecodeError as e:
-            raise ValueError(f"配置文件 '{file_path}' 的 JSON 格式无效: {e}")
-        except ValueError as e:  # 捕获来自 set_config 的验证错误
-            raise ValueError(f"从文件 '{file_path}' 加载的配置数据验证失败: {e}")
+            raise ValueError(f"The JSON format of the configuration file '{file_path}' is invalid: {e}")
+        except ValueError as e:
+            raise ValueError(f"Configuration data loaded from the file '{file_path}' failed validation: {e}")
         except Exception as e:
-            raise RuntimeError(f"加载配置文件 '{file_path}' 时发生错误: {e}")
+            raise RuntimeError(f"An error occurred while loading the configuration file '{file_path}': {e}")
 
     def save_config_file(self, file_path: Union[str, Path]):
         """
-        将当前配置保存到指定路径的 JSON 文件。
+        Save the current configuration to a JSON file.
 
-        Args:
-            file_path (Union[str, Path]): 保存配置文件的路径。如果父目录不存在，将自动创建。
+        Parameters
+        ----------
+        file_path : str or pathlib.Path
+            Destination path for the JSON file. Parent directories are created
+            automatically.
 
-        Raises:
-            RuntimeError: 如果保存过程中发生错误。
+        Raises
+        ------
+        RuntimeError
+            If the file cannot be written.
         """
         file_path = Path(file_path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            # 将 Config dataclass 实例转换为字典
             config_data = asdict(self._config)
             with open(file_path, 'w', encoding='utf-8') as f:
-                # 使用 indent 进行美化打印，ensure_ascii=False 以支持中文
                 json.dump(config_data, f, indent=2, ensure_ascii=False)
 
-            self._is_modified = False  # 保存后重置修改状态
+            self._is_modified = False
 
         except Exception as e:
-            raise RuntimeError(f"保存配置文件 '{file_path}' 失败: {e}")
+            raise RuntimeError(f"Failed to save the configuration file '{file_path}': {e}")
 
-    # ==================== 配置管理 ====================
+    # ==================== Configuration Management ====================
 
     def reset_config(self):
         """
-        将当前配置重置为默认值。
+        Reset configuration to defaults.
+
+        This replaces the internal Config instance with a new default
+        instance and clears source/modified flags.
         """
         self._config = Config()
         self._config_source = None
@@ -178,34 +197,43 @@ class ConfigManager:
 
     def is_modified(self) -> bool:
         """
-        检查当前配置自上次加载或保存以来是否被修改过。
+        Check whether configuration was modified since last save/load.
 
-        Returns:
-            bool: 如果配置被修改过则返回 True，否则返回 False。
+        Returns
+        -------
+        bool
+            True if modified, False otherwise.
         """
         return self._is_modified
 
     def get_config_source(self) -> Optional[str]:
         """
-        获取当前配置的来源文件路径。
+        Return the path of the source file if the configuration was loaded from a file.
 
-        Returns:
-            Optional[str]: 配置来源文件的路径字符串，如果配置不是从文件加载的则为 None。
+        Returns
+        -------
+        str or None
+            File path string or None when configuration was not loaded from a file.
         """
         return self._config_source
 
-    # ==================== 配置验证 ====================
+    # ==================== Configuration Verification ====================
 
     def _validate_parameter(self, param_name: str, value: Any):
         """
-        验证单个配置参数的值。
+        Validate a single configuration parameter using field metadata.
 
-        Args:
-            param_name (str): 配置参数的名称。
-            value (Any): 要验证的参数值。
+        Parameters
+        ----------
+        param_name : str
+            Name of the configuration field to validate.
+        value : Any
+            Value to validate.
 
-        Raises:
-            ValueError: 如果参数值不符合预设的验证规则。
+        Raises
+        ------
+        ValueError
+            When the parameter doesn't exist or the validator metadata rejects the value.
         """
         config_field = None
         for f in fields(self._config):
@@ -213,42 +241,40 @@ class ConfigManager:
                 config_field = f
                 break
 
-        # 理论上，这个检查应在调用 _validate_parameter 之前完成，但作为安全措施仍保留。
+        # In theory, this check should be completed before calling _validate_parameter,
+        # but it is retained as a safety measure.
         if config_field is None:
-            raise ValueError(f"内部错误: 尝试验证未知参数 '{param_name}'。")
+            raise ValueError(f"Internal error: Attempting to verify unknown parameter '{param_name}'。")
 
         if 'validator' in config_field.metadata:
             validator = config_field.metadata['validator']
-            error_msg = config_field.metadata.get('error_msg', "值无效。")
+            error_msg = config_field.metadata.get('error_msg', "Value is invalid。")
             if not validator(value):
-                raise ValueError(f"参数 '{param_name}' 验证失败: {error_msg} 给定值: {value}")
-        # 如果 metadata 中没有定义 validator，则默认参数是有效的。
+                raise ValueError(f"Validation failed for parameter '{param_name}': {error_msg} Given value: {value}")
 
     # ==================== 诊断和工具方法 ====================
 
     def get_config_summary(self) -> Dict[str, Any]:
         """
-        获取当前配置的摘要信息，按类别分组。
+        Produce a categorized summary of current configuration.
 
-        Returns:
-            Dict[str, Any]: 包含配置项及其当前值的字典，按 'category' 元数据分组，
-                            并包含 'meta' 信息（如配置来源和修改状态）。
+        Returns
+        -------
+        dict
+            Mapping of category -> {field_name: value}, with an additional
+            'meta' key that contains 'config_source' and 'is_modified'.
         """
         summary = {}
         config = self._config
 
-        # 遍历 Config 类的所有字段
         for f in fields(config):
-            category = f.metadata.get('category', 'uncategorized')  # 获取类别，默认为 'uncategorized'
+            category = f.metadata.get('category', 'uncategorized')  # Get category, default is 'uncategorized'
 
-            # 如果该类别在 summary 中不存在，则创建
             if category not in summary:
                 summary[category] = {}
 
-            # 将配置项及其当前值添加到对应的类别中
             summary[category][f.name] = getattr(config, f.name)
 
-        # 添加元信息
         summary['meta'] = {
             'config_source': self._config_source,
             'is_modified': self._is_modified,
@@ -258,34 +284,39 @@ class ConfigManager:
 
     def validate_all_config(self) -> List[str]:
         """
-        Verify whether the values of all current configuration items comply with their defined rules.
+        Validate all configuration fields and collect validation errors.
 
-        Returns:
-            List[str]: A list containing all error messages for
-                validation failures. If the list is empty,
-                it indicates that all configuration items are valid.
+        Returns
+        -------
+        list of str
+            List of error messages. Empty list means all fields are valid.
         """
         errors = []
-        # 遍历 Config dataclass 的所有字段
+        # Traverse all fields of the Config dataclass
         for f in fields(self._config):
             param_name = f.name
             value = getattr(self._config, param_name)
             try:
                 self._validate_parameter(param_name, value)
             except ValueError as e:
-                errors.append(str(e))  # 附加错误消息
+                errors.append(str(e))  # Additional error message
 
         return errors
 
     @staticmethod
     def create_config_template(file_path: Union[str, Path]):
         """
-        Create a JSON format configuration file template
-        containing all the default configuration items.
+        Create a JSON configuration template file populated with defaults.
 
-        Args:
-            file_path (Union[str, Path]): The save path for the template file.
-                If the parent directory does not exist, it will be created automatically.
+        Parameters
+        ----------
+        file_path : str or pathlib.Path
+            Destination path for the template JSON. Parent directories will be created.
+
+        Notes
+        -----
+        The generated file contains some top-level comment/metadata fields
+        alongside the actual default configuration for easy editing.
         """
         template = {
             "_comment":
@@ -294,7 +325,7 @@ class ConfigManager:
                 "Please modify the following configuration parameters as needed:",
             "_version": "1.0",
 
-            # 实际配置参数
+            # Actual configuration parameters
             **asdict(Config())
         }
 
@@ -304,36 +335,41 @@ class ConfigManager:
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(template, f, indent=2, ensure_ascii=False)
 
-    # ==================== 未来扩展预留接口 ====================
+    # ==================== Reserved interface for future expansion ====================
 
     def add_config_observer(self, observer: Any):
         """
-        Add a configuration change observer.
+        Register an observer for config changes.
 
-        Args:
-            observer (Any): Implemented the observer object for the
-                configuration change notification interface.
+        Parameters
+        ----------
+        observer : Any
+            Observer object. Observer semantics are reserved for future use.
         """
-        # 暂未实现，为未来扩展预留
+        # Not yet implemented, reserved for future expansion
         self._observers.append(observer)
 
     def remove_observer(self, observer: Any):
         """
-        Remove a configuration change observer.
+        Remove a previously registered observer.
 
-        Args:
-            observer (Any): The observer object to be removed.
+        Parameters
+        ----------
+        observer : Any
+            Observer to remove. No-op if observer not registered.
         """
-        # 暂未实现，为未来扩展预留
+        # Not yet implemented, reserved for future expansion
         if observer in self._observers:
             self._observers.remove(observer)
 
     def get_config_history(self) -> List[Any]:
         """
-        Retrieve configuration change history.
+        Return a shallow copy of the configuration change history.
 
-        Returns:
-            List[Any]: Copy of configuration change history.
+        Returns
+        -------
+        list
+            The stored configuration history entries (currently unused).
         """
-        # 暂未实现，为未来扩展预留
+        # Not yet implemented, reserved for future expansion
         return self._config_history.copy()

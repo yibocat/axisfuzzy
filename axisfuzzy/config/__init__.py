@@ -7,15 +7,18 @@
 
 __all__ = []
 
-from .api import (get_config,
-                  set_config,
-                  load_config_file,
-                  save_config_file,
-                  reset_config)
+from .api import (
+    get_config_manager,
+    get_config,
+    set_config,
+    load_config_file,
+    save_config_file,
+    reset_config)
 
 from .config_file import Config
 
 __all__.extend([
+    'get_config_manager',
     'get_config',
     'set_config',
     'load_config_file',

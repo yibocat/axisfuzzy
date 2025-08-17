@@ -4,6 +4,17 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
+
+"""
+axisfuzzy.core.fuzznums
+=======================
+High-level Fuzznum wrapper and factory utilities.
+
+This module provides the Fuzznum facade which binds a concrete per-element
+strategy (FuzznumStrategy) implementation to a lightweight user-facing
+object. The module also contains the convenient factory function `fuzznum`.
+"""
+
 import difflib
 import copy
 
@@ -16,6 +27,51 @@ from .base import FuzznumStrategy
 
 
 class Fuzznum:
+    """
+    Thin facade object representing a single fuzzy number.
+
+    Fuzznum binds a concrete strategy implementation (subclass of
+    :class:`axisfuzzy.core.base.FuzznumStrategy`) at construction time and
+    exposes the strategy's attributes and methods on the Fuzznum instance.
+    This design keeps per-element logic in strategy classes while providing
+    a small, ergonomic high-level API.
+
+    Parameters
+    ----------
+    mtype : str, optional
+        Name of the fuzzy-number strategy (membership type). When omitted,
+        the default is read from configuration.
+    q : int, optional
+        q-rung parameter used by some strategies. When omitted, the default
+        is read from configuration.
+
+    Attributes
+    ----------
+    mtype : str
+        Configured membership type name.
+    q : int
+        Effective q-rung for this instance.
+
+    Notes
+    -----
+    - The Fuzznum instance dynamically binds strategy methods and attributes
+      into itself at initialization. Attempting to access strategy-backed
+      attributes before initialization raises an AttributeError.
+    - Internal attributes are prefixed with an underscore and are not
+      forwarded to the strategy.
+
+    Examples
+    --------
+    Create a default Fuzznum using the configured default mtype and q,
+    then perform a simple operation (operator dispatching requires the
+    appropriate operations to be registered for the configured mtype).
+
+    >>> from axisfuzzy.core.fuzznums import fuzznum
+    >>> a = fuzznum()        # uses DEFAULT_MTYPE and DEFAULT_Q from config
+    >>> b = fuzznum()
+    >>> # Binary operators delegate to dispatcher/registry (requires ops registered)
+    >>> # result = a + b
+    """
 
     __array_priority__ = 1.0
     _INTERNAL_ATTRS = {
@@ -35,7 +91,7 @@ class Fuzznum:
             mtype = get_config().DEFAULT_MTYPE
 
         if q is None:
-            q = 1
+            q = get_config().DEFAULT_Q
 
         if not isinstance(mtype, str):
             raise TypeError(f"mtype must be a string type, got '{type(mtype).__name__}'")
@@ -241,6 +297,25 @@ class Fuzznum:
             return {'attributes': [], 'methods': []}
 
     def create(self, **kwargs) -> 'Fuzznum':
+        """
+        Create a new Fuzznum instance of the same mtype/q and set initial attributes.
+
+        Parameters
+        ----------
+        **kwargs :
+            Attribute names and values to assign on the created Fuzznum. Only
+            attributes declared by the underlying strategy will be set.
+
+        Returns
+        -------
+        Fuzznum
+            A newly constructed Fuzznum instance with provided attributes applied.
+
+        Raises
+        ------
+        AttributeError
+            If an attribute provided in ``kwargs`` is not accepted by the strategy.
+        """
         instance = Fuzznum(self.mtype, self.q)
         if kwargs:
             for key, value in kwargs.items():
@@ -251,6 +326,20 @@ class Fuzznum:
         return instance
 
     def copy(self) -> 'Fuzznum':
+        """
+        Produce a shallow copy of this Fuzznum preserving current strategy attributes.
+
+        Returns
+        -------
+        Fuzznum
+            New Fuzznum instance configured with the same mtype/q and strategy
+            attribute values as this instance.
+
+        Raises
+        ------
+        RuntimeError
+            If called on an uninitialized Fuzznum.
+        """
         if not self._is_initialized():
             raise RuntimeError("Cannot copy uninitialized object")
 
@@ -268,6 +357,19 @@ class Fuzznum:
         return self.create(**current_params)
 
     def get_strategy_instance(self) -> FuzznumStrategy:
+        """
+        Return the bound FuzznumStrategy instance.
+
+        Returns
+        -------
+        FuzznumStrategy
+            The strategy object that implements the per-element behavior.
+
+        Raises
+        ------
+        RuntimeError
+            If the strategy instance is not available (e.g., partially initialized).
+        """
         try:
             strategy_instance = object.__getattribute__(self, '_strategy_instance')
             if strategy_instance is None:
@@ -277,6 +379,14 @@ class Fuzznum:
             raise RuntimeError("Strategy instance not found.")
 
     def get_strategy_attributes_dict(self) -> Dict[str, Any]:
+        """
+        Get a dictionary of strategy attributes and their current values.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping attribute names to their current values.
+        """
         if not self._is_initialized():
             raise RuntimeError("Cannot get strategy attributes from an uninitialized Fuzznum object.")
 
@@ -294,6 +404,14 @@ class Fuzznum:
         }
 
     def get_info(self) -> Dict[str, Any]:
+        """
+        Get basic information about the Fuzznum instance.
+
+        Returns
+        -------
+        dict
+            Dictionary containing basic information about the Fuzznum instance.
+        """
         if not self._is_initialized():
             return {
                 'mtype': getattr(self, 'mtype', 'unknown'),
@@ -320,6 +438,18 @@ class Fuzznum:
             }
 
     def validate_state(self) -> Dict[str, Any]:
+        """
+        Validate internal consistency of the Fuzznum and its bound strategy.
+
+        Returns
+        -------
+        dict
+            Validation summary with keys: 'is_valid', 'issues', 'warnings'.
+
+        Notes
+        -----
+        - Calls into the underlying strategy's validation method if available.
+        """
         validation_result = {
             'is_valid': True,
             'issues': [],
@@ -510,6 +640,19 @@ class Fuzznum:
     #   especially when the object structure is complex.
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the Fuzznum to a JSON-serializable dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing 'mtype' and 'attributes' describing the object.
+
+        Raises
+        ------
+        RuntimeError
+            If the object is not fully initialized.
+        """
         if not self._is_initialized():
             raise RuntimeError("Unable to serialize uninitialized object")
         try:
@@ -530,6 +673,25 @@ class Fuzznum:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Fuzznum':
+        """
+        Construct a Fuzznum from a dictionary produced by :meth:`to_dict`.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary containing at minimum the 'mtype' key and, optionally,
+            an 'attributes' mapping.
+
+        Returns
+        -------
+        Fuzznum
+            Reconstructed Fuzznum instance.
+
+        Raises
+        ------
+        ValueError
+            If 'mtype' is missing from the input dictionary.
+        """
         if 'mtype' not in data:
             raise ValueError("The dictionary must contain the 'mtype' key.")
 
@@ -606,7 +768,7 @@ def fuzznum(mtype: Optional[str] = None,
         An instance of Fuzznum configured with the specified strategy and parameters.
     """
     mtype = mtype or get_config().DEFAULT_MTYPE
-    q = q or 1
+    q = q or get_config().DEFAULT_Q
 
     instance = Fuzznum(mtype, q)
     if kwargs:

@@ -8,6 +8,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 
+from ...config import get_config
 from ...core import Fuzznum, Fuzzarray, get_registry_fuzztype
 from ...fuzzify import FuzzificationStrategy, register_fuzzify
 from ...membership import MembershipFunction
@@ -16,9 +17,10 @@ from ...membership import MembershipFunction
 @register_fuzzify('qrofn', 'default')
 class QROFNFuzzificationStrategy(FuzzificationStrategy):
 
-    def __init__(self, q: int = 1, pi: Optional[float] = None):
-        if q is None or int(q) < 1:
-            raise ValueError("Parameter 'q' must be an integer >= 1.")
+    def __init__(self,
+                 q: Optional[int] = None,
+                 pi: Optional[float] = None):
+        q = q if q is not None else get_config().DEFAULT_Q
         super().__init__(int(q), pi=pi)
         self.mtype = "qrofn"
         self.method = 'default'

@@ -4,6 +4,17 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
+"""
+axisfuzzy.core.fuzzarray
+========================
+
+High-level Fuzznum container built on a Struct-of-Arrays (SoA) backend.
+
+This module exposes the Fuzzarray class which provides ndarray-like API
+semantics for collections of fuzzy numbers while delegating storage and
+bulk computation to a specialized FuzzarrayBackend implementation.
+"""
+
 import os
 from typing import Optional, Union, Any, Tuple, Iterator, Dict
 import numpy as np
@@ -19,6 +30,58 @@ from .triangular import OperationTNorm
 class Fuzzarray:
     """
     High-performance fuzzy array using Struct of Arrays (SoA) architecture.
+
+    The Fuzzarray provides an ndarray-like interface for collections of fuzzy
+    numbers while delegating memory layout and vectorized computations to a
+    backend class (see :class:`FuzzarrayBackend`).
+
+    Parameters
+    ----------
+    data : array-like, Fuzznum or None, optional
+        Input content used to initialize the array. Accepted types:
+        - None : create an empty backend (requires ``shape``).
+        - Fuzznum : broadcast a single fuzznum to fill the target shape.
+        - list/tuple/numpy.ndarray of Fuzznum : element-wise initialization.
+    backend : FuzzarrayBackend, optional
+        Pre-constructed backend instance. When provided, ``data`` is ignored.
+    mtype : str, optional
+        Membership type name (e.g. ``'qrofn'``). If omitted, the default from
+        configuration is used.
+    q : int, optional
+        q-rung parameter for q-rung based mtypes. If omitted, default is used.
+    shape : tuple of int, optional
+        Target logical shape for the array (required when ``data`` is None).
+    **kwargs
+        Additional backend/mtype-specific keyword arguments.
+
+    Examples
+    --------
+    The examples assume that a default fuzzy number mtype and its backend are
+    registered in the global registry (this typically happens during library
+    initialization). They demonstrate common construction and arithmetic usage.
+
+    >>> from axisfuzzy.core.fuzznums import fuzznum
+    >>> from axisfuzzy.core.fuzzarray import fuzzarray
+    >>> # Create a scalar Fuzznum using defaults (mtype/q come from config)
+    >>> scalar = fuzznum()
+    >>> # Broadcast a scalar Fuzznum into a 1-D Fuzzarray of length 3
+    >>> fa = fuzzarray(scalar, shape=(3,))
+    >>> # Create a Fuzzarray from an explicit list of Fuzznum objects
+    >>> fb = fuzzarray([fuzznum(), fuzznum(), fuzznum()])
+    >>> # Element-wise arithmetic returns a Fuzzarray
+    >>> result = fa + fb
+    >>> isinstance(result, type(fa))
+    True
+    >>> # Comparison operations yield boolean NumPy arrays
+    >>> (fa > fb).shape
+    (3,)
+
+    Notes
+    -----
+    - The class favors constructing backends that use views for slicing to
+      avoid unnecessary copies.
+    - Element-wise operations are delegated to registered Operation implementations;
+      Fuzzarray may use specialized vectorized implementations when available.
     """
 
     def __init__(self,
@@ -31,14 +94,21 @@ class Fuzzarray:
         """
         Initialize Fuzzarray with either data or existing backend.
 
-        Args:
-            data: Input data (list, ndarray, Fuzznum, etc.)
-            backend: Pre-constructed FuzzarrayBackend instance
-            mtype: Fuzzy number type (e.g., 'qrofn')
-            shape: Target shape for data
-            **kwargs: Type-specific parameters
+        Parameters
+        ----------
+        data : array-like or Fuzznum or None, optional
+            Input data to populate the Fuzzarray.
+        backend : FuzzarrayBackend, optional
+            If provided, used directly as the storage backend.
+        mtype : str, optional
+            Membership type string.
+        q : int, optional
+            q-rung parameter.
+        shape : tuple of int, optional
+            Desired shape when constructing from no data or a scalar.
+        **kwargs : dict
+            Extra parameters forwarded to backend constructor.
         """
-
         # This attribute will hold a reference to the original array if this is a transpose
         self._transposed_of: Optional['Fuzzarray'] = None
 
@@ -52,12 +122,33 @@ class Fuzzarray:
         else:
             # Construct from data
             self._mtype = get_config().DEFAULT_MTYPE if mtype is None else mtype
-            self._q = q if q is not None else 1
+            self._q = q if q is not None else get_config().DEFAULT_Q
             self._kwargs = kwargs
             self._backend = self._create_backend_from_data(data, shape)
 
     def _create_backend_from_data(self, data, shape: Optional[Tuple[int, ...]]) -> FuzzarrayBackend:
-        """Create backend from input data"""
+        """
+        Build a backend instance from provided input data.
+
+        Parameters
+        ----------
+        data : Fuzznum or list/tuple/numpy.ndarray or None
+            Source data used to initialize backend contents.
+        shape : tuple of int or None
+            Target shape for the backend. Required when ``data`` is None.
+
+        Returns
+        -------
+        FuzzarrayBackend
+            New backend instance populated according to ``data``.
+
+        Raises
+        ------
+        ValueError
+            If required shape is missing or shapes cannot be reconciled.
+        TypeError
+            If input contains non-Fuzznum elements or unsupported data type.
+        """
         registry = get_registry_fuzztype()
         backend_cls = registry.get_backend(self._mtype)
         if backend_cls is None:
@@ -159,14 +250,23 @@ class Fuzzarray:
             raise TypeError("len() of unsized object")
         return self.shape[0]
 
-    def __getitem__(self, key) -> Union[Fuzznum, 'Fuzzarray']:
+    def __getitem__(self, key) -> Union['Fuzznum', 'Fuzzarray']:
         """
-        实现索引和切片操作。
+        Index or slice the Fuzzarray.
 
-        - 标量索引返回 Fuzznum
-        - 切片索引返回新的 Fuzzarray
+        - Scalar indexing returns a lightweight Fuzznum view.
+        - Slice / ndarray-style indexing returns a new Fuzzarray (view when backend supports it).
+
+        Parameters
+        ----------
+        key : int, tuple, slice or other valid numpy-style index
+            Indexing key.
+
+        Returns
+        -------
+        Fuzznum | Fuzzarray
+            Single-element view or a new Fuzzarray for slices.
         """
-
         def _is_scalar_index(k) -> bool:
             if isinstance(k, (int, np.integer)):
                 return True
@@ -183,7 +283,23 @@ class Fuzzarray:
             return Fuzzarray(backend=sliced_backend)
 
     def __setitem__(self, key, value):
-        """Set item(s) in the fuzzy array."""
+        """
+        Assign a Fuzznum to specified location(s).
+
+        Parameters
+        ----------
+        key : index
+            Target location to set.
+        value : Fuzznum
+            Value to assign.
+
+        Raises
+        ------
+        TypeError
+            If ``value`` is not a Fuzznum.
+        ValueError
+            If ``value`` has mismatched ``mtype`` or ``q``.
+        """
         if isinstance(value, Fuzznum):
             if value.mtype != self._mtype:
                 raise ValueError(f"Mtype mismatch: expected '{self._mtype}', got '{value.mtype}'")
@@ -197,7 +313,24 @@ class Fuzzarray:
         raise NotImplementedError("Fuzzarray does not support item deletion.")
 
     def __contains__(self, item: Any) -> bool:
-        """检查元素是否在数组中"""
+        """
+        Test membership of a Fuzznum in the array.
+
+        Parameters
+        ----------
+        item : Any
+            Object to test for containment.
+
+        Returns
+        -------
+        bool
+            True if a matching element exists in the array; False otherwise.
+
+        Notes
+        -----
+        - Only objects that are instances of :class:`Fuzznum` with matching
+          ``mtype`` and ``q`` are considered.
+        """
         if not isinstance(item, Fuzznum):
             return False
         if item.mtype != self._mtype or item.q != self.q:
@@ -220,14 +353,25 @@ class Fuzzarray:
 
     def execute_vectorized_op(self, op_name: str, other=None):
         """
-        Execute vectorized operation using registered operations.
+        Execute a vectorized operation using the registered operation handlers.
 
-        Args:
-            op_name: Name of operation (e.g., 'add', 'mul', 'gt')
-            other: Second operand (Fuzzarray, Fuzznum, scalar, ndarray)
+        The method queries the global operation registry for the named operation
+        implementation for this Fuzzarray's ``mtype``. If a backend/vectorized
+        specialization exists it is used; otherwise a fallback element-wise
+        path is taken.
 
-        Returns:
-            Result of operation (Fuzzarray for arithmetic, ndarray for comparison)
+        Parameters
+        ----------
+        op_name : str
+            Operation name (e.g. ``'add'``, ``'mul'``, ``'gt'``).
+        other : Fuzzarray, Fuzznum, scalar, ndarray or None, optional
+            Second operand.
+
+        Returns
+        -------
+        Fuzzarray or numpy.ndarray
+            Result of the vectorized operation. Comparison operations yield
+            boolean numpy arrays; arithmetic operations yield Fuzzarray.
         """
         registry = get_registry_operation()
         op = registry.get_operation(op_name, self.mtype)
@@ -237,7 +381,7 @@ class Fuzzarray:
 
         # Get t-norm configuration
         norm_type, params = registry.get_default_t_norm_config()
-        tnorm = OperationTNorm(norm_type=norm_type, q=self.q or 1, **params)
+        tnorm = OperationTNorm(norm_type=norm_type, q=self.q or get_config().DEFAULT_Q, **params)
 
         # --- Dispatcher Logic ---
         # Check if the concrete `OperationMixin` subclass has overridden the
@@ -262,8 +406,25 @@ class Fuzzarray:
 
     def _fallback_vectorized_op(self, operation, other, tnorm):
         """
-        Fallback to element-wise operation when no specialized implementation exists.
-        This is a temporary bridge until all operations are optimized.
+        Generic element-wise fallback for operations without specialized vectorized implementations.
+
+        This method applies the per-element Fuzznum operation across all
+        indices and reconstructs a result container. It is slower than a
+        specialized backend implementation and intended as a portability fallback.
+
+        Parameters
+        ----------
+        operation : OperationMixin
+            Operation handler object obtained from the registry.
+        other : Fuzzarray, Fuzznum, scalar or None
+            Second operand for the operation.
+        tnorm : OperationTNorm
+            T-norm configuration passed to per-element executions.
+
+        Returns
+        -------
+        Fuzzarray or numpy.ndarray
+            Resulting container (Fuzzarray for arithmetic, ndarray of bool for comparisons).
         """
         # For now, use numpy vectorize as fallback
 
@@ -446,7 +607,7 @@ class Fuzzarray:
         if self.size == 0:
             return f"Fuzzarray([], mtype='{self.mtype}', q={self.q}, shape={self.shape})"
         formatted = self._backend.format_elements()
-        # 关键：prefix='Fuzzarray(' 使续行缩进与期望的左侧对齐
+        # Key: prefix='Fuzzarray(' makes the continued line indentation align with the desired left side.
         array_str = np.array2string(
             formatted,
             separator=' ',
@@ -474,7 +635,7 @@ class Fuzzarray:
             formatted,
             separator=' ',
             formatter={'object': lambda x: x},  # type: ignore
-            prefix='',  # 根据需要也可设 prefix
+            prefix='',
             max_line_width=80
         )
 
@@ -520,8 +681,9 @@ class Fuzzarray:
                 setattr(self._backend, key, value)
 
 
-# ================================= 工厂函数 =================================
+# ================================= Factory function =================================
 
+# TODO: 这个工厂函数 fuzzarray 有点问题, 没有 backend 参数, 但 Fuzzarray 的构造函数需要 backend 参数.
 def fuzzarray(data,
               mtype: Optional[str] = None,
               shape: Optional[Tuple[int, ...]] = None,
@@ -530,14 +692,23 @@ def fuzzarray(data,
     """
     Factory function to create Fuzzarray instances.
 
-    Args:
-        data: Input data
-        mtype: Membership type
-        shape: Target shape
-        copy: Whether to copy data (for compatibility)
-        **mtype_kwargs: Type-specific parameters
+    Parameters
+    ----------
+    data : array-like or Fuzznum or None
+        Input data to populate the returned Fuzzarray.
+    mtype : str, optional
+        Fuzztype name.
+    shape : tuple of int, optional
+        Desired shape when constructing from scalars or empty data.
+    copy : bool, optional
+        Reserved for API compatibility; current implementation forwards data
+        to Fuzzarray constructor which controls copying semantics.
+    **mtype_kwargs : dict
+        Additional mtype-specific parameters forwarded to Fuzzarray.
 
-    Returns:
-        New Fuzzarray instance
+    Returns
+    -------
+    Fuzzarray
+        New Fuzzarray instance constructed from the provided inputs.
     """
     return Fuzzarray(data=data, mtype=mtype, shape=shape, **mtype_kwargs)

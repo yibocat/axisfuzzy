@@ -62,7 +62,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from matplotlib import pyplot as plt
 
-from axisfuzzy.config import get_config
+from ..config import get_config
 
 
 class TypeNormalizer:
@@ -112,7 +112,8 @@ class TypeNormalizer:
 class BaseNormOperation(ABC):
     """T-范数操作的抽象基类"""
 
-    def __init__(self, q: int = 1, **params):
+    def __init__(self, **params):
+        q = params.get('q', get_config().DEFAULT_Q)
         self.q = TypeNormalizer.to_int(q)
         self.params = params
         self.is_archimedean = False
@@ -141,8 +142,8 @@ class BaseNormOperation(ABC):
 class AlgebraicNorm(BaseNormOperation):
     """代数积 T-范数"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.is_archimedean = True
         self.is_strict_archimedean = True
         self.supports_q = True
@@ -169,8 +170,8 @@ class AlgebraicNorm(BaseNormOperation):
 class LukasiewiczNorm(BaseNormOperation):
     """Łukasiewicz T-范数"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.is_archimedean = True
         self.is_strict_archimedean = False
         self.supports_q = True
@@ -195,8 +196,8 @@ class LukasiewiczNorm(BaseNormOperation):
 class EinsteinNorm(BaseNormOperation):
     """Einstein T-范数"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.is_archimedean = True
         self.is_strict_archimedean = True
         self.supports_q = True
@@ -225,8 +226,8 @@ class EinsteinNorm(BaseNormOperation):
 class HamacherNorm(BaseNormOperation):
     """Hamacher T-范数"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.gamma = params.get('hamacher_param', 1.0)
         if self.gamma <= 0:
             raise ValueError("Hamacher parameter gamma must be positive")
@@ -260,8 +261,8 @@ class HamacherNorm(BaseNormOperation):
 class YagerNorm(BaseNormOperation):
     """Yager T-范数族"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.p = params.get('yager_param', 1.0)
         if self.p <= 0:
             raise ValueError("Yager parameter p must be positive")
@@ -298,8 +299,8 @@ class YagerNorm(BaseNormOperation):
 class SchweizerSklarNorm(BaseNormOperation):
     """Schweizer-Sklar T-范数"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.p = params.get('sklar_param', 1.0)
         if self.p == 0:
             raise ValueError("Schweizer-Sklar parameter p cannot be zero")
@@ -423,8 +424,8 @@ class SchweizerSklarNorm(BaseNormOperation):
 class DombiNorm(BaseNormOperation):
     """Dombi T-范数"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.p = params.get('dombi_param', 1.0)
         if self.p <= 0:
             raise ValueError("Dombi parameter p must be positive")
@@ -524,8 +525,8 @@ class DombiNorm(BaseNormOperation):
 class AczelAlsinaNorm(BaseNormOperation):
     """Aczel-Alsina T-范数"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.p = params.get('aa_param', 1.0)
         if self.p <= 0:
             raise ValueError("Aczel-Alsina parameter p must be positive")
@@ -593,8 +594,8 @@ class FrankNorm(BaseNormOperation):
 
     _S_INF_THRESHOLD = 1e5
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.s = params.get('frank_param', np.e)
         if self.s <= 0 or self.s == 1:
             raise ValueError("Frank parameter s must be positive and not equal to 1")
@@ -671,8 +672,8 @@ class FrankNorm(BaseNormOperation):
 class MinimumNorm(BaseNormOperation):
     """最小 T-范数（非阿基米德）"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.is_archimedean = False
         self.is_strict_archimedean = False
         self.supports_q = False
@@ -689,8 +690,8 @@ class MinimumNorm(BaseNormOperation):
 class DrasticNorm(BaseNormOperation):
     """急剧 T-范数（非阿基米德）"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.is_archimedean = False
         self.is_strict_archimedean = False
         self.supports_q = False
@@ -713,8 +714,8 @@ class DrasticNorm(BaseNormOperation):
 class NilpotentNorm(BaseNormOperation):
     """幂零 T-范数（非阿基米德）"""
 
-    def __init__(self, q: int = 1, **params):
-        super().__init__(q, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.is_archimedean = False
         self.is_strict_archimedean = False
         self.supports_q = False
@@ -759,7 +760,6 @@ class OperationTNorm:
 
     def __init__(self,
                  norm_type: str = None,
-                 q: int = 1,
                  **params):
         """
         初始化模糊操作框架
@@ -778,6 +778,8 @@ class OperationTNorm:
                              f"Available types: {', '.join(self._NORM_REGISTRY.keys())}")
 
         self.norm_type = norm_type
+        q = params.get('q', get_config().DEFAULT_Q)
+
         self.q = TypeNormalizer.to_int(q)
         self.params = params
 
@@ -786,7 +788,9 @@ class OperationTNorm:
 
         # 创建范数操作实例
         norm_class = self._NORM_REGISTRY[norm_type]
-        self._norm_op = norm_class(q=self.q, **params)
+
+        params['q'] = self.q
+        self._norm_op = norm_class(**params)
 
         # 继承属性
         self.is_archimedean = self._norm_op.is_archimedean
@@ -1295,8 +1299,12 @@ class OperationTNorm:
         return list(OperationTNorm._NORM_REGISTRY.keys())
 
     @classmethod
-    def from_generator(cls, g_func: Callable, g_inv_func: Callable,
-                       norm_type: str = "custom", q: int = 1, **params):
+    def from_generator(cls,
+                       g_func: Callable,
+                       g_inv_func: Callable,
+                       norm_type: str = "custom",
+                       q: int = 1,
+                       **params):
         """从生成器函数创建 T-范数实例"""
         # 这是一个高级功能，需要更复杂的实现
         # 暂时抛出未实现异常
@@ -1304,9 +1312,9 @@ class OperationTNorm:
 
 
 # 为了保持向后兼容性，可以添加一些别名
-def create_tnorm(norm_type: str = 'algebraic', q: int = 1, **params) -> OperationTNorm:
+def create_tnorm(norm_type: str = 'algebraic', **params) -> OperationTNorm:
     """创建 T-范数实例的便利函数"""
-    return OperationTNorm(norm_type=norm_type, q=q, **params)
+    return OperationTNorm(norm_type=norm_type, **params)
 
 
 # 导出主要类和函数

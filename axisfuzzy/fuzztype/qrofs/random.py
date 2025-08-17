@@ -12,10 +12,11 @@ Random generator for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
 This module provides a high-performance, vectorized random generator for QROFNs,
 fully integrated with FuzzLab's random generation framework.
 """
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Optional
 
 import numpy as np
 
+from ...config import get_config
 from ...core import Fuzznum, Fuzzarray
 from ...random import register_random
 from ...random.base import ParameterizedRandomGenerator
@@ -66,7 +67,10 @@ class QROFNRandomGenerator(ParameterizedRandomGenerator):
         if 'nu_mode' in kwargs and kwargs['nu_mode'] not in ['orthopair', 'independent']:
             raise ValueError("nu_mode must be 'orthopair' or 'independent'")
 
-    def fuzznum(self, rng: np.random.Generator, q: int = 1, **kwargs) -> 'Fuzznum':
+    def fuzznum(self,
+                rng: np.random.Generator,
+                q: Optional[int] = None,
+                **kwargs) -> 'Fuzznum':
         """
         Generates a single random QROFN.
 
@@ -75,6 +79,8 @@ class QROFNRandomGenerator(ParameterizedRandomGenerator):
         """
 
         params = self._merge_parameters(**kwargs)
+
+        q = q if q is not None else get_config().DEFAULT_Q
         self.validate_parameters(q=q, **params)
 
         # Generate a single membership degree
@@ -113,12 +119,14 @@ class QROFNRandomGenerator(ParameterizedRandomGenerator):
     def fuzzarray(self,
                   rng: np.random.Generator,
                   shape: Tuple[int, ...],
-                  q: int = 1,
+                  q: Optional[int] = None,
                   **params) -> 'Fuzzarray':
         """
         Generates a Fuzzarray of QROFNs using high-performance vectorized operations.
         """
         params = self._merge_parameters(**params)
+
+        q = q if q is not None else get_config().DEFAULT_Q
         self.validate_parameters(q=q, **params)
 
         size = int(np.prod(shape))

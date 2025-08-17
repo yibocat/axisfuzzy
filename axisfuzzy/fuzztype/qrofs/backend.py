@@ -4,7 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
-from typing import Any, Tuple, cast
+from typing import Any, Tuple, cast, Optional
 
 import numpy as np
 
@@ -25,7 +25,7 @@ class QROFNBackend(FuzzarrayBackend):
 
     mtype = "qrofn"
 
-    def __init__(self, shape: Tuple[int, ...], q: int = 1, **kwargs):
+    def __init__(self, shape: Tuple[int, ...], q: Optional[int] = None, **kwargs):
         """
         Initializes the QROFNBackend.
 

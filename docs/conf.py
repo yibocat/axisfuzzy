@@ -42,9 +42,26 @@ html_theme_options = {
     ],
     "navbar_end": ["navbar-icon-links", "theme-switcher"],
     "show_nav_level": 2,
-    "navigation_depth": 4,  # 增加导航深度以支持子目录
+    "navigation_depth": 4,      # 增加导航深度以支持子目录
     "footer_items": ["copyright", "sphinx-version"],
     "show_source": False,       # 不显示 Show Source
+    "secondary_sidebar_items": ["page-toc", "edit-this-page"],
+}
+
+extensions += [
+    'sphinx.ext.autosummary',
+]
+
+# 在构建时自动生成 autosummary stub pages（第一次构建会生成 _autosummary）
+autosummary_generate = True
+
+# 全局 autodoc 默认选项（可按需调整）
+autodoc_default_options = {
+    'members': False,          # 默认不列出所有成员，按需用 :members: 指定
+    'undoc-members': False,
+    'inherited-members': True,
+    'show-inheritance': True,
+    'member-order': 'bysource',  # 或 'groupwise'
 }
 
 # 代码高亮

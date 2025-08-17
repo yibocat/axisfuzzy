@@ -17,6 +17,7 @@ from typing import List, Any
 # 1. 显式地从子模块重导出所有静态 API 的类型。
 #    使用 `as` 语法是向类型检查器声明重导出的最明确方式。
 from .config import (
+    get_config_manager as get_config_manager,
     get_config as get_config,
     set_config as set_config,
     load_config_file as load_config_file,

@@ -1,17 +1,17 @@
 ====================================
-AxisFuzzy - 模糊计算库
+axisfuzzy
 ====================================
 
-**AxisFuzzy** 是一个专业的 Python 模糊逻辑计算框架，为科研人员和工程师提供高性能、模块化、可扩展的模糊数学运算能力。
+AxisFuzzy is a professional Python fuzzy logic computing framework that provides researchers and engineers with high-performance, modular, and scalable fuzzy mathematical operation capabilities.
 
 .. note::
-   AxisFuzzy 的设计理念源于 NumPy，致力于让模糊数运算像操作普通数组一样简单直观。
+   The design concept of AxisFuzzy originates from NumPy, aiming to make fuzzy number operations as simple and intuitive as manipulating regular arrays.
 
-核心特性
+Core Features
 ========
 
-🎯 **统一接口**
-   通过 ``Fuzznum`` 和 ``Fuzzarray`` 提供类似 NumPy 的模糊数和模糊数组操作体验
+🎯 **Unified interface**
+   Provide NumPy-like fuzzy number and fuzzy array operations through ``Fuzznum`` and ``Fuzzarray``.
 
 ⚡ **高性能**
    后端采用 Struct of Arrays (SoA) 架构，实现批量高效计算
@@ -51,19 +51,19 @@ AxisFuzzy - 模糊计算库
    getting_started/index
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: 用户手册
 
    user_guide/index
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: 开发指南
 
    development/index
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: API 参考
 
    api/index

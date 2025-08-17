@@ -7,6 +7,7 @@
 
 from typing import List
 from .api import (
+    get_config_manager as get_config_manager,
     get_config as get_config,
     set_config as set_config,
     load_config_file as load_config_file,

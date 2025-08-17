@@ -5,60 +5,134 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 
+"""High-level convenience API for axisfuzzy configuration subsystem.
+
+This module exposes simple convenience functions around a single global
+:class:`~axisfuzzy.config.manager.ConfigManager` instance so library users
+can quickly read or mutate configuration without dealing with the manager
+class directly.
+
+The functions are intentionally thin wrappers and preserve the behaviour of
+the underlying manager (validation, load/save semantics, etc.).
+"""
+
 from pathlib import Path
 from typing import Union, Any, Optional
 
 from .config_file import Config
 from .manager import ConfigManager
 
-# 创建全局唯一的配置管理器实例
-
 _config_manager = ConfigManager()
+
+
+def get_config_manager() -> ConfigManager:
+    """
+    Return the global configuration manager instance.
+
+    This is the main entry point for accessing and modifying configuration.
+    It provides methods to get, set, load, and save configurations.
+
+    Returns
+    -------
+    ConfigManager
+        The global :class:`~axisfuzzy.config.manager.ConfigManager` instance.
+
+    Examples
+    --------
+    >>> from axisfuzzy.config.api import get_config_manager
+    >>> manager = get_config_manager()
+    >>> isinstance(manager, ConfigManager)
+    True
+    """
+    return _config_manager
 
 
 def get_config() -> Config:
     """
-    获取当前配置的便捷函数。
+    Return the active configuration object.
 
-    Returns:
-        Config: 当前配置实例。
+    Returns
+    -------
+    Config
+        The current :class:`~axisfuzzy.config.config_file.Config` instance.
+
+    Examples
+    --------
+    >>> from axisfuzzy.config.api import get_config
+    >>> cfg = get_config()
+    >>> isinstance(cfg, Config)
+    True
     """
     return _config_manager.get_config()
 
 
 def set_config(**kwargs: Any):
     """
-    设置配置参数的便捷函数。
+    Update multiple configuration entries.
 
-    Args:
-        **kwargs: 键值对形式的配置参数，键为配置项名称，值为要设置的新值。
-                  例如：`set_config(DEFAULT_PRECISION=8, ENABLE_CACHE=False)`。
+    Parameters
+    ----------
+    **kwargs
+        Keyword arguments mapping configuration field names to new values.
+        Field names must match the dataclass attributes defined in
+        :class:`~axisfuzzy.config.config_file.Config`.
+
+    Raises
+    ------
+    ValueError
+        If an unknown configuration key is provided or validation fails.
+
+    Examples
+    --------
+    >>> set_config(DEFAULT_PRECISION=6)
     """
     _config_manager.set_config(**kwargs)
 
 
 def load_config_file(file_path: Union[str, Path]):
     """
-    加载配置文件的便捷函数。
+    Load configuration from a JSON file and apply it.
 
-    Args:
-        file_path (Union[str, Path]): 配置文件路径，可以是字符串或 Path 对象。
+    Parameters
+    ----------
+    file_path : str or pathlib.Path
+        Path to a JSON configuration file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the given file does not exist.
+    ValueError
+        If the file is not valid JSON or contains invalid configuration values.
+    RuntimeError
+        For unexpected errors while reading or applying the file.
     """
     _config_manager.load_config_file(file_path)
 
 
 def save_config_file(file_path: Union[str, Path]):
     """
-    保存当前配置到指定文件的便捷函数。
+    Save the current configuration to a JSON file.
 
-    Args:
-        file_path (Union[str, Path]): 保存配置文件的路径，可以是字符串或 Path 对象。
+    Parameters
+    ----------
+    file_path : str or pathlib.Path
+        Path where the configuration will be saved. Parent directories will be
+        created if necessary.
+
+    Raises
+    ------
+    RuntimeError
+        If writing the file fails.
     """
     _config_manager.save_config_file(file_path)
 
 
 def reset_config():
     """
-    重置当前配置为默认值的便捷函数。
+    Reset the active configuration to defaults.
+
+    This restores :class:`~axisfuzzy.config.config_file.Config` to its
+    default state and clears any source metadata.
     """
     _config_manager.reset_config()

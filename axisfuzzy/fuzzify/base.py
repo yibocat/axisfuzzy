@@ -9,6 +9,7 @@ from typing import Any, Optional, Dict
 
 import numpy as np
 
+from ..config import get_config
 from ..core import Fuzznum, Fuzzarray
 from ..membership import MembershipFunction
 
@@ -26,7 +27,7 @@ class FuzzificationStrategy(ABC):
             q: 可选的参数，通常用于q-rung模糊数的策略
             **kwargs: 策略特定的参数
         """
-        self.q = q
+        self.q = q if q is not None else get_config().DEFAULT_Q
         self.kwargs = kwargs
 
     @abstractmethod

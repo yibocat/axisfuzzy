@@ -5,6 +5,8 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 """
+Central operation dispatcher for AxisFuzzy.
+
 This module provides a central dispatcher for performing operations between
 various FuzzLab data types (Fuzznum, Fuzzarray) and standard Python/NumPy types.
 
@@ -18,42 +20,61 @@ import numpy as np
 
 
 def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
-    """Performs an operation between two operands based on their types.
+    """
+    Perform a named operation between two operands using type-based dispatch.
+    
+    The dispatcher inspects the runtime types of ``operand1`` and ``operand2``
+    and routes the request to the most appropriate implementation path:
+    - Fuzznum vs Fuzznum -> delegated to Fuzznum strategy execution
+    - Fuzznum/Fuzzarray vs scalar/ndarray -> broadcasting to Fuzzarray when needed
+    - Fuzzarray vectorized operations -> delegated to Fuzzarray's vectorized API
+    - Comparison operations return Python booleans for element-wise/aggregate results
 
-    This function acts as a dispatcher, handling various combinations of Fuzznum,
-    Fuzzarray, scalar (int, float), and numpy.ndarray types. It dynamically
-    routes the operation to the appropriate handler based on the types of
-    `operand1` and `operand2`.
+    Parameters
+    ----------
+    op_name : str
+        Operation name (for example ``'add'``, ``'mul'``, ``'gt'``, ``'tim'``).
+    operand1 : object
+        First operand. Supported types include Fuzznum, Fuzzarray, int, float,
+        and :class:`numpy.ndarray`.
+    operand2 : object or None
+        Second operand. Supported types mirror ``operand1``; for unary operations
+        (e.g. ``'complement'``) this may be ``None``.
 
-    Args:
-        op_name (str): The name of the operation to perform (e.g., 'add', 'mul',
-                       'gt', 'tim').
-        operand1 (Any): The first operand. Can be a Fuzznum, Fuzzarray, int,
-                        float, or numpy.ndarray.
-        operand2 (Any): The second operand. Can be a Fuzznum, Fuzzarray, int,
-                        float, or numpy.ndarray.
+    Returns
+    -------
+    Any
+        Result of the dispatched operation. The concrete return type depends on
+        the operation and operand types (e.g., Fuzznum, Fuzzarray, bool, ndarray).
 
-    Returns:
-        Any: The result of the operation. The type of the result depends on the
-             operation and the types of the operands (e.g., Fuzznum, Fuzzarray,
-             or bool for comparison operations).
+    Raises
+    ------
+    TypeError
+        If the combination of operand types is unsupported for the given
+        operation.
 
-    Raises:
-        TypeError: If the combination of operand types is not supported for the
-                   given operation.
+    Notes
+    -----
+    - The function performs lazy imports of Fuzznum and Fuzzarray to avoid
+      circular import issues at module import time.
+    - Certain operation name aliases are mapped prior to dispatch (for example
+      ``'mul'`` and ``'div'`` are handled as ``'tim'`` internally).
+    - The dispatcher aims to prefer vectorized Fuzzarray implementations for
+      bulk operations to maximize performance.
 
-    Examples:
-        >>> from axisfuzzy.core.fuzznums import Fuzznum
-        >>> from axisfuzzy.core.fuzzarray import Fuzzarray, fuzzarray
-        >>> # Assuming Fuzznum and Fuzzarray are properly initialized
-        >>> # Fuzznum + Fuzznum
-        >>> # result = operate('add', Fuzznum(1), Fuzznum(2))
-        >>> # Fuzznum * scalar
-        >>> # result = operate('mul', Fuzznum(5), 2)
-        >>> # Fuzzarray + Fuzzarray
-        >>> # arr1 = fuzzarray([1, 2])
-        >>> # arr2 = fuzzarray([3, 4])
-        >>> # result = operate('add', arr1, arr2)
+    Examples
+    --------
+    >>> from axisfuzzy.core.fuzznums import Fuzznum
+    >>> from axisfuzzy.core.fuzzarray import Fuzzarray, fuzzarray
+    >>> # Assuming Fuzznum and Fuzzarray are properly initialized
+    >>> # Fuzznum + Fuzznum
+    >>> # result = operate('add', Fuzznum(1), Fuzznum(2))
+    >>> # Fuzznum * scalar
+    >>> # result = operate('mul', Fuzznum(5), 2)
+    >>> # Fuzzarray + Fuzzarray
+    >>> # arr1 = fuzzarray([1, 2])
+    >>> # arr2 = fuzzarray([3, 4])
+    >>> # result = operate('add', arr1, arr2)
     """
     # Dynamically import the required classes to avoid circular imports.
     # These imports are placed here to prevent circular dependencies at module load time.

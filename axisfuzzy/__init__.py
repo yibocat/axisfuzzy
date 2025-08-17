@@ -25,6 +25,7 @@ from . import fuzztype  # 确保所有 mtype 实现被加载
 
 # 2. 从子模块中显式导入需要提升到顶层命名空间的公共 API。
 from .config import (
+    get_config_manager,
     get_config,
     set_config,
     load_config_file,
@@ -76,6 +77,7 @@ from .mixin import apply_mixins, get_registry_mixin
 #    - 然后动态地从 mixin 系统获取将被注入的函数名。
 _static_api = [
     # config
+    'get_config_manager',
     'get_config',
     'set_config',
     'load_config_file',

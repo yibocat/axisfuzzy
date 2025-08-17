@@ -5,12 +5,14 @@
 #  Email: yibocat@yeah.net
 #  Software: FuzzLab
 """
-This module provides a simple Least Recently Used (LRU) cache implementation.
+axisfuzzy.core.cache
+=====================
 
-The `LruCache` class allows storing a fixed number of key-value pairs,
-automatically evicting the least recently accessed items when the cache
-reaches its maximum size. This is useful for caching frequently accessed
-data to improve performance.
+Lightweight Least Recently Used (LRU) cache used by core components.
+
+This module provides a minimal LRU cache implementation backed by
+collections.OrderedDict. It is intended for small, fast caches such as
+operation-result caching inside FuzznumStrategy instances.
 """
 from collections import OrderedDict
 from typing import Any, Optional
@@ -19,28 +21,52 @@ from axisfuzzy.config import get_config
 
 
 class LruCache:
-    """A simple Least Recently Used (LRU) cache implementation.
+    """
+    Simple Least Recently Used (LRU) cache.
 
-    This cache stores key-value pairs and automatically evicts the least
-    recently used items when the cache size exceeds its `maxsize`.
-    It uses `collections.OrderedDict` internally to maintain insertion
-    order and facilitate efficient LRU eviction.
+    The cache stores mapping from keys to values and evicts the least
+    recently used item when capacity is exceeded.
 
-    Attributes:
-        _cache (OrderedDict): The internal dictionary storing cache items.
-                              Keys are cache keys, values are cached data.
-                              The order reflects access/insertion recency.
-        maxsize (int): The maximum number of items the cache can hold.
-                       If not specified during initialization, it defaults
-                       to `get_config().CACHE_SIZE`.
+    Parameters
+    ----------
+    maxsize : int, optional
+        Maximum number of items to hold in the cache. If ``None``, the value
+        from ``axisfuzzy.config.get_config().CACHE_SIZE`` is used.
+
+    Attributes
+    ----------
+    maxsize : int
+        Configured maximum number of entries.
+    _cache : collections.OrderedDict
+        Internal mapping preserving access/insertion order.
+
+    Notes
+    -----
+    - Keys must be hashable.
+    - ``get`` returns ``None`` for missing keys (no exception raised).
+
+    Examples
+    --------
+    >>> from axisfuzzy.core.cache import LruCache
+    >>> c = LruCache(maxsize=2)
+    >>> c.put('a', 1)
+    >>> c.put('b', 2)
+    >>> c.get('a')
+    1
+    >>> c.put('c', 3)  # least recently used ('b') evicted if 'a' was accessed
+    >>> 'b' in c
+    False
     """
 
     def __init__(self, maxsize: Optional[int] = None):
-        """Initializes the LRU cache.
+        """
+        Initialize an LRU cache.
 
-        Args:
-            maxsize (Optional[int]): The maximum number of items the cache can hold.
-                                     If None, the size is taken from `axisfuzzy.config.get_config().CACHE_SIZE`.
+        Parameters
+        ----------
+        maxsize : int or None, optional
+            Maximum number of cached items. When ``None``, value is read from
+            configuration (``get_config().CACHE_SIZE``).
         """
         self._cache = OrderedDict()
         # Set the maximum size of the cache. If maxsize is not provided,
@@ -48,16 +74,27 @@ class LruCache:
         self.maxsize = get_config().CACHE_SIZE if maxsize is None else maxsize
 
     def get(self, key: str) -> Any:
-        """Retrieves an item from the cache and marks it as recently used.
+        """
+        Retrieve a value and mark the key as recently used.
 
-        If the key is found in the cache, the corresponding item is moved to
-        the end of the internal `OrderedDict` to signify its recent access.
+        Parameters
+        ----------
+        key : str
+            Key to lookup in the cache.
 
-        Args:
-            key (str): The key of the item to retrieve.
+        Returns
+        -------
+        Any or None
+            The stored value if the key exists, otherwise ``None``.
 
-        Returns:
-            Any: The value associated with the key if found, otherwise None.
+        Examples
+        --------
+        >>> c = LruCache(maxsize=2)
+        >>> c.put('x', 10)
+        >>> c.get('x')
+        10
+        >>> c.get('missing') is None
+        True
         """
         if key not in self._cache:
             return None
@@ -67,17 +104,32 @@ class LruCache:
         return self._cache[key]
 
     def put(self, key: str, value: Any) -> None:
-        """Inserts or updates an item in the cache.
+        """
+        Insert or update a key-value pair in the cache.
 
-        If the key already exists, its value is updated, and the item is
-        moved to the end (most recently used position). If the key is new,
-        it's added. If adding a new item causes the cache to exceed its
-        `maxsize`, the least recently used item (at the beginning of the
-        `OrderedDict`) is removed.
+        If the key already exists, it is updated and moved to the most-recently-used
+        position. If adding a new item causes the cache to exceed ``maxsize``,
+        the least recently used item is evicted.
 
-        Args:
-            key (str): The key of the item to put into the cache.
-            value (Any): The value to associate with the key.
+        Parameters
+        ----------
+        key : str
+            Cache key to insert or update.
+        value : Any
+            Value to associate with the key.
+
+        Raises
+        ------
+        ValueError
+            If ``maxsize`` is configured as a non-positive integer (depends on config).
+
+        Examples
+        --------
+        >>> c = LruCache(maxsize=1)
+        >>> c.put('a', 1)
+        >>> c.put('a', 2)  # update existing key
+        >>> c.get('a')
+        2
         """
         if key in self._cache:
             # If the key already exists, move it to the end to update its recency.
@@ -91,15 +143,26 @@ class LruCache:
             self._cache.popitem(last=False)
 
     def __contains__(self, key: str) -> bool:
-        """Checks if a key is present in the cache.
+        """
+        Check whether a key exists in the cache.
 
-        This allows using the `in` operator with `LruCache` instances.
-        e.g., `if key in my_cache: ...`
+        Enables ``in`` operator usage.
 
-        Args:
-            key (str): The key to check for existence.
+        Parameters
+        ----------
+        key : str
+            Key to check for existence.
 
-        Returns:
-            bool: True if the key is in the cache, False otherwise.
+        Returns
+        -------
+        bool
+            True if the key is in the cache, False otherwise.
+
+        Examples
+        --------
+        >>> c = LruCache(maxsize=1)
+        >>> c.put('k', 1)
+        >>> 'k' in c
+        True
         """
         return key in self._cache
