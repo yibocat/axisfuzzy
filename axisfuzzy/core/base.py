@@ -87,6 +87,7 @@ class FuzznumStrategy(ABC):
     _op_cache: LruCache = LruCache()
     _attribute_validators: Dict[str, Callable[[Any], bool]] = {}
     _change_callbacks: Dict[str, Callable[[str, Any, Any], None]] = {}
+    _attribute_transformers: Dict[str, Callable[[Any], Any]] = {}
 
     def __init__(self, q: Optional[int] = None):
         """
@@ -123,6 +124,10 @@ class FuzznumStrategy(ABC):
         if (not hasattr(self, '_change_callbacks')
                 or self._change_callbacks is FuzznumStrategy._change_callbacks):
             object.__setattr__(self, '_change_callbacks', {})
+
+        if (not hasattr(self, '_attribute_transformers')
+                or self._attribute_transformers is FuzznumStrategy._attribute_transformers):
+            object.__setattr__(self, '_attribute_transformers', {})
 
         # Add a validator for the 'q' attribute.
         # The 'q' attribute is fundamental to many fuzzy number types (e.g., q-rung orthopair).
@@ -213,7 +218,7 @@ class FuzznumStrategy(ABC):
         # (which contains attributes explicitly defined in the class or its subclasses),
         # an AttributeError is raised. This prevents accidental creation of new attributes
         # and helps maintain a well-defined object schema.
-        if name not in self._declared_attributes:
+        if name not in self._declared_attributes and name != 'q':
             raise AttributeError(
                 f"Attribute '{name}' not declared in {self.__class__.__name__}. "
                 f"Declared attributes: {sorted(self._declared_attributes)}"
@@ -234,6 +239,11 @@ class FuzznumStrategy(ABC):
             # and a ValueError is raised, preventing the invalid value from being set.
             if not validator(value):
                 raise ValueError(f"Validation failed for attribute '{name}' with value '{value}'")
+            
+        # Pre-process or transform the value before setting.
+        if name in self._attribute_transformers:
+            transformer = self._attribute_transformers[name]
+            value = transformer(value)
 
         # Actually set the attribute value.
         # After all checks (strict mode, validation) have passed, the attribute's value
@@ -316,6 +326,24 @@ class FuzznumStrategy(ABC):
         score changed from None to 0.7
         """
         self._change_callbacks[attr_name] = callback
+    
+    def add_attribute_transformer(self,
+                                  attr_name: str,
+                                  transformer: Callable[[Any], Any]) -> None:
+        """
+        Register a value transformer for an attribute.
+
+        The transformer is called after validation but before the value is set.
+        It can be used to normalize or convert the input value to a standard format.
+
+        Parameters
+        ----------
+        attr_name : str
+            Name of the attribute to transform.
+        transformer : Callable
+            Callable that accepts a value and returns the transformed value.
+        """
+        self._attribute_transformers[attr_name] = transformer
 
     def _validate(self) -> None:
         """

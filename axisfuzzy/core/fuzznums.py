@@ -259,20 +259,31 @@ class Fuzznum:
                             raise AttributeError(f"The attribute '{name}' is read-only "
                                                  f"for the fuzzy number mtype '{self.mtype}'.")
                     else:
+                        # 1. Set the attribute on the strategy instance.
+                        # This will trigger the strategy's __setattr__, including any
+                        # validators and, crucially, any transformers.
                         setattr(strategy_instance, name, value)
-                        object.__setattr__(self, name, value)
+
+                        # 2. Read the attribute back from the strategy.
+                        # This ensures we get the final, potentially transformed value
+                        # (e.g., a list converted to an ndarray).
+                        final_value = getattr(strategy_instance, name)
+
+                        # 3. Set the final, corrected value on the Fuzznum instance itself.
+                        # This maintains consistency between the facade and the strategy.
+                        object.__setattr__(self, name, final_value)
                         return
 
                 except AttributeError as e:
-                    raise AttributeError(f"Cannot set property '{name}' on the policy instance "
+                    raise AttributeError(f"Cannot set property '{name}' on the strategy instance "
                                          f"(fuzzy number mtype '{self.mtype}'): {e}")
                 except Exception as e:
                     raise RuntimeError(f"An unexpected error occurred while setting the property '{name}' "
                                        f"on the strategy instance (fuzzy number type '{self.mtype}'): {e}")
 
-        except AttributeError:
+        except (AttributeError, Exception) as e:
             # If the attribute is not a bound strategy
-            pass
+            raise e
 
         object.__setattr__(self, name, value)
 
@@ -321,8 +332,10 @@ class Fuzznum:
             for key, value in kwargs.items():
                 try:
                     setattr(instance, key, value)
-                except AttributeError:
-                    raise f"The parameter '{key}' is invalid for the fuzzy number mtype '{self.mtype}'"
+                except Exception as e:
+                    raise AttributeError(
+                        f"The parameter '{key}' is invalid for the fuzzy number mtype '{self.mtype}': {e}"
+                    ) from e
         return instance
 
     def copy(self) -> 'Fuzznum':
