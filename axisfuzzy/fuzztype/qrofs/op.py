@@ -1,9 +1,9 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
 #  Python: 3.10.9
-#  Date: 2025/8/2 21:15
+#  Date: 2025/8/17 22:38
 #  Author: yibow
 #  Email: yibocat@yeah.net
-#  Software: FuzzLab
+#  Software: AxisFuzzy
 """
 This module defines various operations for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
 It includes arithmetic, comparison, and set-theoretic operations, all implemented

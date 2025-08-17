@@ -1,9 +1,9 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
 #  Python: 3.10.9
-#  Date: 2025/8/14 19:56
+#  Date: 2025/8/17 22:38
 #  Author: yibow
 #  Email: yibocat@yeah.net
-#  Software: FuzzLab
+#  Software: AxisFuzzy
 from typing import Any, Optional, Union
 
 import numpy as np
