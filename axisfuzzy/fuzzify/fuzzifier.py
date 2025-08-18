@@ -59,28 +59,39 @@ class Fuzzifier:
         mf_cls = mf.__class__ if is_mf_instance else get_mf_class(mf)
 
         # 3. 使用自省机制分离参数
-        strategy_params = inspect.signature(strategy_cls.__init__).parameters.keys()
-        mf_params = inspect.signature(mf_cls.__init__).parameters.keys()
+        # 检查策略是否声明要自己处理隶属函数参数
+        handles_mf_params_directly = getattr(strategy_cls, 'HANDLES_MF_PARAMS_DIRECTLY', False)
 
-        strategy_init_kwargs = {}
-        mf_init_kwargs = {}
+        if handles_mf_params_directly:
+            # 策略将处理所有参数，我们不再分离隶属函数参数
+            strategy_init_kwargs = kwargs
+            self.strategy = strategy_cls(**strategy_init_kwargs)
+            # 传递隶属函数类或实例本身，而不是尝试创建新实例
+            self.mf = mf if is_mf_instance else mf_cls
+        else:
+            # 为标准策略分离参数
+            strategy_params = inspect.signature(strategy_cls.__init__).parameters.keys()
+            mf_params = inspect.signature(mf_cls.__init__).parameters.keys()
 
-        for key, value in kwargs.items():
-            if key in strategy_params:
-                strategy_init_kwargs[key] = value
-            elif key in mf_params:
-                if is_mf_instance:
-                    # 如果 mf 已经是实例，不应该再提供它的参数
-                    raise ValueError(f"Parameter '{key}' is for the membership function, "
-                                     "but an already initialized instance was provided.")
-                mf_init_kwargs[key] = value
-            else:
-                raise ValueError(f"Unknown parameter '{key}' for strategy '{strategy_cls.__name__}' "
-                                 f"or membership function '{mf_cls.__name__}'.")
+            strategy_init_kwargs = {}
+            mf_init_kwargs = {}
 
-        # 4. 实例化策略和隶属函数
-        self.strategy = strategy_cls(**strategy_init_kwargs)
-        self.mf = mf if is_mf_instance else mf_cls(**mf_init_kwargs)
+            for key, value in kwargs.items():
+                if key in strategy_params:
+                    strategy_init_kwargs[key] = value
+                elif key in mf_params:
+                    if is_mf_instance:
+                        # 如果 mf 已经是实例，不应该再提供它的参数
+                        raise ValueError(f"Parameter '{key}' is for the membership function, "
+                                         "but an already initialized instance was provided.")
+                    mf_init_kwargs[key] = value
+                else:
+                    raise ValueError(f"Unknown parameter '{key}' for strategy '{strategy_cls.__name__}' "
+                                     f"or membership function '{mf_cls.__name__}'.")
+
+            # 4. 实例化策略和隶属函数
+            self.strategy = strategy_cls(**strategy_init_kwargs)
+            self.mf = mf if is_mf_instance else mf_cls(**mf_init_kwargs)
 
     def __call__(self, x: Union[float, int, list, np.ndarray]) -> Union[Fuzznum, Fuzzarray]:
         """

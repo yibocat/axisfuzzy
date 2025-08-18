@@ -55,7 +55,7 @@ from .extension import (
 
 from .fuzzify import (
     FuzzificationStrategy as FuzzificationStrategy,
-
+    Fuzzifier as Fuzzifier,
     fuzzify as fuzzify,
     get_registry_fuzzify as get_registry_fuzzify,
     register_fuzzify as register_fuzzify,

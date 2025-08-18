@@ -63,7 +63,7 @@ from .extension import (
 
 from .fuzzify import (
     FuzzificationStrategy,
-
+    Fuzzifier,
     fuzzify,
     get_registry_fuzzify,
     register_fuzzify
@@ -106,6 +106,7 @@ _static_api = [
     'batch_extension',
     # fuzzify
     'FuzzificationStrategy',
+    'Fuzzifier',
     'fuzzify',
     'get_registry_fuzzify',
     'register_fuzzify',
