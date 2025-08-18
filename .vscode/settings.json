@@ -1,7 +1,0 @@
-{
-    "python.testing.pytestArgs": [
-        "axisfuzzy"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
-}
