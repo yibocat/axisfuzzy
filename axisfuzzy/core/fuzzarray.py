@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
@@ -15,7 +15,6 @@ semantics for collections of fuzzy numbers while delegating storage and
 bulk computation to a specialized FuzzarrayBackend implementation.
 """
 
-import os
 from typing import Optional, Union, Any, Tuple, Iterator, Dict
 import numpy as np
 
@@ -23,8 +22,6 @@ from ..config import get_config
 from .fuzznums import Fuzznum
 from .backend import FuzzarrayBackend
 from .registry import get_registry_fuzztype
-from .operation import get_registry_operation, OperationMixin
-from .triangular import OperationTNorm
 
 
 class Fuzzarray:
@@ -373,6 +370,9 @@ class Fuzzarray:
             Result of the vectorized operation. Comparison operations yield
             boolean numpy arrays; arithmetic operations yield Fuzzarray.
         """
+        from .operation import get_registry_operation, OperationMixin
+        from .triangular import OperationTNorm
+
         registry = get_registry_operation()
         op = registry.get_operation(op_name, self.mtype)
         if op is None:
@@ -462,7 +462,6 @@ class Fuzzarray:
             # Create new Fuzzarray from results
             # This is inefficient but works as fallback
             new_backend = self._backend.copy()
-            from .fuzznums import Fuzznum
             for idx, result in zip(np.ndindex(self.shape), results):
                 new_fuzznum = Fuzznum(mtype=self.mtype, **self._kwargs).create(**result)
                 new_backend.set_fuzznum_data(idx, new_fuzznum)

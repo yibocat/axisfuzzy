@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
@@ -46,13 +46,15 @@ class QROHFNStrategy(FuzznumStrategy):
 
     def _fuzz_constraint(self):
         if self.md is not None and self.nmd is not None and self.q is not None:
-            sum_of_powers = max(self.md) ** self.q + max(self.nmd) ** self.q
-            if sum_of_powers > 1 + get_config().DEFAULT_EPSILON:
-                raise ValueError(
-                    f"violates fuzzy number constraints: "
-                    f"max(md)^q ({np.max(self.md)}^{self.q}) + max(nmd)^q ({np.max(self.nmd)}^{self.q})"
-                    f"={sum_of_powers: .4f} > 1.0."
-                    f"(q: {self.q}, md: {self.md}, nmd: {self.nmd})")
+            # For hesitant sets, the constraint applies to the maximum values
+            if len(self.md) > 0 and len(self.nmd) > 0:
+                sum_of_powers = np.max(self.md) ** self.q + np.max(self.nmd) ** self.q
+                if sum_of_powers > 1 + get_config().DEFAULT_EPSILON:
+                    raise ValueError(
+                        f"violates fuzzy number constraints: "
+                        f"max(md)^q ({np.max(self.md)}^{self.q}) + max(nmd)^q ({np.max(self.nmd)}^{self.q})"
+                        f"={sum_of_powers: .4f} > 1.0."
+                        f"(q: {self.q}, md: {self.md}, nmd: {self.nmd})")
 
     def _on_membership_change(self,
                               attr_name: str,
@@ -77,17 +79,29 @@ class QROHFNStrategy(FuzznumStrategy):
         if md is None and nmd is None:
             return "<>"
 
-        md = np.asarray(md, dtype=np.float64)
-        nmd = np.asarray(nmd, dtype=np.float64)
-
         precision = get_config().DEFAULT_PRECISION
+
+        def _process_hesitant_set(hesitant_set: Optional[Union[np.ndarray, List]]) -> List:
+            """Rounds and uniques a hesitant set for display."""
+            if hesitant_set is None or len(hesitant_set) == 0:
+                return []
+            # Ensure it's a NumPy array for processing
+            arr = np.asarray(hesitant_set, dtype=np.float64)
+            # 1. Round to the configured precision
+            # 2. Get unique elements (which also sorts them)
+            # 3. Convert to a Python list for display
+            return np.unique(np.round(arr, precision)).tolist()
+
+        md_list = _process_hesitant_set(md)
+        nmd_list = _process_hesitant_set(nmd)
+
         if format_spec == 'p':
-            return f"({md.tolist()}, {nmd.tolist()})"
+            return f"({md_list}, {nmd_list})"
         if format_spec == 'j':
             import json
-            return json.dumps({'mtype': self.mtype, 'md': md.tolist(), 'nmd': nmd.tolist(), 'q': self.q})
+            return json.dumps({'mtype': self.mtype, 'md': md_list, 'nmd': nmd_list, 'q': self.q})
 
-        return f"<{md.tolist()},{nmd.tolist()}>"
+        return f"<{md_list},{nmd_list}>"
 
         # def strip_trailing_zeros(x: float) -> str:
         #     s = f"{x:.{precision}f}".rstrip('0').rstrip('.')

@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
@@ -866,7 +866,7 @@ def unregister_fuzztype(mtype: str,
     )
 
 
-def get_fuzztype_strategy(mtype: str) -> Optional[Type[FuzznumStrategy]]:
+def get_fuzztype_strategy(mtype: str) -> Type[FuzznumStrategy]:
     """
     A convenience function to retrieve a strategy class from the global registry.
 
@@ -885,11 +885,11 @@ def get_fuzztype_strategy(mtype: str) -> Optional[Type[FuzznumStrategy]]:
     """
     try:
         return get_registry_fuzztype().get_strategy(mtype)
-    except ValueError:
-        return None
+    except ValueError as e:
+        raise e
 
 
-def get_fuzztype_backend(mtype: str) -> Optional[Type[FuzzarrayBackend]]:
+def get_fuzztype_backend(mtype: str) -> Type[FuzzarrayBackend]:
     """
     A convenience function to retrieve a backend class from the global registry.
 
@@ -908,8 +908,8 @@ def get_fuzztype_backend(mtype: str) -> Optional[Type[FuzzarrayBackend]]:
     """
     try:
         return get_registry_fuzztype().get_backend(mtype)
-    except ValueError:
-        return None
+    except ValueError as e:
+        raise e
 
 
 def get_fuzztype_mtypes() -> Dict[str, Dict[str, Any]]:

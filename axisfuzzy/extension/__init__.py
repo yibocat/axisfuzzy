@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
@@ -21,7 +21,7 @@ It includes:
 The `apply_extensions()` function is the entry point to activate the entire
 extension system, typically called once during FuzzLab's library loading.
 """
-import warnings
+
 from typing import Dict, Any
 
 from .registry import get_registry_extension
@@ -76,9 +76,6 @@ def apply_extensions(target_module_globals: Dict[str, Any] | None = None) -> boo
         'Fuzznum': Fuzznum,
         'Fuzzarray': Fuzzarray,
     }
-
-    # Get the namespace of the 'axisfuzzy' module for injecting top-level functions.
-    import axisfuzzy
 
     injectors = get_extension_injector()
     try:

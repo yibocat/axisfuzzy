@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
@@ -16,12 +16,14 @@ concrete fuzzy-number implementations (mtypes) should inherit from.
 
 import json
 from abc import ABC, abstractmethod
-from typing import Optional, Set, Dict, Callable, Any, Union, List
+from typing import Optional, Set, Dict, Callable, Any, Union, List, TYPE_CHECKING
 
 from .cache import LruCache
 from .triangular import OperationTNorm
-from .operation import get_registry_operation
 from ..config import get_config
+
+if TYPE_CHECKING:
+    from .operation import OperationRegistry
 
 
 class FuzznumStrategy(ABC):
@@ -468,6 +470,7 @@ class FuzznumStrategy(ABC):
                 If an unknown operation type is requested.
         """
         # Get the global operation registry.
+        from .operation import get_registry_operation
         registry = get_registry_operation()
         # Retrieve the specific operation handler for the given operation name and fuzzy number type.
         operation = registry.get_operation(op_name, self.mtype)
@@ -556,6 +559,7 @@ class FuzznumStrategy(ABC):
             A list of strings, where each string is the name of an
             operation supported by this fuzzy number type.
         """
+        from .operation import get_registry_operation
         operation = get_registry_operation()
         return operation.get_available_ops(self.mtype)
 

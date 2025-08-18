@@ -2,7 +2,7 @@
 name = "axisfuzzy"
 version = "0.0.1"
 description = "Add your description here"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "notebook>=7.4.5",
     "numpy>=2.2.6",

@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
@@ -53,7 +53,7 @@ class Fuzzarray:
     # --- 索引与迭代 ---
     def __len__(self) -> int: ...
     @overload
-    def __getitem__(self, key: Union[int, Tuple[int, ...]]) -> Fuzznum: ...
+    def __getitem__(self, key: Union[int, Tuple[int, ...]]) -> Union[Fuzznum, Fuzzarray]: ...
     @overload
     def __getitem__(self, key: Any) -> 'Fuzzarray': ...
     def __getitem__(self, key: Any) -> Union[Fuzznum, 'Fuzzarray']: ...

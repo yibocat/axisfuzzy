@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
@@ -14,33 +14,8 @@ Each operation class specifies:
 - The fuzzy number types it supports (currently 'qrofn').
 - The core logic for executing the operation, often leveraging `OperationTNorm`
   for t-norm and t-conorm calculations.
-
-Classes:
-    QROFNAddition: Implements addition for QROFNs.
-    QROFNSubtraction: Implements subtraction for QROFNs.
-    QROFNMultiplication: Implements multiplication for QROFNs.
-    QROFNDivision: Implements division for QROFNs.
-    QROFNPower: Implements power operation for QROFNs.
-    QROFNTimes: Implements scalar multiplication for QROFNs.
-    QROFNExponential: Implements exponential operation for QROFNs.
-    QROFNLogarithmic: Implements logarithmic operation for QROFNs.
-    QROFNGreaterThan: Implements greater than comparison for QROFNs.
-    QROFNLessThan: Implements less than comparison for QROFNs.
-    QROFNEquals: Implements equality comparison for QROFNs.
-    QROFNGreaterEquals: Implements greater than or equal to comparison for QROFNs.
-    QROFNLessEquals: Implements less than or equal to comparison for QROFNs.
-    QROFNNotEquals: Implements not equal to comparison for QROFNs.
-    QROFNIntersection: Implements intersection (AND) for QROFNs.
-    QROFNUnion: Implements union (OR) for QROFNs.
-    QROFNComplement: Implements complement (NOT) for QROFNs.
-    QROFNImplication: Implements implication for QROFNs.
-    QROFNEquivalence: Implements equivalence for QROFNs.
-    QROFNDifference: Implements set difference for QROFNs.
-    QROFNSymmetricDifference: Implements symmetric difference for QROFNs.
-
-Functions:
-    register_qrofn_operations: Registers all QROFN operations with the global registry.
 """
+
 import warnings
 from typing import List, Any, Dict, Union, Optional
 
@@ -57,6 +32,8 @@ from ...core import (
     register_operation
 )
 
+from ...utils import experimental
+
 
 def _prepare_operands(
         fuzzarray_1: Fuzzarray,
@@ -66,9 +43,11 @@ def _prepare_operands(
 
     if isinstance(other, Fuzzarray):
         if other.mtype != fuzzarray_1.mtype:
-            raise TypeError(f"Mtype mismatch for operation: '{fuzzarray_1.mtype}' and '{other.mtype}'")
+            raise ValueError(f"Cannot operate on Fuzzarrays with different mtypes: "
+                             f"{fuzzarray_1.mtype} and {other.mtype}")
         if other.q != fuzzarray_1.q:
-            raise ValueError(f"Q-rung mismatch for operation: '{fuzzarray_1.q}' and '{other.q}'")
+            raise ValueError(f"Cannot operate on Fuzzarrays with different q values: "
+                             f"{fuzzarray_1.q} and {other.q}")
 
         mds2, nmds2 = other.backend.get_component_arrays()
         # Let NumPy handle broadcasting errors
@@ -91,10 +70,12 @@ def _prepare_operands(
         # Create arrays from Fuzznum and let NumPy broadcast them
         mds2 = np.full((1,), other.md, dtype=mds1.dtype)
         nmds2 = np.full((1,), other.nmd, dtype=nmds1.dtype)
+        try:
+            return np.broadcast_arrays(mds1, nmds1, mds2, nmds2)
+        except ValueError:
+            raise ValueError(f"Shape mismatch: cannot broadcast shapes {fuzzarray_1.shape} and ({mds2.shape}, {nmds2.shape})")
     else:
         raise TypeError(f"Unsupported operand type for vectorized operation: {type(other)}")
-
-    return np.broadcast_arrays(mds1, nmds1, mds2, nmds2)
 
 
 # --- QROFN Arithmetic Operations ---
@@ -538,9 +519,9 @@ class QROFNPower(OperationMixin):
                             of the resulting QROFN.
         """
         # Membership degree calculation using the dual generator (f_func) and its pseudo-inverse (f_inv_func).
-        md = tnorm.f_inv_func(operand * tnorm.f_func(strategy.md))
+        md = tnorm.g_inv_func(operand * tnorm.g_func(strategy.md))
         # Non-membership degree calculation using the generator (g_func) and its pseudo-inverse (g_inv_func).
-        nmd = tnorm.g_inv_func(operand * tnorm.g_func(strategy.nmd))
+        nmd = tnorm.f_inv_func(operand * tnorm.f_func(strategy.nmd))
 
         # The q-rung of the result is the same as the input QROFN.
         return {'md': md, 'nmd': nmd, 'q': strategy.q}
@@ -552,8 +533,8 @@ class QROFNPower(OperationMixin):
 
         mds, nmds = fuzzarray.backend.get_component_arrays()
 
-        md_res = tnorm.f_inv_func(operand * tnorm.f_func(mds))
-        nmd_res = tnorm.g_inv_func(operand * tnorm.g_func(nmds))
+        md_res = tnorm.g_inv_func(operand * tnorm.g_func(mds))
+        nmd_res = tnorm.f_inv_func(operand * tnorm.f_func(nmds))
 
         backend_cls = get_fuzztype_backend('qrofn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
@@ -627,7 +608,7 @@ class QROFNTimes(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
-# TODO: exp 计算目前还存在缺陷。此处写出来仅用于测试
+# TODO: 该运算还未实现, 暂时处在测试阶段. 仅用来测试.
 @register_operation
 class QROFNExponential(OperationMixin):
     """
@@ -655,6 +636,7 @@ class QROFNExponential(OperationMixin):
         """
         return ['qrofn']
 
+    @experimental
     def _execute_unary_op_operand_impl(self,
                                        strategy: Any,
                                        operand: Union[int, float],
@@ -680,6 +662,7 @@ class QROFNExponential(OperationMixin):
         # The q-rung of the result is the same as the input QROFN.
         return {'md': md, 'nmd': nmd, 'q': strategy.q}
 
+    @experimental
     def _execute_fuzzarray_op_impl(self,
                                    fuzzarray: Fuzzarray,
                                    operand: Union[int, float],
@@ -694,7 +677,7 @@ class QROFNExponential(OperationMixin):
         return Fuzzarray(backend=new_backend)
 
 
-# TODO: Log 计算目前还存在缺陷。此处写出来仅用于测试
+# TODO: 该运算还未实现, 暂时处在测试阶段. 仅用来测试.
 @register_operation
 class QROFNLogarithmic(OperationMixin):
     """
@@ -722,6 +705,7 @@ class QROFNLogarithmic(OperationMixin):
         """
         return ['qrofn']
 
+    @experimental
     def _execute_unary_op_operand_impl(self,
                                        strategy: Any,
                                        operand: Union[int, float],
@@ -747,6 +731,7 @@ class QROFNLogarithmic(OperationMixin):
         # The q-rung of the result is the same as the input QROFN.
         return {'md': md, 'nmd': nmd, 'q': strategy.q}
 
+    @experimental
     def _execute_fuzzarray_op_impl(self,
                                    fuzzarray: Fuzzarray,
                                    operand: Union[int, float],

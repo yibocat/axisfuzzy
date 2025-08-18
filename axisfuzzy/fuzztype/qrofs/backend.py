@@ -1,6 +1,6 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
@@ -93,6 +93,10 @@ class QROFNBackend(FuzzarrayBackend):
         if format_spec in ('p', 'j', 'r'):
             out = np.empty(self.shape, dtype=object)
             # 创建一个策略实例用于格式化
+
+            # strategy_cls = get_fuzztype_strategy(self.mtype)
+            # strategy_formatter = strategy_cls(q=self.q)
+
             strategy_formatter = QROFNStrategy(q=self.q)
             it = np.nditer(self.mds, flags=['multi_index'])
             while not it.finished:

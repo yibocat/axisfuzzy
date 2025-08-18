@@ -6,7 +6,22 @@ sys.path.insert(0, os.path.abspath('..'))  # 让 Sphinx 能找到 axisfuzzy 包
 project = 'AxisFuzzy'
 copyright = '2025, yibocat'
 author = 'yibocat'
-release = '0.1.0'
+
+try:
+    from axisfuzzy.version import __version__ as release
+    version = '.'.join(release.split('.')[:2])
+except ImportError:
+    import tomllib
+    pyproject_path = os.path.join(os.path.abspath('..'), 'pyproject.toml')
+    try:
+        with open(pyproject_path, 'rb') as f:
+            data = tomllib.load(f)
+            release = data['project']['version']
+    except Exception:
+        release = '0.0.0'
+version = '.'.join(release.split('.')[:2])  # 只取主版本和次版本
+release = release   # 完整版本号
+
 
 # -- General configuration ---------------------------------------------------
 extensions = [
@@ -16,6 +31,7 @@ extensions = [
     'sphinx.ext.viewcode',    # 源码高亮
     'sphinx_copybutton',
     'sphinx_design',
+    'sphinx_autodoc_typehints'
 ]
 
 templates_path = ['_templates']

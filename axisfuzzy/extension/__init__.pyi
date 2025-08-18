@@ -1,11 +1,11 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
-#  Python: 3.10.9
-#  Date: 2025/8/17 22:38
+#  Python: 3.12.7
+#  Date: 2025/8/18 18:23
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 
-from typing import Any, Callable, Dict, Union, Optional
+from typing import Any, Dict, Union, Optional
 import numpy as np
 from ..core import Fuzznum, Fuzzarray
 
