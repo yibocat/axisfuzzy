@@ -294,73 +294,130 @@ def _stack_factory(obj: Fuzzarray, *others: Fuzzarray, axis: int = 0) -> Fuzzarr
     return Fuzzarray(backend=new_backend)
 
 
-def _append_factory(obj: Union[Fuzznum, Fuzzarray],                     # TODO: 少了一种情况: List[Fuzznum]
-                    item: Union[Fuzznum, Fuzzarray, List[Fuzznum]],
-                    axis: Optional[int] = None,
+def _append_factory(obj: Union[Fuzznum, Fuzzarray],
+                    item: Union[Fuzznum, Fuzzarray, list],
+                    axis: Optional[int] = 0,
                     inplace: bool = False) -> Union[Fuzzarray, None]:
     """
-    Append elements to the fuzzy object.
+    Append elements to a fuzzy object (Fuzznum or Fuzzarray).
+
+    Provides numpy-like ``append`` semantics extended for fuzzy containers,
+    with support for broadcasting, multi-axis operations, and list input.
+
+    Parameters
+    ----------
+    obj : Fuzznum or Fuzzarray
+        Target fuzzy object:
+        - ``Fuzznum``: promoted to a single-element Fuzzarray before append.
+        - ``Fuzzarray``: append directly.
+    item : Fuzznum, Fuzzarray, or list
+        Elements to append:
+        - ``Fuzznum``: single fuzzy number, can broadcast.
+        - ``Fuzzarray``: must be shape-compatible for concatenation.
+        - ``list[Fuzznum]``: converted into a Fuzzarray then appended.
+        - ``list[Fuzzarray]``: concatenated directly along the given axis.
+    axis : int or None, default=0
+        Axis along which to append.
+        - ``None``: both inputs are flattened and concatenated into 1D.
+        - ``int``: append along this axis.
+    inplace : bool, default=False
+        If True, modify ``obj`` in place (only valid when ``obj`` is Fuzzarray).
+        If False, return a new Fuzzarray.
+
+    Returns
+    -------
+    Fuzzarray or None
+        If ``inplace=False``, returns a new Fuzzarray with appended elements.
+        If ``inplace=True``, modifies ``obj`` and returns None.
+
+    Raises
+    ------
+    TypeError
+        If inputs are of unsupported types.
+    ValueError
+        If shapes are incompatible for concatenation or broadcasting.
+    RuntimeError
+        If item is [] (empty list) with no type context.
+
+    Examples
+    --------
+    >>> a = fuzznum(mtype="qrofn").create(md=0.2, nmd=0.5)
+    >>> b = fuzznum(mtype="qrofn").create(md=0.7, nmd=0.3)
+    >>> arr = Fuzzarray(data=a, shape=(2,))
+    >>> arr2 = _append_factory(arr, b)
+    >>> arr2.shape
+    (3,)
+
+    >>> # Append multiple fuzznums
+    >>> arr3 = _append_factory(arr, [a, b])
+    >>> arr3.shape
+    (4,)
+
+    >>> # Append another fuzzarray along new axis
+    >>> arr4 = _append_factory(arr, arr, axis=1)
+    >>> arr4.shape
+    (2, 2)
     """
-    # Handle Fuzznum case
+    # === Helpers ===
+    def ensure_fuzzarray(x, ref_mtype=None, ref_q=None) -> Fuzzarray:
+        """Convert input into Fuzzarray."""
+        if isinstance(x, Fuzzarray):
+            return x
+        if isinstance(x, Fuzznum):
+            return Fuzzarray(data=x, shape=(1,))
+        if isinstance(x, list):
+            if len(x) == 0:
+                raise RuntimeError("Cannot append empty list [] without context")
+            if all(isinstance(e, Fuzznum) for e in x):
+                return Fuzzarray(data=np.array(x, dtype=object))
+            if all(isinstance(e, Fuzzarray) for e in x):
+                return _concat_fuzzarrays(*x, axis=axis)
+            raise TypeError(f"Unsupported list element types: {[type(e) for e in x]}")
+        raise TypeError(f"Unsupported append input type: {type(x)}")
+
+    def _concat_fuzzarrays(*arrays: Fuzzarray, axis: int = 0) -> Fuzzarray:
+        """Efficient concat of multiple Fuzzarrays at backend level."""
+        arrays = [a for a in arrays if a.size > 0]
+        if not arrays:
+            raise ValueError("Cannot concat empty arrays.")
+        ref = arrays[0]
+        for a in arrays:
+            if a.mtype != ref.mtype or a.q != ref.q:
+                raise ValueError("Mtype/q mismatch in append.")
+        comps = list(zip(*[arr.backend.get_component_arrays() for arr in arrays]))
+        new_components = [np.concatenate(comp_list, axis=axis) for comp_list in comps]
+        backend_cls = ref.backend.__class__
+        new_backend = backend_cls.from_arrays(*new_components, q=ref.q, **ref.kwargs)
+        return Fuzzarray(backend=new_backend)
+
+    # === Normalize inputs ===
     if isinstance(obj, Fuzznum):
-        elements = [obj]
-        if isinstance(item, Fuzznum):
-            elements.append(item)
-        elif isinstance(item, Fuzzarray):
-            # Convert Fuzzarray to list of Fuzznums
-            flat_arr = _flatten_factory(item)
-            for i in range(flat_arr.size):
-                elements.append(flat_arr[i])
-        elif isinstance(item, list):
-            elements.extend(item)
+        obj = Fuzzarray(data=obj, shape=(1,))
+    if not isinstance(obj, Fuzzarray):
+        raise TypeError(f"obj must be Fuzznum or Fuzzarray, got {type(obj)}")
+
+    item = ensure_fuzzarray(item, obj.mtype, obj.q)
+
+    # empty obj
+    if obj.size == 0:
+        result = item
+    else:
+        if axis is None:
+            # flatten + concat 1D
+            comps_obj = obj.backend.get_component_arrays()
+            comps_item = item.backend.get_component_arrays()
+            comps = [np.concatenate([o.ravel(), i.ravel()]) for o, i in zip(comps_obj, comps_item)]
+            backend_cls = obj.backend.__class__
+            new_backend = backend_cls.from_arrays(*comps, q=obj.q, **obj.kwargs)
+            result = Fuzzarray(backend=new_backend)
         else:
-            raise TypeError(f"append: unsupported item type {type(item)}")
+            result = _concat_fuzzarrays(obj, item, axis=axis)
 
-        # Check compatibility
-        mtype = obj.mtype
-        q = obj.q
-        kwargs = getattr(obj, 'kwargs', {})
-        for fn in elements:
-            if not isinstance(fn, Fuzznum):
-                raise TypeError(f"append: all elements must be Fuzznum, got {type(fn)}")
-            if fn.mtype != mtype:
-                raise ValueError("append: all Fuzznums must have the same mtype")
-
-        return Fuzzarray(data=elements, mtype=mtype, q=q, **kwargs)
-
-    # Handle Fuzzarray case
-    if inplace and axis is not None:
-        raise ValueError("append: inplace=True is not supported with axis specified")
-
-    # Convert item to appropriate format for concatenation
-    if isinstance(item, Fuzznum):
-        if item.mtype != obj.mtype:
-            raise ValueError("append: mtype mismatch")
-        item_array = Fuzzarray(data=item, shape=(1,))
-    elif isinstance(item, Fuzzarray):
-        if item.mtype != obj.mtype:
-            raise ValueError("append: mtype mismatch")
-        item_array = item
-    elif isinstance(item, list):
-        item_array = Fuzzarray(data=item, mtype=obj.mtype, q=obj.q)
-    else:
-        raise TypeError(f"append: unsupported item type {type(item)}")
-
-    # Perform concatenation
-    if axis is None:
-        # Flatten both arrays before concatenating
-        obj_flat = _flatten_factory(obj)
-        item_flat = _flatten_factory(item_array)
-        result = _concat_factory(obj_flat, item_flat, axis=0)
-    else:
-        result = _concat_factory(obj, item_array, axis=axis)
-
+    # inplace
     if inplace:
-        # Replace obj's backend with result's backend
         obj._backend = result.backend
         return None
-    else:
-        return result
+    return result
 
 
 def _pop_factory(obj: Union[Fuzznum, Fuzzarray],
