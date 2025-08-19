@@ -1,25 +1,19 @@
 #  Copyright (c) yibocat 2025 All Rights Reserved
 #  Python: 3.12.7
-#  Date: 2025/8/18 18:23
+#  Date: 2025/8/18 23:34
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
-import warnings
-from typing import Tuple, Type, Dict, Optional, List
+from typing import Dict, Tuple, Type, Optional, List
 
-from .base import FuzzificationStrategy
+from .strategy import FuzzificationStrategy
 
 
-class FuzzificationRegistry:
-    """
-    管理和存储所有可用的模糊化策略。
+class FuzzificationStrategyRegistry:
 
-    该注册表维护一个从 (mtype, method) 到 FuzzificationStrategy 子类的映射。
-    """
     def __init__(self):
-        # 策略注册表: {(mtype, method): strategy_class}
+        # Strategy Registry: {(mtype, method): strategy_class}
         self._strategies: Dict[Tuple[str, str], Type[FuzzificationStrategy]] = {}
-        # 默认策略: {mtype: default_method}
         self._default_methods: Dict[str, str] = {}
 
     def register(self,
@@ -28,13 +22,13 @@ class FuzzificationRegistry:
                  strategy_cls: Type[FuzzificationStrategy],
                  is_default: bool = False) -> None:
         """
-        注册一个新的模糊化策略。
+        Register a new fuzzification strategy.
 
         Args:
-            mtype: 策略适用的模糊数类型 (e.g., 'qrofn')。
-            method: 策略的名称 (e.g., 'expert', 'hesitation')。
-            strategy_cls: 实现该策略的 FuzzificationStrategy 子类。
-            is_default: 是否设为该mtype的默认方法
+            mtype: The type of fuzzy number (e.g., 'qrofn').
+            method: The name of the strategy (e.g., 'expert', 'hesitation').
+            strategy_cls: The class implementing the strategy.
+            is_default: Whether this should be the default method for the mtype.
         """
         if not issubclass(strategy_cls, FuzzificationStrategy):
             raise TypeError(f"Registered strategy class must be a subclass of FuzzificationStrategy, "
@@ -42,8 +36,7 @@ class FuzzificationRegistry:
 
         key = (mtype, method)
         if key in self._strategies:
-            warnings.warn(f"Overriding existing strategy for {key}")
-            pass
+            raise ValueError(f"Strategy for {key} is already registered.")
 
         self._strategies[key] = strategy_cls
 
@@ -53,16 +46,6 @@ class FuzzificationRegistry:
     def get_strategy(self,
                      mtype: str,
                      method: Optional[str] = None) -> Optional[Type[FuzzificationStrategy]]:
-        """
-        根据 mtype 和 method 获取一个模糊化策略类。
-
-        Args:
-            mtype: 目标模糊数类型。
-            method: 目标策略名称。如果为 None，则尝试获取默认方法。
-
-        Returns:
-            对应的 FuzzificationStrategy 子类，如果未找到则返回 None。
-        """
         if method is None:
             method = self.get_default_method(mtype)
             if method is None:
@@ -72,15 +55,6 @@ class FuzzificationRegistry:
 
     def list_strategies(self,
                         mtype: Optional[str] = None) -> List[Tuple[str, str]]:
-        """
-        列出所有注册的策略
-
-        Args:
-            mtype: 如果指定，只返回该类型的策略
-
-        Returns:
-            策略列表 [(mtype, method), ...]
-        """
         if mtype is None:
             return list(self._strategies.keys())
         else:
@@ -111,30 +85,19 @@ class FuzzificationRegistry:
         }
 
 
-_registry = FuzzificationRegistry()
+_registry = FuzzificationStrategyRegistry()
 
 
-def get_registry_fuzzify() -> FuzzificationRegistry:
+def get_registry_fuzzify() -> FuzzificationStrategyRegistry:
     """获取全局模糊化注册表实例"""
     return _registry
 
 
-def register_fuzzify(mtype: str,
-                     method: str,
-                     is_default: bool = False):
-    """
-    装饰器：注册模糊化策略
-
-    Args:
-        mtype: 模糊数类型
-        method: 方法名称
-        is_default: 是否设为默认方法
-    """
-
+def register_fuzzifier(is_default: bool = False):
     def decorator(strategy_cls: Type[FuzzificationStrategy]):
         get_registry_fuzzify().register(
-            mtype=mtype,
-            method=method,
+            mtype=strategy_cls.mtype,
+            method=strategy_cls.method,
             strategy_cls=strategy_cls,
             is_default=is_default
         )

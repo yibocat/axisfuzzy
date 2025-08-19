@@ -128,7 +128,7 @@ class QROFNBackend(FuzzarrayBackend):
             ),
             ">"
         )
-        return combined.astype(object)
+        return np.array(combined, dtype=object)
 
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROFNBackend':

@@ -13,8 +13,8 @@ import numpy as np
 class MembershipFunction(ABC):
     """隶属函数基类"""
 
-    def __init__(self, name: str = None):
-        self.name = name or self.__class__.__name__
+    def __init__(self, *args, **kwargs):
+        self.name = self.__class__.__name__
         self.parameters = {}
 
     @abstractmethod

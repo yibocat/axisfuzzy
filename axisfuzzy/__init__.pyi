@@ -53,12 +53,11 @@ from .extension import (
     batch_extension as batch_extension
 )
 
-from .fuzzify import (
+from .fuzzifier import (
     FuzzificationStrategy as FuzzificationStrategy,
     Fuzzifier as Fuzzifier,
-    fuzzify as fuzzify,
     get_registry_fuzzify as get_registry_fuzzify,
-    register_fuzzify as register_fuzzify,
+    register_fuzzifier as register_fuzzifier,
 )
 
 from .membership import (

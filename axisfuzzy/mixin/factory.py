@@ -294,7 +294,7 @@ def _stack_factory(obj: Fuzzarray, *others: Fuzzarray, axis: int = 0) -> Fuzzarr
     return Fuzzarray(backend=new_backend)
 
 
-def _append_factory(obj: Union[Fuzznum, Fuzzarray],
+def _append_factory(obj: Union[Fuzznum, Fuzzarray],                     # TODO: 少了一种情况: List[Fuzznum]
                     item: Union[Fuzznum, Fuzzarray, List[Fuzznum]],
                     axis: Optional[int] = None,
                     inplace: bool = False) -> Union[Fuzzarray, None]:

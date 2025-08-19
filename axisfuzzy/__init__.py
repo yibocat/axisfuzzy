@@ -17,7 +17,7 @@ commonly used components from subpackages into a single, convenient namespace.
 from . import core
 from . import config
 from . import extension
-from . import fuzzify
+from . import fuzzifier
 from . import membership
 from . import mixin
 from . import random
@@ -61,12 +61,11 @@ from .extension import (
     apply_extensions
 )
 
-from .fuzzify import (
+from .fuzzifier import (
     FuzzificationStrategy,
     Fuzzifier,
-    fuzzify,
     get_registry_fuzzify,
-    register_fuzzify
+    register_fuzzifier
 )
 
 from .membership import create_mf, get_mf_class
@@ -104,12 +103,11 @@ _static_api = [
     'get_registry_extension',
     'extension',
     'batch_extension',
-    # fuzzify
+    # fuzzifier
     'FuzzificationStrategy',
     'Fuzzifier',
-    'fuzzify',
     'get_registry_fuzzify',
-    'register_fuzzify',
+    'register_fuzzifier',
     # membership
     'create_mf',
     'get_mf_class',

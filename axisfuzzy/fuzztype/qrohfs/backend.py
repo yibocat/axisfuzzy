@@ -106,7 +106,8 @@ class QROHFNBackend(FuzzarrayBackend):
         if mds.shape != nmds.shape:
             raise ValueError("Shape mismatch between mds and nmds arrays.")
         if mds.dtype != object or nmds.dtype != object:
-            raise TypeError("Input arrays for QROHFNBackend must have dtype=object.")
+            raise TypeError(f"Input arrays for QROHFNBackend must have dtype=object. "
+                            f"Got {mds.dtype} and {nmds.dtype}.")
 
         backend = cls(shape=mds.shape, q=q, **kwargs)
         backend.mds = mds

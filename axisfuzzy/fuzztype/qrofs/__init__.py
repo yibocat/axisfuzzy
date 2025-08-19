@@ -11,4 +11,4 @@ from . import op
 from . import factory
 from . import random
 from . import extension
-from . import fuzzify
+from . import fuzzification

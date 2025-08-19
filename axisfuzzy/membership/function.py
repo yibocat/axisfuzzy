@@ -12,20 +12,50 @@ from .base import MembershipFunction
 class SigmoidMF(MembershipFunction):
     """Sigmoid隶属函数"""
 
-    def __init__(self, a: float = 1.0, c: float = 0.0, name: str = None):
-        super().__init__(name)
-        self.a = a  # 斜率参数
-        self.c = c  # 中心点
-        self.parameters = {'a': a, 'c': c}
+    def __init__(self, *params, k: float = None, c: float = None):
+        """
+        Initialize SigmoidMF.
+
+        Args:
+            *params: (k, c)，当不使用关键字参数时必须传入两个值。
+            k (float, optional): Slope (steepness) of the sigmoid function. Default is 1.0.
+            c (float, optional): Center (midpoint) of the sigmoid function. Default is 0.0.
+
+        Raises:
+            ValueError: If number/type of parameters is invalid.
+
+        Examples:
+            >>> mf1 = SigmoidMF(2.0, 1.0)         # 使用参数列表
+            >>> mf2 = SigmoidMF(k=2.0, c=1.0)     # 使用关键字参数
+            >>> import numpy as np
+            >>> x = np.linspace(-5, 5, 100)
+            >>> y = mf1.compute(x)  # y 为 [0,1] 之间的数组
+        """
+        super().__init__()
+
+        # 支持 *params 调用
+        if params:
+            if len(params) != 2:
+                raise ValueError("SigmoidMF requires exactly two parameters: k, c")
+            k, c = params
+
+        # 如果没有传 *params，则必须使用关键字参数
+        if k is None or c is None:
+            # 设置默认值（保持向后兼容性）
+            k = 1.0 if k is None else k
+            c = 0.0 if c is None else c
+
+        self.k, self.c = k, c
+        self.parameters = {"k": k, "c": c}
 
     def compute(self, x: np.ndarray) -> np.ndarray:
         """计算Sigmoid隶属度值"""
-        return 1 / (1 + np.exp(-self.a * (x - self.c)))
+        return 1 / (1 + np.exp(-self.k * (x - self.c)))
 
     def set_parameters(self, **kwargs):
-        if 'a' in kwargs:
-            self.a = kwargs['a']
-            self.parameters['a'] = self.a
+        if 'k' in kwargs:
+            self.k = kwargs['k']
+            self.parameters['k'] = self.k
         if 'c' in kwargs:
             self.c = kwargs['c']
             self.parameters['c'] = self.c
@@ -34,14 +64,33 @@ class SigmoidMF(MembershipFunction):
 class TriangularMF(MembershipFunction):
     """三角形隶属函数"""
 
-    def __init__(self, a: float, b: float, c: float, name: str = None):
-        super().__init__(name)
+    def __init__(self, *params, a: float = None, b: float = None, c: float = None):
+        """
+        Initialize TriangularMF.
+
+        Args:
+            *params: (a, b, c) required if no keyword args given
+            a (float, optional): left foot
+            b (float, optional): peak
+            c (float, optional): right foot
+        """
+        super().__init__()
+
+        # 支持 *params 调用
+        if params:
+            if len(params) != 3:
+                raise ValueError("TriangularMF requires exactly three parameters: a, b, c")
+            a, b, c = params
+
+        a = a if a is not None else 0.0
+        b = b if b is not None else 0.5
+        c = c if c is not None else 1.0
+
         if not (a <= b <= c):
             raise ValueError("TriangularMF requires parameters to satisfy a <= b <= c")
-        self.a = a
-        self.b = b
-        self.c = c
-        self.parameters = {'a': a, 'b': b, 'c': c}
+
+        self.a, self.b, self.c = a, b, c
+        self.parameters = {"a": a, "b": b, "c": c}
 
     def compute(self, x):
         x = np.asarray(x, dtype=float)
@@ -81,15 +130,32 @@ class TriangularMF(MembershipFunction):
 class TrapezoidalMF(MembershipFunction):
     """梯形隶属函数"""
 
-    def __init__(self, a: float, b: float, c: float, d: float, name: str = None):
-        super().__init__(name)
+    def __init__(self, *params, a: float = None, b: float = None,
+                 c: float = None, d: float = None):
+        """
+        Initialize TrapezoidalMF.
+
+        Args:
+            *params: (a, b, c, d)
+            a, b, c, d (float): parameters with a <= b <= c <= d
+        """
+        super().__init__()
+
+        if params:
+            if len(params) != 4:
+                raise ValueError("TrapezoidalMF requires exactly four parameters: a, b, c, d")
+            a, b, c, d = params
+
+        a = a if a is not None else 0.0
+        b = b if b is not None else 0.25
+        c = c if c is not None else 0.75
+        d = d if d is not None else 1.0
+
         if not (a <= b <= c <= d):
             raise ValueError("TrapezoidalMF requires parameters to satisfy a <= b <= c <= d")
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
-        self.parameters = {'a': a, 'b': b, 'c': c, 'd': d}
+
+        self.a, self.b, self.c, self.d = a, b, c, d
+        self.parameters = {"a": a, "b": b, "c": c, "d": d}
 
     def compute(self, x):
         x = np.asarray(x, dtype=float)
@@ -124,13 +190,30 @@ class TrapezoidalMF(MembershipFunction):
 class GaussianMF(MembershipFunction):
     """高斯隶属函数"""
 
-    def __init__(self, sigma: float, c: float, name: str = None):
-        super().__init__(name)
+    def __init__(self, *params, sigma: float = None, c: float = None):
+        """
+        Initialize GaussianMF.
+
+        Args:
+            *params: (sigma, c)
+            sigma (float, optional): standard deviation, must be > 0
+            c (float, optional): center
+        """
+        super().__init__()
+
+        if params:
+            if len(params) != 2:
+                raise ValueError("GaussianMF requires exactly two parameters: sigma, c")
+            sigma, c = params
+
+        sigma = sigma if sigma is not None else 1.0
+        c = c if c is not None else 0.5
+
         if sigma <= 0:
             raise ValueError("GaussianMF parameter 'sigma' must be positive")
-        self.sigma = sigma
-        self.c = c
-        self.parameters = {'sigma': sigma, 'c': c}
+
+        self.sigma, self.c = sigma, c
+        self.parameters = {"sigma": sigma, "c": c}
 
     def compute(self, x):
         x = np.asarray(x, dtype=float)
@@ -150,13 +233,29 @@ class GaussianMF(MembershipFunction):
 class SMF(MembershipFunction):
     """S型隶属函数"""
 
-    def __init__(self, a: float, b: float, name: str = None):
-        super().__init__(name)
+    def __init__(self, *params, a: float = None, b: float = None):
+        """
+        Initialize SMF.
+
+        Args:
+            *params: (a, b)
+            a, b (float): must satisfy a < b
+        """
+        super().__init__()
+
+        if params:
+            if len(params) != 2:
+                raise ValueError("SMF requires exactly two parameters: a, b")
+            a, b = params
+
+        a = a if a is not None else 0.0
+        b = b if b is not None else 1.0
+
         if a >= b:
             raise ValueError("SMF requires parameter a < b")
-        self.a = a
-        self.b = b
-        self.parameters = {'a': a, 'b': b}
+
+        self.a, self.b = a, b
+        self.parameters = {"a": a, "b": b}
 
     def compute(self, x):
         x = np.asarray(x, dtype=float)
@@ -197,13 +296,29 @@ class SMF(MembershipFunction):
 class ZMF(MembershipFunction):
     """Z型隶属函数"""
 
-    def __init__(self, a: float, b: float, name: str = None):
-        super().__init__(name)
+    def __init__(self, *params, a: float = None, b: float = None):
+        """
+        Initialize ZMF.
+
+        Args:
+            *params: (a, b)
+            a, b (float): must satisfy a < b
+        """
+        super().__init__()
+
+        if params:
+            if len(params) != 2:
+                raise ValueError("ZMF requires exactly two parameters: a, b")
+            a, b = params
+
+        a = a if a is not None else 0.0
+        b = b if b is not None else 1.0
+
         if a >= b:
             raise ValueError("ZMF requires parameter a < b")
-        self.a = a
-        self.b = b
-        self.parameters = {'a': a, 'b': b}
+
+        self.a, self.b = a, b
+        self.parameters = {"a": a, "b": b}
 
     def compute(self, x):
         x = np.asarray(x, dtype=float)
@@ -244,15 +359,33 @@ class ZMF(MembershipFunction):
 class DoubleGaussianMF(MembershipFunction):
     """双高斯隶属函数"""
 
-    def __init__(self, sigma1: float, c1: float, sigma2: float, c2: float, name: str = None):
-        super().__init__(name)
+    def __init__(self, *params, sigma1: float = None, c1: float = None,
+                 sigma2: float = None, c2: float = None):
+        """
+        Initialize DoubleGaussianMF.
+
+        Args:
+            *params: (sigma1, c1, sigma2, c2)
+            sigma1, sigma2 (float): must be > 0
+            c1, c2 (float): centers
+        """
+        super().__init__()
+
+        if params:
+            if len(params) != 4:
+                raise ValueError("DoubleGaussianMF requires exactly four parameters: sigma1, c1, sigma2, c2")
+            sigma1, c1, sigma2, c2 = params
+
+        sigma1 = sigma1 if sigma1 is not None else 1.0
+        c1 = c1 if c1 is not None else 0.25
+        sigma2 = sigma2 if sigma2 is not None else 1.0
+        c2 = c2 if c2 is not None else 0.75
+
         if sigma1 <= 0 or sigma2 <= 0:
             raise ValueError("DoubleGaussianMF parameters 'sigma1' and 'sigma2' must be positive")
-        self.sigma1 = sigma1
-        self.c1 = c1
-        self.sigma2 = sigma2
-        self.c2 = c2
-        self.parameters = {'sigma1': sigma1, 'c1': c1, 'sigma2': sigma2, 'c2': c2}
+
+        self.sigma1, self.c1, self.sigma2, self.c2 = sigma1, c1, sigma2, c2
+        self.parameters = {"sigma1": sigma1, "c1": c1, "sigma2": sigma2, "c2": c2}
 
     def compute(self, x):
         x = np.asarray(x, dtype=float)
@@ -272,16 +405,34 @@ class DoubleGaussianMF(MembershipFunction):
 class GeneralizedBellMF(MembershipFunction):
     """广义贝尔隶属函数"""
 
-    def __init__(self, a: float, b: float, c: float, name: str = None):
-        super().__init__(name)
+    def __init__(self, *params, a: float = None, b: float = None, c: float = None):
+        """
+        Initialize GeneralizedBellMF.
+
+        Args:
+            *params: (a, b, c)
+            a (float): must be > 0
+            b (float): must be > 0
+            c (float): center
+        """
+        super().__init__()
+
+        if params:
+            if len(params) != 3:
+                raise ValueError("GeneralizedBellMF requires exactly three parameters: a, b, c")
+            a, b, c = params
+
+        a = a if a is not None else 1.0
+        b = b if b is not None else 2.0
+        c = c if c is not None else 0.0
+
         if a <= 0:
             raise ValueError("GeneralizedBellMF parameter 'a' must be positive")
         if b <= 0:
             raise ValueError("GeneralizedBellMF parameter 'b' must be positive")
-        self.a = a
-        self.b = b
-        self.c = c
-        self.parameters = {'a': a, 'b': b, 'c': c}
+
+        self.a, self.b, self.c = a, b, c
+        self.parameters = {"a": a, "b": b, "c": c}
 
     def compute(self, x):
         x = np.asarray(x)
@@ -314,15 +465,32 @@ class GeneralizedBellMF(MembershipFunction):
 class PiMF(MembershipFunction):
     """Pi型隶属函数（S型和Z型的组合）"""
 
-    def __init__(self, a: float, b: float, c: float, d: float, name: str = None):
-        super().__init__(name)
+    def __init__(self, *params, a: float = None, b: float = None,
+                 c: float = None, d: float = None):
+        """
+        Initialize PiMF.
+
+        Args:
+            *params: (a, b, c, d)
+            a <= b <= c <= d must hold
+        """
+        super().__init__()
+
+        if params:
+            if len(params) != 4:
+                raise ValueError("PiMF requires exactly four parameters: a, b, c, d")
+            a, b, c, d = params
+
+        a = a if a is not None else 0.0
+        b = b if b is not None else 0.25
+        c = c if c is not None else 0.75
+        d = d if d is not None else 1.0
+
         if not (a <= b <= c <= d):
             raise ValueError("PiMF requires parameters to satisfy a <= b <= c <= d")
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
-        self.parameters = {'a': a, 'b': b, 'c': c, 'd': d}
+
+        self.a, self.b, self.c, self.d = a, b, c, d
+        self.parameters = {"a": a, "b": b, "c": c, "d": d}
 
     def compute(self, x):
         x = np.asarray(x, dtype=float)
