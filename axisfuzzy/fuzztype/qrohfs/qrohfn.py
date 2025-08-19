@@ -75,13 +75,31 @@ class QROHFNStrategy(FuzznumStrategy):
                                md: Union[np.ndarray, List],
                                nmd: Union[np.ndarray, List],
                                format_spec: str = "") -> str:
+        """
+        Format the QROHFN into a string representation.
+
+        Args:
+            md (array-like): Membership hesitant set
+            nmd (array-like): Non-membership hesitant set
+            format_spec (str):
+                - "" (default): unique & sorted display
+                - "u": same as default (unique)
+                - "r": raw display (show duplicated补全值)
+                - "p": Python tuple style
+                - "j": JSON style
+
+        Returns:
+            str: formatted representation
+        """
 
         if md is None and nmd is None:
             return "<>"
 
         precision = get_config().DEFAULT_PRECISION
 
-        def _process_hesitant_set(hesitant_set: Optional[Union[np.ndarray, List]]) -> List:
+        def _process_hesitant_set(
+                hesitant_set: Optional[Union[np.ndarray, List]],
+                unique: bool = True) -> List:
             """Rounds and uniques a hesitant set for display."""
             if hesitant_set is None or len(hesitant_set) == 0:
                 return []
@@ -90,26 +108,26 @@ class QROHFNStrategy(FuzznumStrategy):
             # 1. Round to the configured precision
             # 2. Get unique elements (which also sorts them)
             # 3. Convert to a Python list for display
-            return np.unique(np.round(arr, precision)).tolist()
+            arr = np.round(arr, precision)
+            if unique:
+                arr = np.unique(arr)
 
-        md_list = _process_hesitant_set(md)
-        nmd_list = _process_hesitant_set(nmd)
+            return arr.tolist()
+
+        use_unique = not (format_spec == "r")
+
+        md_list = _process_hesitant_set(md, unique=use_unique)
+        nmd_list = _process_hesitant_set(nmd, unique=use_unique)
 
         if format_spec == 'p':
             return f"({md_list}, {nmd_list})"
         if format_spec == 'j':
             import json
-            return json.dumps({'mtype': self.mtype, 'md': md_list, 'nmd': nmd_list, 'q': self.q})
-
+            return json.dumps({'mtype': self.mtype,
+                               'md': md_list,
+                               'nmd': nmd_list,
+                               'q': self.q})
         return f"<{md_list},{nmd_list}>"
-
-        # def strip_trailing_zeros(x: float) -> str:
-        #     s = f"{x:.{precision}f}".rstrip('0').rstrip('.')
-        #     return s if s else "0"
-        #
-        # md_str = strip_trailing_zeros(md)
-        # nmd_str = strip_trailing_zeros(nmd)
-        # return f"<{md_str},{nmd_str}>"
 
     def report(self) -> str:
         return self.format_from_components(self.md, self.nmd)
@@ -118,7 +136,7 @@ class QROHFNStrategy(FuzznumStrategy):
         return self.format_from_components(self.md, self.nmd)
 
     def __format__(self, format_spec) -> str:
-        if format and format_spec not in ['p', 'j', 'r']:
+        if format and format_spec not in ['p', 'j', 'r', 'u']:
             return format(self.str(), format_spec)
 
         return self.format_from_components(self.md, self.nmd, format_spec)

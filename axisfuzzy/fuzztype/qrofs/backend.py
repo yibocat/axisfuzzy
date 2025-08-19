@@ -4,7 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
-from typing import Any, Tuple, cast, Optional
+from typing import Any, Tuple, cast, Optional, Callable
 
 import numpy as np
 
@@ -38,15 +38,12 @@ class QROFNBackend(FuzzarrayBackend):
 
     def _initialize_arrays(self):
         """Initialize mds and nmds arrays for QROFN data."""
-
         # 初始化两个核心数组：membership degrees 和 non-membership degrees
         self.mds = np.zeros(self.shape, dtype=np.float64)
         self.nmds = np.zeros(self.shape, dtype=np.float64)
 
     def get_fuzznum_view(self, index: Any) -> 'Fuzznum':
-        """
-        Create a Fuzznum object from the data at the given index.
-        """
+        """Create a Fuzznum object from the data at the given index."""
         # 从 NumPy 数组中提取标量值
         md_value = float(self.mds[index])
         nmd_value = float(self.nmds[index])
@@ -55,9 +52,7 @@ class QROFNBackend(FuzzarrayBackend):
         return Fuzznum(mtype=self.mtype, q=self.q).create(md=md_value, nmd=nmd_value)
 
     def set_fuzznum_data(self, index: Any, fuzznum: 'Fuzznum'):
-        """
-        Set data at the given index from a Fuzznum object.
-        """
+        """Set data at the given index from a Fuzznum object."""
         if fuzznum.mtype != self.mtype:
             raise ValueError(f"Mtype mismatch: expected {self.mtype}, got {fuzznum.mtype}")
 
@@ -83,31 +78,55 @@ class QROFNBackend(FuzzarrayBackend):
         new_backend.nmds = self.nmds[key]
         return cast('QROFNBackend', new_backend)
 
-    def format_elements(self, format_spec: str = "") -> np.ndarray:
+    # ================== 智能显示系统实现 ==================
+
+    def _get_element_formatter(self, format_spec: str) -> Callable:
+        """获取元素格式化函数"""
+        precision = get_config().DEFAULT_PRECISION
+
+        if format_spec in ('p', 'j', 'r'):
+            # 特殊格式：使用 Strategy 进行格式化
+            strategy_formatter = QROFNStrategy(q=self.q)
+            return lambda md, nmd: strategy_formatter.format_from_components(md, nmd, format_spec)
+        else:
+            # 默认格式：使用高效的字符串操作
+            return self._create_default_formatter(precision)
+
+    def _create_default_formatter(self, precision: int) -> Callable:
+        """创建默认格式化函数"""
+        def format_pair(md: float, nmd: float) -> str:
+            # 高效的数值格式化
+            fmt = f"%.{precision}f"
+            md_str = (fmt % md).rstrip('0').rstrip('.')
+            nmd_str = (fmt % nmd).rstrip('0').rstrip('.')
+
+            # 处理全零情况
+            md_str = md_str if md_str else '0'
+            nmd_str = nmd_str if nmd_str else '0'
+
+            return f"<{md_str},{nmd_str}>"
+
+        return format_pair
+
+    def _format_single_element(self, index: Any, formatter: Callable, format_spec: str) -> str:
+        """格式化单个元素"""
+        md_value = float(self.mds[index])
+        nmd_value = float(self.nmds[index])
+        return formatter(md_value, nmd_value)
+
+    def _format_all_elements(self, format_spec: str) -> np.ndarray:
         """
-        高性能批量格式化：
-        默认 / 'c' 使用向量化字符串操作 (np.char.*)，避免 np.vectorize。
-        特殊格式 'p','j','r'（少用）回退逐元素。
+        完整格式化所有元素（针对 QROFN 的优化实现）
+
+        对于小数据集，使用向量化的 NumPy 字符串操作来提升性能
         """
         precision = get_config().DEFAULT_PRECISION
+
         if format_spec in ('p', 'j', 'r'):
-            out = np.empty(self.shape, dtype=object)
-            # 创建一个策略实例用于格式化
+            # 特殊格式：回退到基类的逐元素处理
+            return super()._format_all_elements(format_spec)
 
-            # strategy_cls = get_fuzztype_strategy(self.mtype)
-            # strategy_formatter = strategy_cls(q=self.q)
-
-            strategy_formatter = QROFNStrategy(q=self.q)
-            it = np.nditer(self.mds, flags=['multi_index'])
-            while not it.finished:
-                idx = it.multi_index
-                md = float(self.mds[idx])
-                nmd = float(self.nmds[idx])
-                out[idx] = strategy_formatter.format_from_components(md, nmd, format_spec)  # type: ignore
-                it.iternext()
-            return out
-
-        # 批量数值格式化
+        # 默认格式：使用向量化字符串操作
         fmt = f"%.{precision}f"
         md_strs = np.char.mod(fmt, np.round(self.mds, precision))
         nmd_strs = np.char.mod(fmt, np.round(self.nmds, precision))
@@ -129,6 +148,53 @@ class QROFNBackend(FuzzarrayBackend):
             ">"
         )
         return np.array(combined, dtype=object)
+
+    # def format_elements(self, format_spec: str = "") -> np.ndarray:
+    #     """
+    #     高性能批量格式化：
+    #     默认 / 'c' 使用向量化字符串操作 (np.char.*)，避免 np.vectorize。
+    #     特殊格式 'p','j','r'（少用）回退逐元素。
+    #     """
+    #     precision = get_config().DEFAULT_PRECISION
+    #     if format_spec in ('p', 'j', 'r'):
+    #         out = np.empty(self.shape, dtype=object)
+    #         # 创建一个策略实例用于格式化
+    #
+    #         # strategy_cls = get_fuzztype_strategy(self.mtype)
+    #         # strategy_formatter = strategy_cls(q=self.q)
+    #
+    #         strategy_formatter = QROFNStrategy(q=self.q)
+    #         it = np.nditer(self.mds, flags=['multi_index'])
+    #         while not it.finished:
+    #             idx = it.multi_index
+    #             md = float(self.mds[idx])
+    #             nmd = float(self.nmds[idx])
+    #             out[idx] = strategy_formatter.format_from_components(md, nmd, format_spec)  # type: ignore
+    #             it.iternext()
+    #         return out
+    #
+    #     # 批量数值格式化
+    #     fmt = f"%.{precision}f"
+    #     md_strs = np.char.mod(fmt, np.round(self.mds, precision))
+    #     nmd_strs = np.char.mod(fmt, np.round(self.nmds, precision))
+    #
+    #     def _trim(arr: np.ndarray) -> np.ndarray:
+    #         # 去掉尾部 0
+    #         trimmed = np.char.rstrip(np.char.rstrip(arr, '0'), '.')
+    #         # 若全部被去掉（例如 "0.0000"）则恢复为 "0"
+    #         return np.where(trimmed == '', '0', trimmed)
+    #
+    #     md_trimmed = _trim(md_strs)
+    #     nmd_trimmed = _trim(nmd_strs)
+    #
+    #     combined = np.char.add(
+    #         np.char.add(
+    #             np.char.add("<", md_trimmed),
+    #             np.char.add(",", nmd_trimmed)
+    #         ),
+    #         ">"
+    #     )
+    #     return np.array(combined, dtype=object)
 
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROFNBackend':

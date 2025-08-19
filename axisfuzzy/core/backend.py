@@ -16,7 +16,7 @@ mtype-specific, NumPy-backed implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Tuple, Optional
+from typing import Any, Tuple, Optional, Callable
 
 import numpy as np
 
@@ -75,6 +75,18 @@ class FuzzarrayBackend(ABC):
 
         # 子类需要在这里初始化具体的 NumPy 数组
         self._initialize_arrays()
+
+    @property
+    def ndim(self) -> int:
+        """
+        Number of dimensions of the logical Fuzzarray.
+
+        Returns
+        -------
+        int
+            The number of dimensions (len(shape)).
+        """
+        return len(self.shape)
 
     @abstractmethod
     def _initialize_arrays(self):
@@ -184,27 +196,6 @@ class FuzzarrayBackend(ABC):
         """
         pass
 
-    @abstractmethod
-    def format_elements(self, format_spec: str = "") -> np.ndarray:
-        """
-        Produce a NumPy array of formatted strings for each element.
-
-        The backend must implement formatting logic appropriate for the mtype,
-        combining component arrays into readable string representations.
-
-        Parameters
-        ----------
-        format_spec : str, optional
-            Format specification passed from higher-level formatting calls.
-
-        Returns
-        -------
-        numpy.ndarray
-            1-D array of dtype 'object' containing formatted strings for every
-            element in the backend (size == self.size).
-        """
-        pass
-
     @staticmethod
     def from_arrays(*components, **kwargs) -> 'FuzzarrayBackend':
         """
@@ -263,3 +254,232 @@ class FuzzarrayBackend(ABC):
 
     def __repr__(self):
         return f"{self.__class__.__name__}(shape={self.shape}, mtype='{self.mtype}')"
+
+    # ================== 智能显示通用实现 ==================
+
+    def format_elements(self, format_spec: str = "") -> np.ndarray:
+        """
+        智能分段格式化：对大数据集只显示部分元素，其余用省略号代替。
+
+        显示策略：
+        - 小数组（< DISPLAY_THRESHOLD_SMALL）：完整显示
+        - 大数组：显示首尾部分 + 中间省略号
+        - 超大数组：进一步减少显示元素数量
+
+        Parameters
+        ----------
+        format_spec : str, optional
+            Format specification passed from higher-level formatting calls.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of formatted strings with same shape as backend.
+        """
+        if self.size == 0:
+            return np.array([], dtype=object).reshape(self.shape)
+
+        config = get_config()
+
+        # 根据数据大小选择显示策略
+        if self.size <= config.DISPLAY_THRESHOLD_SMALL:
+            # 小数据集：完整显示
+            return self._format_all_elements(format_spec)
+        else:
+            # 大数据集：分段显示
+            return self._format_partial_elements(format_spec)
+
+    def _format_all_elements(self, format_spec: str) -> np.ndarray:
+        """完整格式化所有元素（用于小数据集）"""
+        # 对于小数据集，子类可以选择性地重写这个方法来优化
+        # 默认实现：逐元素格式化
+        result = np.empty(self.shape, dtype=object)
+        formatter = self._get_element_formatter(format_spec)
+
+        it = np.nditer(result, flags=['multi_index', 'refs_ok'], op_flags=['writeonly'])
+        while not it.finished:
+            idx = it.multi_index
+            result[idx] = self._format_single_element(idx, formatter, format_spec)
+            it.iternext()
+
+        return result
+
+    def _format_partial_elements(self, format_spec: str) -> np.ndarray:
+        """
+        分段格式化大数据集：只格式化需要显示的部分。
+
+        策略：
+        1. 根据数组维度和大小计算显示参数
+        2. 只格式化需要显示的索引位置
+        3. 其他位置用省略号占位
+        """
+        # 计算显示参数
+        display_params = self._calculate_display_parameters()
+
+        # 创建结果数组，默认填充省略号
+        result = np.full(self.shape, '...', dtype=object)
+
+        # 获取需要显示的索引
+        indices_to_format = self._get_display_indices(display_params)
+
+        # 只格式化需要显示的元素
+        formatter = self._get_element_formatter(format_spec)
+
+        for idx in indices_to_format:
+            result[idx] = self._format_single_element(idx, formatter, format_spec)
+
+        return result
+
+    def _calculate_display_parameters(self) -> dict:
+        """
+        根据数组大小和维度计算显示参数。
+
+        Returns:
+            dict: 包含显示参数的字典
+        """
+        config = get_config()
+
+        # 基础显示参数
+        if self.size < config.DISPLAY_THRESHOLD_MEDIUM:
+            # 中等大小：显示更多元素
+            edge_items = config.DISPLAY_EDGE_ITEMS_MEDIUM
+            threshold = config.DISPLAY_THRESHOLD_MEDIUM
+        elif self.size < config.DISPLAY_THRESHOLD_LARGE:
+            # 大数组：适中显示
+            edge_items = config.DISPLAY_EDGE_ITEMS_LARGE
+            threshold = config.DISPLAY_THRESHOLD_LARGE
+        else:
+            # 超大数组：最少显示
+            edge_items = config.DISPLAY_EDGE_ITEMS_HUGE
+            threshold = config.DISPLAY_THRESHOLD_HUGE
+
+        return {
+            'edge_items': edge_items,
+            'threshold': threshold,
+            'ndim': self.ndim,
+            'shape': self.shape,
+            'size': self.size
+        }
+
+    def _get_display_indices(self, params: dict) -> list:
+        """
+        根据显示参数计算需要格式化的索引位置。
+
+        模仿 NumPy 的显示逻辑：
+        - 1D: [0, 1, ..., -2, -1]
+        - 2D: 四角 + 边缘
+        - 高维: 递归处理
+        """
+        indices = []
+        edge_items = params['edge_items']
+        shape = params['shape']
+
+        if self.ndim == 1:
+            # 1D 数组：显示前后各 edge_items 个
+            if shape[0] <= 2 * edge_items + 1:
+                # 数组太小，全部显示
+                indices = list(range(shape[0]))
+            else:
+                # 前 edge_items 个
+                indices.extend(list(range(edge_items)))
+                # 后 edge_items 个
+                indices.extend(list(range(shape[0] - edge_items, shape[0])))
+
+        elif self.ndim == 2:
+            # 2D 数组：显示四角区域
+            rows, cols = shape
+
+            # 确定要显示的行和列
+            if rows <= 2 * edge_items + 1:
+                row_indices = list(range(rows))
+            else:
+                row_indices = (list(range(edge_items)) +
+                              list(range(rows - edge_items, rows)))
+
+            if cols <= 2 * edge_items + 1:
+                col_indices = list(range(cols))
+            else:
+                col_indices = (list(range(edge_items)) +
+                              list(range(cols - edge_items, cols)))
+
+            # 生成所有需要的 (row, col) 组合
+            for r in row_indices:
+                for c in col_indices:
+                    indices.append((r, c))
+
+        else:
+            # 高维数组：递归处理（简化实现）
+            indices = self._get_high_dim_indices(shape, edge_items)
+
+        return indices
+
+    def _get_high_dim_indices(self, shape: tuple, edge_items: int) -> list:
+        """处理高维数组的显示索引（简化实现）"""
+        indices = []
+
+        def generate_edge_indices(current_shape, current_idx=None):
+            if current_idx is None:
+                current_idx = []
+            if not current_shape:
+                indices.append(tuple(current_idx))
+                return
+
+            dim_size = current_shape[0]
+            remaining_shape = current_shape[1:]
+
+            if dim_size <= 2 * edge_items + 1:
+                # 维度较小，全部显示
+                for i in range(dim_size):
+                    generate_edge_indices(remaining_shape, current_idx + [i])
+            else:
+                # 显示前后各 edge_items 个
+                for i in range(edge_items):
+                    generate_edge_indices(remaining_shape, current_idx + [i])
+                for i in range(dim_size - edge_items, dim_size):
+                    generate_edge_indices(remaining_shape, current_idx + [i])
+
+        generate_edge_indices(shape)
+        return indices
+
+    @abstractmethod
+    def _get_element_formatter(self, format_spec: str) -> Callable:
+        """
+        获取元素格式化函数。
+
+        子类必须实现此方法，返回一个可调用对象，该对象接受必要的参数
+        并返回格式化后的字符串。
+
+        Parameters
+        ----------
+        format_spec : str
+            格式规格说明
+
+        Returns
+        -------
+        Callable
+            格式化函数
+        """
+        pass
+
+    @abstractmethod
+    def _format_single_element(self, index: Any, formatter: Callable, format_spec: str) -> str:
+        """
+        格式化单个元素。
+
+        子类必须实现此方法来定义如何格式化位于指定索引的单个元素。
+
+        Parameters
+        ----------
+        index : Any
+            元素索引
+        formatter : Callable
+            格式化函数（由 _get_element_formatter 返回）
+        format_spec : str
+            格式规格说明
+
+        Returns
+        -------
+        str
+            格式化后的字符串
+        """
+        pass

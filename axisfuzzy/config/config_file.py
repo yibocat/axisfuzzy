@@ -102,3 +102,93 @@ class Config:
             'error_msg': "Must be a boolean value (True/False)."
         }
     )
+
+    # ================== Display Configuration ===================
+    DISPLAY_THRESHOLD_SMALL: int = field(
+        default=1000,
+        metadata={
+            'category': 'display',
+            'description': 'Threshold for small arrays. Arrays with fewer or equal elements are displayed fully.',
+            'validator': lambda x: isinstance(x, int) and x > 0,
+            'error_msg': "Must be a positive integer."
+        }
+    )
+
+    DISPLAY_THRESHOLD_MEDIUM: int = field(
+        default=10000,
+        metadata={
+            'category': 'display',
+            'description': 'Threshold for medium-sized arrays.',
+            'validator': lambda x: isinstance(x, int) and x > 0,
+            'error_msg': "Must be a positive integer."
+        }
+    )
+
+    DISPLAY_EDGE_ITEMS_MEDIUM: int = field(
+        default=3,
+        metadata={
+            'category': 'display',
+            'description': 'Number of edge items to display for each dimension of a medium-sized array.',
+            'validator': lambda x: isinstance(x, int) and x > 0,
+            'error_msg': "Must be a positive integer."
+        }
+    )
+
+    DISPLAY_THRESHOLD_LARGE: int = field(
+        default=100000,
+        metadata={
+            'category': 'display',
+            'description': 'Threshold for large arrays.',
+            'validator': lambda x: isinstance(x, int) and x > 0,
+            'error_msg': "Must be a positive integer."
+        }
+    )
+
+    DISPLAY_EDGE_ITEMS_LARGE: int = field(
+        default=2,
+        metadata={
+            'category': 'display',
+            'description': 'Number of edge items to display for each dimension of a large array.',
+            'validator': lambda x: isinstance(x, int) and x > 0,
+            'error_msg': "Must be a positive integer."
+        }
+    )
+
+    DISPLAY_THRESHOLD_HUGE: int = field(
+        default=1000000,
+        metadata={
+            'category': 'display',
+            'description': 'Threshold for huge arrays.',
+            'validator': lambda x: isinstance(x, int) and x > 0,
+            'error_msg': "Must be a positive integer."
+        }
+    )
+
+    DISPLAY_EDGE_ITEMS_HUGE: int = field(
+        default=1,
+        metadata={
+            'category': 'display',
+            'description': 'Number of edge items to display for each dimension of a huge array.',
+            'validator': lambda x: isinstance(x, int) and x > 0,
+            'error_msg': "Must be a positive integer."
+        }
+    )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

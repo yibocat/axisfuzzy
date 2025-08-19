@@ -4,7 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
-from typing import Any, cast, Tuple
+from typing import Any, cast, Tuple, Callable
 
 import numpy as np
 
@@ -69,8 +69,10 @@ class QROHFNBackend(FuzzarrayBackend):
         """Create a deep copy of the backend."""
         new_backend = QROHFNBackend(self.shape, self.q, **self.kwargs)
         # For object arrays, a simple copy is shallow. We need to copy each element.
-        new_backend.mds = np.array([arr.copy() if arr is not None else None for arr in self.mds.flatten()], dtype=object).reshape(self.shape)
-        new_backend.nmds = np.array([arr.copy() if arr is not None else None for arr in self.nmds.flatten()], dtype=object).reshape(self.shape)
+        new_backend.mds = np.array([arr.copy() if arr is not None else None for arr in self.mds.flatten()],
+                                   dtype=object).reshape(self.shape)
+        new_backend.nmds = np.array([arr.copy() if arr is not None else None for arr in self.nmds.flatten()],
+                                    dtype=object).reshape(self.shape)
         return cast('QROHFNBackend', new_backend)
 
     def slice_view(self, key) -> 'QROHFNBackend':
@@ -80,23 +82,6 @@ class QROHFNBackend(FuzzarrayBackend):
         new_backend.mds = self.mds[key]
         new_backend.nmds = self.nmds[key]
         return cast('QROHFNBackend', new_backend)
-
-    def format_elements(self, format_spec: str = "") -> np.ndarray:
-        """
-        Format all elements into a NumPy array of strings.
-        This operation is element-wise due to the nature of hesitant sets.
-        """
-        out = np.empty(self.shape, dtype=object)
-        strategy_formatter = QROHFNStrategy(q=self.q)
-
-        it = np.nditer(out, flags=['multi_index', 'refs_ok'], op_flags=['writeonly'])
-        while not it.finished:
-            idx = it.multi_index
-            md_val = self.mds[idx]
-            nmd_val = self.nmds[idx]
-            out[idx] = strategy_formatter.format_from_components(md_val, nmd_val, format_spec)
-            it.iternext()
-        return out
 
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROHFNBackend':
@@ -139,3 +124,113 @@ class QROHFNBackend(FuzzarrayBackend):
             A tuple of (mds, nmds) object arrays.
         """
         return self.mds, self.nmds
+
+    # ================== 智能显示系统实现 ==================
+
+    def _get_element_formatter(self, format_spec: str) -> Callable:
+        """获取元素格式化函数"""
+        precision = get_config().DEFAULT_PRECISION
+
+        if format_spec == "" or format_spec == "u":
+            return self._create_default_formatter(precision)
+        elif format_spec == "r":
+            return self._create_raw_formatter(precision)
+        elif format_spec == "p":
+            return self._create_python_formatter(precision)
+        elif format_spec == "j":
+            return self._create_json_formatter(precision)
+        else:
+            return self._create_default_formatter(precision)
+
+    def _create_default_formatter(self, precision: int) -> Callable:
+        """创建默认格式化函数"""
+        def format_hesitant_set(hesitant_set):
+            if hesitant_set is None or len(hesitant_set) == 0:
+                return "[]"
+
+            arr = np.unique(np.round(np.asarray(hesitant_set, dtype=np.float64), precision))
+
+            if len(arr) == 1:
+                val_str = f"{arr[0]:.{precision}f}".rstrip('0').rstrip('.')
+                return f"[{val_str if val_str else '0'}]"
+            else:
+                formatted_vals = [
+                    (val_str := f"{val:.{precision}f}".rstrip('0').rstrip('.')) or '0'
+                    for val in arr
+                ]
+                return f"[{', '.join(formatted_vals)}]"
+
+        def format_pair(md_set, nmd_set):
+            md_str = format_hesitant_set(md_set)
+            nmd_str = format_hesitant_set(nmd_set)
+            return f"<{md_str},{nmd_str}>"
+
+        return format_pair
+
+    def _create_raw_formatter(self, precision: int) -> Callable:
+        """创建原始格式化函数（保留重复值）"""
+        def format_hesitant_set_raw(hesitant_set):
+            if hesitant_set is None or len(hesitant_set) == 0:
+                return "[]"
+
+            arr = np.round(np.asarray(hesitant_set, dtype=np.float64), precision)
+
+            if len(arr) == 1:
+                val_str = f"{arr[0]:.{precision}f}".rstrip('0').rstrip('.')
+                return f"[{val_str if val_str else '0'}]"
+            else:
+                formatted_vals = [
+                    (val_str := f"{val:.{precision}f}".rstrip('0').rstrip('.')) or '0'
+                    for val in arr
+                ]
+                return f"[{', '.join(formatted_vals)}]"
+
+        def format_pair_raw(md_set, nmd_set):
+            md_str = format_hesitant_set_raw(md_set)
+            nmd_str = format_hesitant_set_raw(nmd_set)
+            return f"<{md_str},{nmd_str}>"
+
+        return format_pair_raw
+
+    def _create_python_formatter(self, precision: int) -> Callable:
+        """创建Python格式化函数"""
+        def format_python_pair(md_set, nmd_set):
+            def process_set(hesitant_set):
+                if hesitant_set is None or len(hesitant_set) == 0:
+                    return []
+                arr = np.unique(np.round(np.asarray(hesitant_set, dtype=np.float64), precision))
+                return arr.tolist()
+
+            md_list = process_set(md_set)
+            nmd_list = process_set(nmd_set)
+            return f"({md_list}, {nmd_list})"
+
+        return format_python_pair
+
+    def _create_json_formatter(self, precision: int) -> Callable:
+        """创建JSON格式化函数"""
+        import json
+
+        def format_json_pair(md_set, nmd_set):
+            def process_set(hesitant_set):
+                if hesitant_set is None or len(hesitant_set) == 0:
+                    return []
+                arr = np.unique(np.round(np.asarray(hesitant_set, dtype=np.float64), precision))
+                return arr.tolist()
+
+            md_list = process_set(md_set)
+            nmd_list = process_set(nmd_set)
+            return json.dumps({
+                'mtype': self.mtype,
+                'md': md_list,
+                'nmd': nmd_list,
+                'q': self.q
+            })
+
+        return format_json_pair
+
+    def _format_single_element(self, index: Any, formatter: Callable, format_spec: str) -> str:
+        """格式化单个元素"""
+        md_val = self.mds[index]
+        nmd_val = self.nmds[index]
+        return formatter(md_val, nmd_val)
