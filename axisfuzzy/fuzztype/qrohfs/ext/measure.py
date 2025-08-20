@@ -9,7 +9,7 @@
 import numpy as np
 from typing import Union
 from axisfuzzy.core import Fuzznum, Fuzzarray
-from .normalize import _normalize_qrohfn   # 我们前面写的那个 pairwise 标准化归一化函数
+from .normalize import _normalize_qrohfn
 
 
 def _qrohfn_distance(

@@ -5,8 +5,9 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict, Union, Optional, Tuple
 import numpy as np
+
 from ..core import Fuzznum, Fuzzarray
 
 
@@ -38,6 +39,8 @@ def read_npy(*args: Any, **kwargs: Any) -> Fuzzarray: ...
 # Measurement functions
 def distance(fuzz_1: Union[Fuzznum, Fuzzarray], fuzz_2: Union[Fuzznum, Fuzzarray], *args: Any, **kwargs: Any) -> Union[np.ndarray, float]: ...
 
+def normalize(f1: Fuzznum, f2: Fuzznum, tao: float = ...) -> Tuple[Fuzznum, Fuzznum]: ...
+
 # String conversion functions
 def str2fuzznum(fuzznum_str: str, *args: Any, **kwargs: Any) -> Fuzznum: ...
 
@@ -49,9 +52,6 @@ def min(fuzz: Union[Fuzzarray, Fuzznum], axis: Optional[int] = ..., **kwargs: An
 def prod(fuzz: Union[Fuzzarray, Fuzznum], axis: Optional[int] = ..., **kwargs: Any) -> Union[Fuzzarray, Fuzznum]: ...
 def var(fuzz: Union[Fuzzarray, Fuzznum], axis: Optional[int] = ..., **kwargs: Any) -> Union[Fuzzarray, Fuzznum]: ...
 def std(fuzz: Union[Fuzzarray, Fuzznum], axis: Optional[int] = ..., **kwargs: Any) -> Union[Fuzzarray, Fuzznum]: ...
-
-
-
 
 # --- System Functions & Classes ---
 from .registry import ExtensionRegistry

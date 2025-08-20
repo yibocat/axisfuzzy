@@ -12,7 +12,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-from ....core import Fuzzarray, get_fuzztype_backend
+from ....core import Fuzzarray, get_registry_fuzztype
 
 
 def _qrohfn_to_csv(arr: Fuzzarray, path: str, **kwargs) -> None:
@@ -78,7 +78,7 @@ def _qrohfn_from_csv(path: str, q: int, **kwargs) -> Fuzzarray:
     shape = str_data.shape
 
     # 创建后端
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     new_backend = backend_cls(shape, q=q)
 
     # 解析每个字符串并填充后端
@@ -130,7 +130,7 @@ def _qrohfn_from_json(path: str, **kwargs) -> Fuzzarray:
     nmd_data = data['nmd_data']
 
     # 创建后端
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     new_backend = backend_cls(shape, q=q)
 
     # 递归填充犹豫集数组
@@ -182,7 +182,7 @@ def _qrohfn_from_npy(path: str, **kwargs) -> Fuzzarray:
     nmds = save_data['nmds']
 
     # 创建后端并直接设置数组
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     new_backend = backend_cls.from_arrays(mds, nmds, q=q)
 
     return Fuzzarray(backend=new_backend)

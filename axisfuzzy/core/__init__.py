@@ -20,12 +20,6 @@ from .registry import (
     register_strategy,
     register_backend,
     register_fuzztype,
-    register_batch_fuzztypes,
-
-    unregister_fuzztype,
-    get_fuzztype_strategy,
-    get_fuzztype_backend,
-    get_fuzztype_mtypes
 )
 
 from .triangular import OperationTNorm
@@ -41,14 +35,9 @@ __all__ = [
     'fuzznum',
     'fuzzarray',
     'get_registry_operation',
-    'register_operation',
     'get_registry_fuzztype',
-    'get_fuzztype_strategy',
-    'get_fuzztype_backend',
+    'register_operation',
     'register_strategy',
     'register_backend',
     'register_fuzztype',
-    'register_batch_fuzztypes',
-    'unregister_fuzztype',
-    'get_fuzztype_mtypes'
 ]

@@ -13,7 +13,7 @@ from ....core import (
     get_registry_operation,
     Fuzznum,
     Fuzzarray,
-    get_fuzztype_backend
+    get_registry_fuzztype,
 )
 
 from ..utils import _pairwise_combinations
@@ -69,7 +69,7 @@ def _qrohfn_sum(arr: Union[Fuzznum, Fuzzarray],
     md_out = _reduce_sets_along_axis(md_moved, tnorm.t_conorm)
     nmd_out = _reduce_sets_along_axis(nmd_moved, tnorm.t_norm)
 
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     new_backend = backend_cls.from_arrays(md_out, nmd_out, q=arr.q)
     return Fuzzarray(backend=new_backend)
 
@@ -128,7 +128,7 @@ def _qrohfn_max(arr: Union[Fuzznum, Fuzzarray],
         md_out[idx] = moved_mds[j][idx]
         nmd_out[idx] = moved_nmds[j][idx]
 
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     new_backend = backend_cls.from_arrays(md_out, nmd_out, q=arr.q)
     return Fuzzarray(backend=new_backend)
 
@@ -167,7 +167,7 @@ def _qrohfn_min(arr: Union[Fuzznum, Fuzzarray],
         md_out[idx] = moved_mds[j][idx]
         nmd_out[idx] = moved_nmds[j][idx]
 
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     new_backend = backend_cls.from_arrays(md_out, nmd_out, q=arr.q)
     return Fuzzarray(backend=new_backend)
 
@@ -201,7 +201,7 @@ def _qrohfn_prod(arr: Union[Fuzznum, Fuzzarray],
     md_out = _reduce_sets_along_axis(md_moved, tnorm.t_norm)
     nmd_out = _reduce_sets_along_axis(nmd_moved, tnorm.t_conorm)
 
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     new_backend = backend_cls.from_arrays(md_out, nmd_out, q=arr.q)
     return Fuzzarray(backend=new_backend)
 

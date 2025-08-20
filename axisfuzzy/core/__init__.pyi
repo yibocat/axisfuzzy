@@ -36,12 +36,6 @@ from .registry import (
     register_strategy as register_strategy,
     register_backend as register_backend,
     register_fuzztype as register_fuzztype,
-    register_batch_fuzztypes as register_batch_fuzztypes,
-
-    unregister_fuzztype as unregister_fuzztype,
-    get_fuzztype_strategy as get_fuzztype_strategy,
-    get_fuzztype_backend as get_fuzztype_backend,
-    get_fuzztype_mtypes as get_fuzztype_mtypes
 )
 
 __all__ = [
@@ -59,9 +53,4 @@ __all__ = [
     'register_strategy',
     'register_backend',
     'register_fuzztype',
-    'register_batch_fuzztypes',
-    'unregister_fuzztype',
-    'get_fuzztype_strategy',
-    'get_fuzztype_backend',
-    'get_fuzztype_mtypes',
 ]

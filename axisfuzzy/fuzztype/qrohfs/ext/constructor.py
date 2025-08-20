@@ -5,7 +5,7 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 from typing import Optional, Union, Tuple
-from ....core import Fuzznum, Fuzzarray, get_fuzztype_backend
+from ....core import Fuzznum, Fuzzarray, get_registry_fuzztype
 
 
 def _qrohfn_empty(shape: Optional[Tuple[int, ...]] = None,
@@ -14,7 +14,7 @@ def _qrohfn_empty(shape: Optional[Tuple[int, ...]] = None,
     if shape is None:
         return Fuzznum(mtype='qrohfn', q=q).create(md=[0.], nmd=[0.])
 
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     backend = backend_cls(shape=shape, q=q)
     return Fuzzarray(backend=backend)
 
@@ -25,7 +25,7 @@ def _qrohfn_poss(shape: Optional[Tuple[int, ...]] = None,
     if shape is None:
         return Fuzznum(mtype='qrohfn', q=q).create(md=[1.0], nmd=[0.0])
 
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     backend = backend_cls(shape=shape, q=q)
     backend.fill_from_values(1.0, 0.0)
     return Fuzzarray(backend=backend)
@@ -37,7 +37,7 @@ def _qrohfn_negs(shape: Optional[Tuple[int, ...]] = None,
     if shape is None:
         return Fuzznum(mtype='qrohfn', q=q).create(md=[0.0], nmd=[1.0])
 
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     backend = backend_cls(shape=shape, q=q)
     backend.fill_from_values(0.0, 1.0)
     return Fuzzarray(backend=backend)
@@ -55,7 +55,7 @@ def _qrohfn_full(fill_value: Fuzznum,
     if fill_value.q != q:
         raise ValueError(f"Q-rung mismatch: array q is {q}, but fill_value q is {fill_value.q}")
 
-    backend_cls = get_fuzztype_backend('qrohfn')
+    backend_cls = get_registry_fuzztype().get_backend('qrohfn')
     backend = backend_cls(shape=shape, q=q)
     backend.fill_from_values(fill_value.md, fill_value.nmd)
     return Fuzzarray(backend=backend)

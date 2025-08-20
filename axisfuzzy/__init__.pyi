@@ -28,24 +28,20 @@ from .config import (
 from .core import (
     FuzznumStrategy as FuzznumStrategy,
     FuzzarrayBackend as FuzzarrayBackend,
-    Fuzznum as Fuzznum, fuzznum as fuzznum,
-    Fuzzarray as Fuzzarray, fuzzarray as fuzzarray,
+    Fuzznum as Fuzznum,
+    fuzznum as fuzznum,
+    Fuzzarray as Fuzzarray,
+    fuzzarray as fuzzarray,
     operate as operate,
     OperationTNorm as OperationTNorm,
 
     get_registry_fuzztype as get_registry_fuzztype,
     get_registry_operation as get_registry_operation,
 
-    get_fuzztype_mtypes as get_fuzztype_mtypes,
-    get_fuzztype_strategy as get_fuzztype_strategy,
-    get_fuzztype_backend as get_fuzztype_backend,
-
     register_strategy as register_strategy,
     register_backend as register_backend,
     register_operation as register_operation,
     register_fuzztype as register_fuzztype,
-    # register_batch_fuzztypes as register_batch_fuzztypes,
-    unregister_fuzztype as unregister_fuzztype
 )
 from .extension import (
     get_registry_extension as get_registry_extension,
@@ -110,6 +106,8 @@ from .extension import (
     prod as prod,
     var as var,
     std as std,
+
+    normalize as normalize,
 )
 
 # 4. 声明 __all__ 列表的类型。

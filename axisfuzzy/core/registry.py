@@ -724,68 +724,6 @@ def get_registry_fuzztype() -> FuzznumRegistry:
     return _registry_instance
 
 
-def get_fuzztype_strategy(mtype: str) -> Type[FuzznumStrategy]:
-    """
-    A convenience function to retrieve a strategy class from the global registry.
-
-    This function is a simple, error-suppressing wrapper around the ``get_strategy``
-    method of the global :class:`~.base.FuzznumRegistry` instance.
-
-    Parameters
-    ----------
-    mtype : str
-        The ``mtype`` identifier for which to retrieve the strategy.
-
-    Returns
-    -------
-    type[FuzznumStrategy] or None
-        The registered :class:`~.base.FuzznumStrategy` subclass if found, otherwise ``None``.
-    """
-    try:
-        return get_registry_fuzztype().get_strategy(mtype)
-    except ValueError as e:
-        raise e
-
-
-def get_fuzztype_backend(mtype: str) -> Type[FuzzarrayBackend]:
-    """
-    A convenience function to retrieve a backend class from the global registry.
-
-    This function is a simple, error-suppressing wrapper around the ``get_backend``
-    method of the global :class:`~.base.FuzznumRegistry` instance.
-
-    Parameters
-    ----------
-    mtype : str
-        The ``mtype`` identifier for which to retrieve the backend.
-
-    Returns
-    -------
-    type[FuzzarrayBackend] or None
-        The registered :class:`~.base.FuzzarrayBackend` subclass if found, otherwise ``None``.
-    """
-    try:
-        return get_registry_fuzztype().get_backend(mtype)
-    except ValueError as e:
-        raise e
-
-
-def get_fuzztype_mtypes() -> Dict[str, Dict[str, Any]]:
-    """
-    A convenience function to get an overview of all registered mtypes.
-
-    This function is a simple wrapper around the ``get_registered_mtypes`` method
-    of the global :class:`~.base.FuzznumRegistry` instance.
-
-    Returns
-    -------
-    dict
-        A dictionary where keys are ``mtype`` strings and values are dictionaries
-        detailing the registration status for that ``mtype``.
-    """
-    return get_registry_fuzztype().get_registered_mtypes()
-
-
 def register_strategy(cls: Type[FuzznumStrategy]) -> Type[FuzznumStrategy]:
     """
     A class decorator for automatically registering a :class:`~.base.FuzznumStrategy`.
@@ -885,57 +823,27 @@ def register_fuzztype(strategy: Optional[Type[FuzznumStrategy]] = None,
         strategy=strategy, backend=backend)
 
 
-def register_batch_fuzztypes(registrations: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
-    """
-    A convenience function to batch-register multiple fuzzy types with the global registry.
-
-    This function is the ``batch_register`` method of the
-    global :class:`~.base.FuzznumRegistry` instance. It performs the registrations within a
-    single transaction, ensuring atomicity.
-
-    Parameters
-    ----------
-    registrations : list[dict]
-        A list where each item is a dictionary specifying the components to
-        register. Each dictionary should have 'strategy' and/or 'backend' keys.
-        Example: ``[{'strategy': QROFNStrategy, 'backend': QROFNBackend}, ...]``
-
-    Returns
-    -------
-    dict
-        A dictionary where keys are the ``mtypes`` of the successfully
-        registered types and values are the detailed results from the
-        underlying ``register`` method.
-    """
-    return get_registry_fuzztype().batch_register(registrations)
-
-
-def unregister_fuzztype(mtype: str,
-                        remove_strategy: bool = True,
-                        remove_backend: bool = True) -> Dict[str, Any]:
-    """
-    A convenience function to unregister a fuzzy type from the global registry.
-
-    This function is a simple wrapper around the ``unregister`` method of the
-    global :class:`~.base.FuzznumRegistry` instance.
-
-    Parameters
-    ----------
-    mtype : str
-        The ``mtype`` identifier of the fuzzy number type to unregister.
-    remove_strategy : bool, default True
-        If True, removes the associated :class:`~.base.FuzznumStrategy` class.
-    remove_backend : bool, default True
-        If True, removes the associated :class:`~.base.FuzzarrayBackend` class.
-
-    Returns
-    -------
-    dict
-        A dictionary detailing the result of the unregistration.
-    """
-    return get_registry_fuzztype().unregister(
-        mtype=mtype,
-        remove_strategy=remove_strategy,
-        remove_backend=remove_backend
-    )
+# def register_batch_fuzztypes(registrations: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+#     """
+#     A convenience function to batch-register multiple fuzzy types with the global registry.
+#
+#     This function is the ``batch_register`` method of the
+#     global :class:`~.base.FuzznumRegistry` instance. It performs the registrations within a
+#     single transaction, ensuring atomicity.
+#
+#     Parameters
+#     ----------
+#     registrations : list[dict]
+#         A list where each item is a dictionary specifying the components to
+#         register. Each dictionary should have 'strategy' and/or 'backend' keys.
+#         Example: ``[{'strategy': QROFNStrategy, 'backend': QROFNBackend}, ...]``
+#
+#     Returns
+#     -------
+#     dict
+#         A dictionary where keys are the ``mtypes`` of the successfully
+#         registered types and values are the detailed results from the
+#         underlying ``register`` method.
+#     """
+#     return get_registry_fuzztype().batch_register(registrations)
 

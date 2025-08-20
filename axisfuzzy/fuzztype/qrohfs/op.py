@@ -12,7 +12,7 @@ import numpy as np
 from ...config import get_config
 from ...core import (
     Fuzznum, Fuzzarray,
-    get_fuzztype_backend,
+    get_registry_fuzztype,
     OperationTNorm,
     OperationMixin,
     register_operation
@@ -162,7 +162,7 @@ class QROHFNAddition(OperationMixin):
         nmd_res = add_nmd_ufunc(nmds1, nmds2)
 
         # Create a new Fuzzarray from the resulting object arrays.
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -250,7 +250,7 @@ class QROHFNSubtraction(OperationMixin):
         sub_ufunc = np.frompyfunc(_sub_func, 4, 2)
         md_res, nmd_res = sub_ufunc(mds1, nmds1, mds2, nmds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -303,7 +303,7 @@ class QROHFNMultiplication(OperationMixin):
         md_res = mul_md_ufunc(mds1, mds2)
         nmd_res = mul_nmd_ufunc(nmds1, nmds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -384,7 +384,7 @@ class QROHFNDivision(OperationMixin):
         div_ufunc = np.frompyfunc(_div_func, 4, 2)
         md_res, nmd_res = div_ufunc(mds1, nmds1, mds2, nmds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -440,7 +440,7 @@ class QROHFNPower(OperationMixin):
         md_res = pow_md_ufunc(mds)
         nmd_res = pow_nmd_ufunc(nmds)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -496,7 +496,7 @@ class QROHFNTimes(OperationMixin):
         md_res = times_md_ufunc(mds)
         nmd_res = times_nmd_ufunc(nmds)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -552,7 +552,7 @@ class QROHFNExponential(OperationMixin):
         md_res = times_md_ufunc(mds)
         nmd_res = times_nmd_ufunc(nmds)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -608,7 +608,7 @@ class QROHFNLogarithmic(OperationMixin):
         md_res = times_md_ufunc(mds)
         nmd_res = times_nmd_ufunc(nmds)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1066,7 +1066,7 @@ class QROHFNIntersection(OperationMixin):
         md_res = intersection_md_ufunc(mds1, mds2)
         nmd_res = intersection_nmd_ufunc(nmds1, nmds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1119,7 +1119,7 @@ class QROHFNUnion(OperationMixin):
         md_res = union_md_ufunc(mds1, mds2)
         nmd_res = union_nmd_ufunc(nmds1, nmds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1163,7 +1163,7 @@ class QROHFNComplement(OperationMixin):
         md_res = nmds.copy()
         nmd_res = mds.copy()
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=fuzzarray.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1217,7 +1217,7 @@ class QROHFNImplication(OperationMixin):
         md_res = implication_md_ufunc(nmds1, mds2)
         nmd_res = implication_nmd_ufunc(mds1, nmds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1297,7 +1297,7 @@ class QROHFNEquivalence(OperationMixin):
         md_res = equivalence_md_ufunc(nmds1, mds1, nmds2, mds2)
         nmd_res = equivalence_nmd_ufunc(mds1, nmds1, mds2, nmds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1351,7 +1351,7 @@ class QROHFNDifference(OperationMixin):
         md_res = difference_md_ufunc(mds1, nmds2)
         nmd_res = difference_nmd_ufunc(nmds1, mds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1430,7 +1430,7 @@ class QROHFNSymmetricDifference(OperationMixin):
         md_res = symdiff_md_ufunc(mds1, nmds1, mds2, nmds2)
         nmd_res = symdiff_nmd_ufunc(nmds1, mds1, nmds2, mds2)
 
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(md_res, nmd_res, q=operand1.q)
         return Fuzzarray(backend=new_backend)
 
@@ -1539,6 +1539,6 @@ class QROHFNMatrixMultiplication(OperationMixin):
                     result_nmds[i, j] = accumulated_nmd
 
         # Create result Fuzzarray
-        backend_cls = get_fuzztype_backend('qrohfn')
+        backend_cls = get_registry_fuzztype().get_backend('qrohfn')
         new_backend = backend_cls.from_arrays(result_mds, result_nmds, q=operand1.q)
         return Fuzzarray(backend=new_backend)

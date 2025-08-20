@@ -39,20 +39,12 @@ from .core import (
     Fuzzarray, fuzzarray,
     operate,
     OperationTNorm,
-
     get_registry_fuzztype,
     get_registry_operation,
-
-    get_fuzztype_mtypes,
-    get_fuzztype_strategy,
-    get_fuzztype_backend,
-
     register_strategy,
     register_backend,
     register_operation,
     register_fuzztype,
-    # register_batch_fuzztypes,
-    unregister_fuzztype
 )
 from .extension import (
     get_registry_extension,
@@ -92,13 +84,10 @@ _static_api = [
     'get_registry_fuzztype',
     'get_registry_operation',
     'get_fuzztype_mtypes',
-    'get_fuzztype_strategy',
-    'get_fuzztype_backend',
     'register_strategy',
     'register_backend',
     'register_operation',
     'register_fuzztype',
-    'unregister_fuzztype',
     # extension
     'get_registry_extension',
     'extension',
