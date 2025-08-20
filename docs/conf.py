@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- 项目信息 --------------------------------------------------------------
 # 定义项目的基础元数据，如项目名称、版权和作者。
-project = 'axisfuzzy'
+project = 'AxisFuzzy'  # 更改为首字母大写
 copyright = '2025, yibocat'
 author = 'yibocat'
 
@@ -53,12 +53,13 @@ extensions = [
     'myst_parser',            # 支持 reStructuredText 和 Markdown (.md 文件)
     'sphinx.ext.autodoc',     # 从 docstring 自动生成文档
     'sphinx.ext.napoleon',    # 支持 Google 和 NumPy 风格的 docstring，用于 autodoc
-    'sphinx.ext.viewcode',    # 为文档页面添加“查看源码”链接
-    'sphinx_copybutton',      # 为代码块添加“复制”按钮
+    'sphinx.ext.viewcode',    # 为文档页面添加"查看源码"链接
+    'sphinx_copybutton',      # 为代码块添加"复制"按钮
     'sphinx_design',          # 提供设计组件（卡片、网格等）
     'sphinx_autodoc_typehints', # 在 autodoc 输出中漂亮地渲染 Python 3 类型提示
     'sphinx.ext.mathjax',     # 使用 MathJax 渲染数学公式
     'sphinx.ext.autosummary', # 为 API 文档生成摘要表格
+    'sphinx_tabs',            # 添加标签页功能
 ]
 
 # 包含模板的路径，相对于此目录。
@@ -94,7 +95,7 @@ autodoc_default_options = {
     'undoc-members': False,     # 不显示没有 docstring 的成员
     'inherited-members': True,  # 文档化从基类继承的成员
     'show-inheritance': True,   # 显示基类列表
-    'member-order': 'alphabetical', # 成员排序方式：按源代码中的出现顺序
+    'member-order': 'alphabetical', # 成员排序方式：按字母顺序
                                 # 可选值有 'bysource'（按源代码顺序）、'alphabetical'（按字母顺序）、'groupwise'（按类型分组）
 }
 
@@ -128,6 +129,11 @@ html_static_path = ['_static']
 # 主题特定选项。
 # 这些选项特定于 'pydata_sphinx_theme'。
 html_theme_options = {
+    "logo": {
+        "text": "AxisFuzzy",  # 添加 logo 文本
+        "image_light": "_static/logo-light.png",  # 可选：浅色模式 logo
+        "image_dark": "_static/logo-dark.png",   # 可选：深色模式 logo
+    },
     "icon_links": [
         {
             "name": "GitHub",
@@ -136,15 +142,24 @@ html_theme_options = {
             "type": "fontawesome", # 指定使用 Font Awesome 图标
         },
     ],
-    "navbar_end": ["navbar-icon-links", "theme-switcher"], # 导航栏末尾显示元素
-    "show_nav_level": 2,      # 默认展开侧边栏导航到此级别
-    "navigation_depth": 4,    # 侧边栏导航树的最大深度
-    "footer_items": ["copyright", "sphinx-version"], # 页脚显示元素
-    # "show_source": False,   # 设置为 True 以在每个页面上显示“查看源码”链接
-    # "secondary_sidebar_items": ["page-toc", "edit-this-page"], # 右侧边栏的元素
+    "navbar_end": ["version-switcher", "navbar-icon-links", "theme-switcher"],
+    "show_nav_level": 1,            # 减少默认展开级别，使导航更简洁
+    "navigation_depth": 3,          # 减少导航深度
+    "footer_items": ["copyright"],  # 简化页脚，移除 sphinx-version
+    "primary_sidebar_end": [],      # 清空主侧边栏底部
+    "show_toc_level": 2,            # 减少目录层级
+    "pygment_light_style": "github-light",
+    "pygment_dark_style": "github-dark",
 }
 
-# 不在页面底部显示“查看源码”链接。
+# 不在页面底部显示"查看源码"链接。
 # 这通常更适用于干净的公共文档，避免用户看到原始rst文件。
 html_show_sourcelink = False
 
+# 自定义页面标题
+html_title = f"{project} Documentation"
+
+# 添加自定义 CSS
+html_css_files = [
+    'custom.css',
+]

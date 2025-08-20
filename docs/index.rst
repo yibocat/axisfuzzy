@@ -1,76 +1,116 @@
-====================================
-axisfuzzy
-====================================
+.. AxisFuzzy documentation master file
 
-AxisFuzzy is a professional Python fuzzy logic computing framework that provides researchers and engineers with high-performance, modular, and scalable fuzzy mathematical operation capabilities.
+:html_theme.sidebar_secondary.remove:
 
-.. note::
-   The design concept of AxisFuzzy originates from NumPy, aiming to make fuzzy number operations as simple and intuitive as manipulating regular arrays.
+===============
+AxisFuzzy
+===============
 
-Core Features
-========
+*A Professional Python Framework for Fuzzy Logic Computing*
 
-🎯 **Unified interface**
-   Provide NumPy-like fuzzy number and fuzzy array operations through ``Fuzznum`` and ``Fuzzarray``.
+----
 
-⚡ **高性能**
-   后端采用 Struct of Arrays (SoA) 架构，实现批量高效计算
+.. container:: intro-section
 
-🔌 **完全可扩展**
-   插件化架构支持自定义模糊数类型、运算规则和扩展功能
+   AxisFuzzy provides high-performance, modular, and scalable fuzzy mathematical operations
+   for researchers and engineers. The framework is designed with extensibility and efficiency
+   in mind, enabling seamless fuzzy number computations and advanced fuzzy logic operations.
 
-🔢 **丰富类型**
-   内置支持 q-rung 直觉模糊数、区间二型模糊数等多种模糊数类型
+Quick Start
+===========
 
-快速开始
-========
+.. tab-set::
 
-.. code-block:: bash
+   .. tab-item:: Installation
 
-   pip install axisfuzzy
+      .. code-block:: bash
 
-.. code-block:: python
+         pip install axisfuzzy
 
-   import axisfuzzy as af
+   .. tab-item:: Basic Example
 
-   # 创建模糊数
-   fuzz1 = af.Fuzznum([0.8, 0.2], mtype='qrofn')
-   fuzz2 = af.Fuzznum([0.7, 0.3], mtype='qrofn')
+      .. code-block:: python
 
-   # 模糊运算
-   result = fuzz1 + fuzz2
-   print(f"运算结果: {result}")
+         import axisfuzzy as af
 
-文档导览
-========
+         # Create fuzzy numbers
+         fuzz1 = af.Fuzznum([0.8, 0.2], mtype='qrofn')
+         fuzz2 = af.Fuzznum([0.7, 0.3], mtype='qrofn')
 
-.. toctree::
-   :maxdepth: 1
-   :caption: 新手指南
+         # Fuzzy operations
+         result = fuzz1 + fuzz2
+         distance = fuzz1.distance(fuzz2)
 
-   getting_started/index
+         print(f"Result: {result}")
+         print(f"Distance: {distance}")
 
-.. toctree::
-   :maxdepth: 1
-   :caption: 用户手册
+   .. tab-item:: Array Operations
 
-   user_guide/index
+      .. code-block:: python
 
-.. toctree::
-   :maxdepth: 1
-   :caption: 开发指南
+         import axisfuzzy as af
 
-   development/index
+         # Create fuzzy arrays
+         data = [[0.8, 0.2], [0.7, 0.3], [0.9, 0.1]]
+         fuzz_array = af.Fuzzarray(data, mtype='qrofn')
 
-.. toctree::
-   :maxdepth: 1
-   :caption: API 参考
+         # Batch operations
+         mean_result = fuzz_array.mean()
+         reshaped = fuzz_array.reshape(3, 1, 2)
 
-   api/index
-
-索引与搜索
+Navigation
 ==========
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. container:: nav-cards
+
+   .. grid:: 2 2 2 2
+      :gutter: 4
+      :class-container: nav-grid
+
+      .. grid-item-card:: Getting Started
+         :class-card: nav-card
+         :link: getting_started/index
+         :link-type: doc
+
+         📚
+
+         Installation guide, basic concepts, and first steps with AxisFuzzy
+
+      .. grid-item-card:: User Guide
+         :class-card: nav-card
+         :link: user_guide/index
+         :link-type: doc
+
+         📖
+
+         Comprehensive tutorials, examples, and advanced usage patterns
+
+      .. grid-item-card:: Developer Guide
+         :class-card: nav-card
+         :link: development/index
+         :link-type: doc
+
+         🔧
+
+         Extending AxisFuzzy, contributing guidelines, and architecture details
+
+      .. grid-item-card:: API Reference
+         :class-card: nav-card
+         :link: api/index
+         :link-type: doc
+
+         📋
+
+         Complete API documentation with detailed function and class references
+
+.. raw:: html
+
+   <div class="footer-spacing"></div>
+
+.. toctree::
+   :hidden:
+
+   getting_started/index
+   user_guide/index
+   development/index
+   api/index
