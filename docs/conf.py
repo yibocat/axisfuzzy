@@ -31,7 +31,8 @@ extensions = [
     'sphinx.ext.viewcode',    # 源码高亮
     'sphinx_copybutton',
     'sphinx_design',
-    'sphinx_autodoc_typehints'
+    'sphinx_autodoc_typehints',
+    'sphinx.ext.mathjax'
 ]
 
 templates_path = ['_templates']
@@ -45,6 +46,10 @@ source_suffix = {
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'pydata_sphinx_theme'
+# html_theme = "shibuya"
+# html_theme = 'furo'
+# html_theme = 'sphinx_book_theme'
+
 html_static_path = ['_static']
 
 # 主题配置

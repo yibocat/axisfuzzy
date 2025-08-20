@@ -5,14 +5,45 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 """
-axisfuzzy.core.fuzzarray
-========================
-
 High-level Fuzznum container built on a Struct-of-Arrays (SoA) backend.
 
-This module exposes the Fuzzarray class which provides ndarray-like API
+This module exposes the :class:`Fuzzarray` class, which provides ndarray-like API
 semantics for collections of fuzzy numbers while delegating storage and
-bulk computation to a specialized FuzzarrayBackend implementation.
+bulk computation to a specialized :class:`FuzzarrayBackend` implementation.
+
+Overview
+--------
+- Fuzzarray is the main container for high-dimensional fuzzy numbers.
+- It supports efficient batch operations and slicing, similar to numpy arrays.
+- All storage and vectorized computation is delegated to a backend, which is
+  selected based on the fuzzy number type (`mtype`).
+
+Notes
+-----
+- The backend system enables high performance by avoiding per-element Python object overhead.
+- Operator overloading is supported for elementwise arithmetic and comparison.
+- Specialized vectorized operations can be registered for each fuzzy type.
+
+Examples
+--------
+.. code-block:: python
+
+    from axisfuzzy.core.fuzznums import fuzznum
+    from axisfuzzy.core.fuzzarray import fuzzarray
+
+    # Create a 1D Fuzzarray by broadcasting a Fuzznum
+    a = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+    arr = fuzzarray(a, shape=(3,))
+
+    # Create from a list of Fuzznum
+    arr2 = fuzzarray([fuzznum(md=0.1, nmd=0.2), fuzznum(md=0.2, nmd=0.3), fuzznum(md=0.3, nmd=0.4)])
+
+    # Elementwise arithmetic
+    result = arr + arr2
+
+    # Comparison yields boolean ndarray
+    mask = arr > arr2
+    print(mask)
 """
 
 from typing import Optional, Union, Any, Tuple, Iterator, Dict
@@ -53,32 +84,24 @@ class Fuzzarray:
 
     Examples
     --------
-    The examples assume that a default fuzzy number mtype and its backend are
-    registered in the global registry (this typically happens during library
-    initialization). They demonstrate common construction and arithmetic usage.
+    .. code-block:: python
 
-    >>> from axisfuzzy.core.fuzznums import fuzznum
-    >>> from axisfuzzy.core.fuzzarray import fuzzarray
-    >>> # Create a scalar Fuzznum using defaults (mtype/q come from config)
-    >>> scalar = fuzznum()
-    >>> # Broadcast a scalar Fuzznum into a 1-D Fuzzarray of length 3
-    >>> fa = fuzzarray(scalar, shape=(3,))
-    >>> # Create a Fuzzarray from an explicit list of Fuzznum objects
-    >>> fb = fuzzarray([fuzznum(), fuzznum(), fuzznum()])
-    >>> # Element-wise arithmetic returns a Fuzzarray
-    >>> result = fa + fb
-    >>> isinstance(result, type(fa))
-    True
-    >>> # Comparison operations yield boolean NumPy arrays
-    >>> (fa > fb).shape
-    (3,)
+        from axisfuzzy.core.fuzznums import fuzznum
+        from axisfuzzy.core.fuzzarray import fuzzarray
 
-    Notes
-    -----
-    - The class favors constructing backends that use views for slicing to
-      avoid unnecessary copies.
-    - Element-wise operations are delegated to registered Operation implementations;
-      Fuzzarray may use specialized vectorized implementations when available.
+        # Create a 2D Fuzzarray from a list of lists
+        arr = fuzzarray([[fuzznum(md=0.1, nmd=0.2), fuzznum(md=0.2, nmd=0.3)],
+                         [fuzznum(md=0.3, nmd=0.4), fuzznum(md=0.4, nmd=0.5)]])
+
+        # Indexing returns Fuzznum or Fuzzarray
+        print(arr[0, 1])  # Fuzznum
+        print(arr[0:1])   # Fuzzarray
+
+        # Elementwise operations
+        arr2 = arr + 0.1  # Broadcasting supported if operation registered
+
+        # Copy
+        arr3 = arr.copy()
     """
 
     def __init__(self,
@@ -785,5 +808,15 @@ def fuzzarray(data,
     -------
     Fuzzarray
         New Fuzzarray instance constructed from the provided inputs.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        from axisfuzzy.core.fuzznums import fuzznum
+        from axisfuzzy.core.fuzzarray import fuzzarray
+
+        arr = fuzzarray([fuzznum(md=0.1, nmd=0.2), fuzznum(md=0.2, nmd=0.3)])
+        print(arr)
     """
     return Fuzzarray(data=data, mtype=mtype, shape=shape, **mtype_kwargs)

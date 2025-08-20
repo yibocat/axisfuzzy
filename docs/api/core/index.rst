@@ -10,9 +10,10 @@ The `axisfuzzy.core` package contains the fundamental building blocks of the Axi
    :maxdepth: 2
    :caption: Core Modules
 
-   registry
-   fuzznum&fuzzarray
    base
+   registry
+   fuzznum
+   fuzzarray
    backend
    operation
    dispatcher

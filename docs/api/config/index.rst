@@ -1,9 +1,8 @@
-==============
 config(axisfuzzy.config)
-==============
+========================
 
 Introduction
-----
+------------
 The configuration subsystem of AxisFuzzy is responsible for maintaining global and local configuration items (such as default `mtype`, numerical precision, backend selection, etc.), and provides a unified access interface for various subsystems of the library. The configuration module includes user-facing APIs (convenience functions) and a lower-level configuration manager (used for programmatic and persistent operations).
 
 .. toctree::
@@ -51,7 +50,7 @@ The configuration subsystem of AxisFuzzy is responsible for maintaining global a
        print(k, manager.get(k))
 
 注意与建议
----------
+--------------
 
 - 推荐在程序入口（如应用的初始化处）统一加载与注入配置，避免运行时零散地修改全局状态。
 - 若模块提供 `load_from_file` / `save_to_file` 等接口，请使用受控格式（YAML/TOML/JSON）以便版本管理与可读性。

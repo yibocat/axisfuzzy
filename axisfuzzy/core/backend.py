@@ -5,68 +5,80 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 """
-axisfuzzy.core.backend
-======================
-
 Abstract backend interface for Fuzzarray (Struct-of-Arrays).
 
-This module defines the `FuzzarrayBackend` abstract base class which is the
-primary contract between high-level `Fuzzarray` containers and concrete,
+This module defines the :class:`~.base.FuzzarrayBackend` abstract base class which is the
+primary contract between high-level :class:`~/base.Fuzzarray` containers and concrete,
 mtype-specific, NumPy-backed implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Tuple, Optional, Callable
+from typing import Any, Tuple, Optional, Callable, TYPE_CHECKING
 
 import numpy as np
 
 from ..config import get_config
 
+if TYPE_CHECKING:
+    from .fuzznums import Fuzznum
+
 
 class FuzzarrayBackend(ABC):
     """
-    Abstract base class for Fuzzarray data backends (SoA implementation).
+    Abstract base class for SoA (Struct-of-Arrays) fuzzy-number backends.
 
-    Each concrete backend manages the NumPy arrays that store the fuzzy-number
-    components for a specific `mtype`. Subclasses must implement array
-    initialization, element view construction, slicing/copy semantics and
-    formatting.
+    The backend owns the NumPy arrays that store components for each element
+    (e.g. membership / non-membership arrays depending on `mtype`) and exposes
+    array-level operations used by higher-level containers.
 
     Parameters
     ----------
     shape : tuple of int
-        Shape of the logical Fuzzarray.
+        Logical shape of the array.
     q : int, optional
-        q-rung parameter for q-rung based mtypes. If ``None``, the default
-        from configuration is used.
+        Effective q-rung for q-rung fuzzy types. If None, uses
+        :func:`axisfuzzy.config.get_config().DEFAULT_Q`.
     **kwargs
-        Additional backend-specific parameters.
+        Backend-specific options.
 
     Attributes
     ----------
     shape : tuple of int
-        The logical shape of the array.
+        Logical shape of the array.
     size : int
-        Total number of elements (product of shape).
+        Total number of elements (product of ``shape``).
     q : int
         Effective q-rung used by this backend instance.
     kwargs : dict
         Backend-specific extra parameters.
     mtype : str
-        Class attribute that concrete subclasses should override to indicate
-        the supported mtype string.
+        Backend-reported mtype; default read from configuration.
 
     Notes
     -----
-    - Implementations are expected to prefer views (shared memory) for slicing
-      whenever possible to avoid expensive copies.
-    - The backend API focuses on array-level operations; high-level semantics
-      (e.g., operator dispatch) are handled by other core components.
+    - Concrete subclasses must implement array initialization, element views,
+      slicing/copy semantics and formatting helpers.
+    - Implementations should prefer views (shared memory) for slicing when
+      possible to avoid unnecessary copies.
+
+    Examples
+    --------
+    Create a concrete backend subclass and instantiate it:
+
+    .. code-block:: python
+
+        class MyBackend(FuzzarrayBackend):
+            def _initialize_arrays(self):
+                self._a = np.zeros(self.shape, dtype=float)
+                self._b = np.ones(self.shape, dtype=float)
+            # implement other abstract methods...
+
+        be = MyBackend((2, 3), q=2)
+        print(be.shape, be.size)
     """
 
-    mtype: str = "unknown"
-
     def __init__(self, shape: Tuple[int, ...], q: Optional[int] = None, **kwargs):
+        self.mtype = get_config().DEFAULT_MTYPE or 'unknown'
         self.shape = shape
         self.size = int(np.prod(shape))
         self.q = q if q is not None else get_config().DEFAULT_Q
@@ -75,6 +87,205 @@ class FuzzarrayBackend(ABC):
 
         # 子类需要在这里初始化具体的 NumPy 数组
         self._initialize_arrays()
+
+    @abstractmethod
+    def _initialize_arrays(self):
+        """
+        Initialize underlying NumPy arrays used by the backend.
+
+        Notes
+        -----
+        - Must assign all arrays used by other methods (e.g., membership /
+          non-membership arrays) as instance attributes.
+        - Called from the base class constructor.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            def _initialize_arrays(self):
+                # For a hypothetical 2-component mtype:
+                self._comp1 = np.zeros(self.shape, dtype=float)
+                self._comp2 = np.zeros(self.shape, dtype=float)
+        """
+        pass
+
+    @abstractmethod
+    def get_fuzznum_view(self, index: Any) -> 'Fuzznum':
+        """
+        Return a lightweight Fuzznum view for the element at ``index``.
+
+        The view should be a thin proxy that reads/writes directly into the
+        backend arrays without performing a deep copy.
+
+        Parameters
+        ----------
+        index : int or tuple or slice
+            Indexing key following NumPy semantics for single-element access.
+
+        Returns
+        -------
+        Fuzznum
+            A Fuzznum-like proxy object.
+
+        Notes
+        -----
+        - Implementations may return a proxy class that reflects changes back
+          into the underlying arrays.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            view = backend.get_fuzznum_view((0, 1))
+            view.membership = 0.7  # updates backend arrays in-place
+        """
+        pass
+
+    @abstractmethod
+    def set_fuzznum_data(self, index: Any, fuzznum: 'Fuzznum'):
+        """
+        Assign values at ``index`` using a Fuzznum-like object.
+
+        Parameters
+        ----------
+        index : int or tuple or slice
+            Target location to set.
+        fuzznum : Fuzznum
+            Source providing component values.
+
+        Raises
+        ------
+        IndexError
+            If ``index`` is out of bounds.
+        TypeError
+            If ``fuzznum`` is incompatible with this backend's ``mtype``.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            backend.set_fuzznum_data(0, some_fuzznum)
+        """
+        pass
+
+    @abstractmethod
+    def copy(self) -> 'FuzzarrayBackend':
+        """
+        Produce a deep copy of this backend and its arrays.
+
+        Returns
+        -------
+        FuzzarrayBackend
+            New backend instance with duplicated arrays (no shared memory).
+
+        Notes
+        -----
+        - The returned instance must not share memory with the original.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            new_backend = backend.copy()
+            assert new_backend is not backend
+        """
+        pass
+
+    @abstractmethod
+    def slice_view(self, key) -> 'FuzzarrayBackend':
+        """
+        Return a backend representing a view/slice of this backend.
+
+        Parameters
+        ----------
+        key : slice, tuple of slices or other valid indexing key
+            Indexing key describing the requested view.
+
+        Returns
+        -------
+        FuzzarrayBackend
+            Backend representing the requested slice. Should share memory
+            with the original wherever feasible.
+
+        Notes
+        -----
+        - Prefer returning a view that supports read/write semantics without
+          unnecessary copies.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            view = backend.slice_view(np.s_[0:2, :])
+        """
+        pass
+
+    @staticmethod
+    def from_arrays(*components, **kwargs) -> 'FuzzarrayBackend':
+        """
+        Factory to construct a backend from raw component arrays.
+
+        Parameters
+        ----------
+        *components : array_like
+            Component arrays representing the SoA layout for a specific ``mtype``.
+        **kwargs
+            Backend-specific keyword arguments (e.g., shape, q, dtype).
+
+        Returns
+        -------
+        FuzzarrayBackend
+            New backend instance initialised from the component arrays.
+
+        Notes
+        -----
+        - Concrete subclasses should validate shapes and dtypes and may
+          accept already-viewed arrays to avoid copies.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            be = ConcreteBackend.from_arrays(m_arr, n_arr)
+        """
+        pass
+
+    def fill_from_values(self, *values: float):
+        """
+        Broadcast provided component values to every element.
+
+        Parameters
+        ----------
+        *values : float
+            Values to broadcast to each component across the whole backend.
+
+        Notes
+        -----
+        - Subclasses should validate the number of values against the
+          expected number of components for the backend's ``mtype``.
+        """
+        pass
+
+    def get_component_arrays(self) -> tuple:
+        """
+        Return the underlying component arrays.
+
+        In fact, it is the attribute component of a specific mtype.
+
+        Returns
+        -------
+        tuple
+            Tuple of NumPy arrays that form the SoA backend.
+
+        Notes
+        -----
+        - The order and meaning of the returned arrays is backend-specific.
+        """
+        pass
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(shape={self.shape}, mtype='{self.mtype}')"
 
     @property
     def ndim(self) -> int:
@@ -88,183 +299,14 @@ class FuzzarrayBackend(ABC):
         """
         return len(self.shape)
 
-    @abstractmethod
-    def _initialize_arrays(self):
-        """
-        Initialize the NumPy arrays that store the fuzzy-number components.
-
-        Implementations should create and store the component arrays (for
-        example: membership degrees, non-membership degrees, etc.) as
-        attributes of the backend instance.
-
-        Notes
-        -----
-        - This method is called during construction; subclasses should not
-          assume the existence of other backend methods being callable yet.
-        """
-        pass
-
-    @abstractmethod
-    def get_fuzznum_view(self, index: Any) -> 'Fuzznum':
-        """
-        Create a lightweight Fuzznum view for the element at `index`.
-
-        The view should be a thin wrapper (no deep copy) that provides
-        per-element access and can be used by high-level operations that
-        expect a Fuzznum-like object.
-
-        Parameters
-        ----------
-        index : int or tuple or slice
-            Index of the element to view. Accepts the same indexing semantics
-            as NumPy arrays for single-element access.
-
-        Returns
-        -------
-        Fuzznum
-            A Fuzznum-like object representing the element at `index`.
-
-        Raises
-        ------
-        IndexError
-            If `index` is out of bounds.
-
-        Notes
-        -----
-        - Implementations may return a proxy object that reads/writes directly
-          into the backend arrays to avoid copying.
-        """
-        pass
-
-    @abstractmethod
-    def set_fuzznum_data(self, index: Any, fuzznum: 'Fuzznum'):
-        """
-        Set data at `index` using values from a Fuzznum object.
-
-        Parameters
-        ----------
-        index : int or tuple or slice
-            Target location to set.
-        fuzznum : Fuzznum
-            Source Fuzznum providing component values.
-
-        Raises
-        ------
-        IndexError
-            If `index` is out of bounds.
-        TypeError
-            If `fuzznum` is not compatible with this backend's mtype.
-        """
-        pass
-
-    @abstractmethod
-    def copy(self) -> 'FuzzarrayBackend':
-        """
-        Create a deep copy of this backend and its underlying arrays.
-
-        Returns
-        -------
-        FuzzarrayBackend
-            A new backend instance with duplicated (deep-copied) arrays.
-
-        Notes
-        -----
-        - This operation must not share memory with the original instance.
-        """
-        pass
-
-    @abstractmethod
-    def slice_view(self, key) -> 'FuzzarrayBackend':
-        """
-        Return a backend representing a slice/view of this backend.
-
-        Parameters
-        ----------
-        key : slice, tuple of slices or other valid indexing key
-            Indexing key describing the requested view.
-
-        Returns
-        -------
-        FuzzarrayBackend
-            A new backend instance representing the requested slice. The
-            returned backend should share data with the original when possible.
-
-        Notes
-        -----
-        - Preferred behavior is to avoid copying and to provide a view with
-          consistent semantics for read/write operations.
-        """
-        pass
-
-    @staticmethod
-    def from_arrays(*components, **kwargs) -> 'FuzzarrayBackend':
-        """
-        Construct a backend instance from raw component arrays.
-
-        Parameters
-        ----------
-        *components : array_like
-            Component arrays that represent the SoA layout for a specific mtype.
-        **kwargs
-            Backend-specific keyword arguments (e.g., shape, q, dtype).
-
-        Returns
-        -------
-        FuzzarrayBackend
-            A new backend instance initialised from the given arrays.
-
-        Notes
-        -----
-        - This factory is a convenience hook and should be implemented by
-          concrete subclasses to validate shapes and dtypes.
-        """
-        pass
-
-    def fill_from_values(self, *values: float):
-        """
-        Fill every element in the backend with the provided component values.
-
-        Parameters
-        ----------
-        *values : float
-            Values to broadcast to every element for each component.
-
-        Notes
-        -----
-        - Concrete backends should validate the number of provided values
-          against the expected number of components for the mtype.
-        """
-        pass
-
-    def get_component_arrays(self) -> tuple:
-        """
-        Return the underlying component arrays used by the backend.
-
-        Returns
-        -------
-        tuple
-            Tuple containing the NumPy arrays that make up the SoA backend.
-
-        Notes
-        -----
-        - The order and meaning of returned arrays is backend-specific and
-          should be documented by each concrete implementation.
-        """
-        pass
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(shape={self.shape}, mtype='{self.mtype}')"
-
-    # ================== 智能显示通用实现 ==================
+    # ================== Smart Display General Implementation ==================
 
     def format_elements(self, format_spec: str = "") -> np.ndarray:
         """
-        智能分段格式化：对大数据集只显示部分元素，其余用省略号代替。
+        Smart, truncated formatting for element display.
 
-        显示策略：
-        - 小数组（< DISPLAY_THRESHOLD_SMALL）：完整显示
-        - 大数组：显示首尾部分 + 中间省略号
-        - 超大数组：进一步减少显示元素数量
+        For small arrays the entire content is formatted. For larger arrays a
+        head/tail strategy is used and middle elements are replaced by ellipses.
 
         Parameters
         ----------
@@ -274,25 +316,27 @@ class FuzzarrayBackend(ABC):
         Returns
         -------
         numpy.ndarray
-            Array of formatted strings with same shape as backend.
+            Array of formatted strings with the same logical shape.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            formatted = backend.format_elements('.3f')
         """
         if self.size == 0:
             return np.array([], dtype=object).reshape(self.shape)
 
         config = get_config()
-
-        # 根据数据大小选择显示策略
         if self.size <= config.DISPLAY_THRESHOLD_SMALL:
-            # 小数据集：完整显示
             return self._format_all_elements(format_spec)
         else:
-            # 大数据集：分段显示
             return self._format_partial_elements(format_spec)
 
     def _format_all_elements(self, format_spec: str) -> np.ndarray:
-        """完整格式化所有元素（用于小数据集）"""
-        # 对于小数据集，子类可以选择性地重写这个方法来优化
-        # 默认实现：逐元素格式化
+        """Fully format all elements (for small datasets)"""
+        # For small datasets, subclasses can optionally override this method for optimization
+        # Default implementation: element-wise formatting
         result = np.empty(self.shape, dtype=object)
         formatter = self._get_element_formatter(format_spec)
 
@@ -306,23 +350,17 @@ class FuzzarrayBackend(ABC):
 
     def _format_partial_elements(self, format_spec: str) -> np.ndarray:
         """
-        分段格式化大数据集：只格式化需要显示的部分。
+        Partially format elements for large arrays.
 
-        策略：
-        1. 根据数组维度和大小计算显示参数
-        2. 只格式化需要显示的索引位置
-        3. 其他位置用省略号占位
+        Only selected indices are formatted; other entries are set to '...'.
         """
-        # 计算显示参数
+        # Calculate display parameters
         display_params = self._calculate_display_parameters()
-
-        # 创建结果数组，默认填充省略号
+        # Create result array, default filled with ellipses
         result = np.full(self.shape, '...', dtype=object)
-
-        # 获取需要显示的索引
+        # Get indices to format
         indices_to_format = self._get_display_indices(display_params)
-
-        # 只格式化需要显示的元素
+        # Only format the elements that need to be displayed
         formatter = self._get_element_formatter(format_spec)
 
         for idx in indices_to_format:
@@ -332,24 +370,23 @@ class FuzzarrayBackend(ABC):
 
     def _calculate_display_parameters(self) -> dict:
         """
-        根据数组大小和维度计算显示参数。
+        Compute display parameters based on size and dimension.
 
-        Returns:
-            dict: 包含显示参数的字典
+        Returns
+        -------
+        dict
+            Display parameters including 'edge_items', 'threshold', 'ndim',
+            'shape' and 'size'.
         """
         config = get_config()
 
-        # 基础显示参数
         if self.size < config.DISPLAY_THRESHOLD_MEDIUM:
-            # 中等大小：显示更多元素
             edge_items = config.DISPLAY_EDGE_ITEMS_MEDIUM
             threshold = config.DISPLAY_THRESHOLD_MEDIUM
         elif self.size < config.DISPLAY_THRESHOLD_LARGE:
-            # 大数组：适中显示
             edge_items = config.DISPLAY_EDGE_ITEMS_LARGE
             threshold = config.DISPLAY_THRESHOLD_LARGE
         else:
-            # 超大数组：最少显示
             edge_items = config.DISPLAY_EDGE_ITEMS_HUGE
             threshold = config.DISPLAY_THRESHOLD_HUGE
 
@@ -363,58 +400,57 @@ class FuzzarrayBackend(ABC):
 
     def _get_display_indices(self, params: dict) -> list:
         """
-        根据显示参数计算需要格式化的索引位置。
+        Determine which indices should be formatted for display.
 
-        模仿 NumPy 的显示逻辑：
-        - 1D: [0, 1, ..., -2, -1]
-        - 2D: 四角 + 边缘
-        - 高维: 递归处理
+        Parameters
+        ----------
+        params : dict
+            Display parameters returned by :meth:`_calculate_display_parameters`.
+
+        Returns
+        -------
+        list
+            List of indices (tuples for ndim>1 or ints for 1D) to format.
         """
         indices = []
         edge_items = params['edge_items']
         shape = params['shape']
 
         if self.ndim == 1:
-            # 1D 数组：显示前后各 edge_items 个
             if shape[0] <= 2 * edge_items + 1:
-                # 数组太小，全部显示
                 indices = list(range(shape[0]))
             else:
-                # 前 edge_items 个
                 indices.extend(list(range(edge_items)))
-                # 后 edge_items 个
                 indices.extend(list(range(shape[0] - edge_items, shape[0])))
 
         elif self.ndim == 2:
-            # 2D 数组：显示四角区域
+            # 2D arrays: display corner regions
             rows, cols = shape
-
-            # 确定要显示的行和列
+            # Determine which rows and columns to display
             if rows <= 2 * edge_items + 1:
                 row_indices = list(range(rows))
             else:
                 row_indices = (list(range(edge_items)) +
-                              list(range(rows - edge_items, rows)))
+                               list(range(rows - edge_items, rows)))
 
             if cols <= 2 * edge_items + 1:
                 col_indices = list(range(cols))
             else:
                 col_indices = (list(range(edge_items)) +
-                              list(range(cols - edge_items, cols)))
-
-            # 生成所有需要的 (row, col) 组合
+                               list(range(cols - edge_items, cols)))
+            # Generate all required (row, col) combinations
             for r in row_indices:
                 for c in col_indices:
                     indices.append((r, c))
 
         else:
-            # 高维数组：递归处理（简化实现）
+            # High-dimensional array: Recursive processing (simplified implementation)
             indices = self._get_high_dim_indices(shape, edge_items)
 
         return indices
 
     def _get_high_dim_indices(self, shape: tuple, edge_items: int) -> list:
-        """处理高维数组的显示索引（简化实现）"""
+        """Generate indices to display for high-dimensional arrays."""
         indices = []
 
         def generate_edge_indices(current_shape, current_idx=None):
@@ -428,11 +464,9 @@ class FuzzarrayBackend(ABC):
             remaining_shape = current_shape[1:]
 
             if dim_size <= 2 * edge_items + 1:
-                # 维度较小，全部显示
                 for i in range(dim_size):
                     generate_edge_indices(remaining_shape, current_idx + [i])
             else:
-                # 显示前后各 edge_items 个
                 for i in range(edge_items):
                     generate_edge_indices(remaining_shape, current_idx + [i])
                 for i in range(dim_size - edge_items, dim_size):
@@ -444,42 +478,60 @@ class FuzzarrayBackend(ABC):
     @abstractmethod
     def _get_element_formatter(self, format_spec: str) -> Callable:
         """
-        获取元素格式化函数。
+        Return a callable that formats a single element.
 
-        子类必须实现此方法，返回一个可调用对象，该对象接受必要的参数
-        并返回格式化后的字符串。
+        The returned callable is used by formatting helpers and should accept
+        the minimal information required to produce a string for a single
+        element at a given index.
 
         Parameters
         ----------
         format_spec : str
-            格式规格说明
+            Format specification forwarded from higher layer.
 
         Returns
         -------
         Callable
-            格式化函数
+            A callable used to format an element.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            def formatter(idx, *args, **kwargs):
+                return "<fuzznum>"
+            return formatter
         """
         pass
 
     @abstractmethod
     def _format_single_element(self, index: Any, formatter: Callable, format_spec: str) -> str:
         """
-        格式化单个元素。
-
-        子类必须实现此方法来定义如何格式化位于指定索引的单个元素。
+        Format a single element located at ``index``.
 
         Parameters
         ----------
-        index : Any
-            元素索引
+        index : int or tuple
+            Index of the element.
         formatter : Callable
-            格式化函数（由 _get_element_formatter 返回）
+            Callable returned by :meth:`_get_element_formatter`.
         format_spec : str
-            格式规格说明
+            Format specification.
 
         Returns
         -------
         str
-            格式化后的字符串
+            Formatted string for the element.
+
+        Notes
+        -----
+        - Implementations decide how to extract component values and present
+          them (e.g. as "(m,n)" or other textual form).
+
+        Examples
+        --------
+        .. code-block:: python
+
+            return formatter(index, self._comp1[index], self._comp2[index])
         """
         pass

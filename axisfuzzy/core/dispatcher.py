@@ -5,17 +5,35 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 """
-core.dispatcher
------------------
-
 Central operation dispatcher for AxisFuzzy.
 
-This module provides a central dispatcher for performing operations between
-various FuzzLab data types (Fuzznum, Fuzzarray) and standard Python/NumPy types.
+This module provides a central, intelligent dispatcher for all mathematical and
+logical operations involving AxisFuzzy data types. It acts as the primary
+routing mechanism that enables seamless interaction between `Fuzznum`, `Fuzzarray`,
+and standard Python/NumPy types.
 
-It handles type-based dispatching to ensure that operations like addition,
-multiplication, and comparisons are correctly applied across different
-combinations of fuzzy numbers, fuzzy arrays, scalars, and NumPy arrays.
+Overview
+--------
+The dispatcher is the core component that powers Python's operator overloading
+(e.g., `+`, `*`, `>`) for fuzzy objects. Its main responsibility is to inspect
+the types of the operands involved in an operation and route the request to the
+most efficient implementation path available in the framework.
+
+Dispatch Logic:
+
+- **`Fuzznum` vs `Fuzznum`**: Operations are delegated directly to the `execute_operation`
+  method of the underlying `FuzznumStrategy`, performing element-wise computation.
+- **`Fuzzarray` vs `Fuzzarray`**: Operations are dispatched to the `Fuzzarray`'s
+  `execute_vectorized_op` method, which leverages the high-performance SoA backend
+  for efficient, vectorized calculations.
+- **Mixed `Fuzzarray` and `Fuzznum`**: The `Fuzznum` is automatically broadcast into a
+  `Fuzzarray` of a compatible shape, and the operation is then handled as a
+  `Fuzzarray`-`Fuzzarray` operation.
+- **Fuzzy vs Scalar/`ndarray`**: Similar to mixed fuzzy types, scalars or NumPy arrays
+  are handled by broadcasting them to operate against the `Fuzzarray`'s backend,
+  ensuring maximum performance.
+- **Reverse Operations**: It correctly handles commutative operations where the fuzzy
+  object is the right-hand operand (e.g., `2 * my_fuzznum`).
 """
 
 from typing import Any, Optional
@@ -25,60 +43,80 @@ import numpy as np
 
 def operate(op_name: str, operand1: Any, operand2: Optional[Any]) -> Any:
     """
-    Perform a named operation between two operands using type-based dispatch.
-    
-    The dispatcher inspects the runtime types of ``operand1`` and ``operand2``
-    and routes the request to the most appropriate implementation path:
-    - Fuzznum vs Fuzznum -> delegated to Fuzznum strategy execution
-    - Fuzznum/Fuzzarray vs scalar/ndarray -> broadcasting to Fuzzarray when needed
-    - Fuzzarray vectorized operations -> delegated to Fuzzarray's vectorized API
-    - Comparison operations return Python booleans for element-wise/aggregate results
+    Perform a named operation between two operands using intelligent, type-based dispatch.
+
+    This function is the single entry point for all binary and unary operations
+    invoked on `Fuzznum` and `Fuzzarray` objects. It determines the most
+    efficient execution path by analyzing the types of the operands.
 
     Parameters
     ----------
     op_name : str
-        Operation name (for example ``'add'``, ``'mul'``, ``'gt'``, ``'tim'``).
+        The name of the operation to perform (e.g., 'add', 'mul', 'gt', 'complement').
+        This name corresponds to an operation registered in the `OperationScheduler`.
     operand1 : object
-        First operand. Supported types include Fuzznum, Fuzzarray, int, float,
-        and :class:`numpy.ndarray`.
+        The first (left-hand) operand. Supported types include `Fuzznum`, `Fuzzarray`,
+        `int`, `float`, and `numpy.ndarray`.
     operand2 : object or None
-        Second operand. Supported types mirror ``operand1``; for unary operations
-        (e.g. ``'complement'``) this may be ``None``.
+        The second (right-hand) operand. Supported types mirror `operand1`. For pure
+        unary operations like 'complement', this should be `None`.
 
     Returns
     -------
     Any
-        Result of the dispatched operation. The concrete return type depends on
-        the operation and operand types (e.g., Fuzznum, Fuzzarray, bool, ndarray).
+        The result of the dispatched operation. The return type is dynamic and
+        depends on the operation and operand types (e.g., `Fuzznum`, `Fuzzarray`, `bool`).
 
     Raises
     ------
     TypeError
-        If the combination of operand types is unsupported for the given
-        operation.
+        If the combination of operand types is not supported for the given operation.
 
     Notes
     -----
-    - The function performs lazy imports of Fuzznum and Fuzzarray to avoid
-      circular import issues at module import time.
-    - Certain operation name aliases are mapped prior to dispatch (for example
-      ``'mul'`` and ``'div'`` are handled as ``'tim'`` internally).
-    - The dispatcher aims to prefer vectorized Fuzzarray implementations for
-      bulk operations to maximize performance.
+    - **Lazy Imports**: `Fuzznum` and `Fuzzarray` are imported inside the function
+      to prevent circular dependencies that can occur during module initialization.
+    - **Performance**: The dispatcher prioritizes vectorized `Fuzzarray` operations.
+      When an operation involves a `Fuzzarray`, it will always attempt to use the
+      backend-accelerated path, broadcasting other operands if necessary.
+    - **Broadcasting**: When a `Fuzznum` operates with a `Fuzzarray` or `ndarray`,
+      it is implicitly converted into a `Fuzzarray` of the correct shape before
+      the operation proceeds.
+    - **Operation Aliases**: For convenience, some common operation names are mapped
+      to their internal strategy equivalents. For example, `mul` and `div` with a
+      scalar are mapped to the `tim` (times) operation.
 
     Examples
     --------
-    >>> from axisfuzzy.core.fuzznums import Fuzznum
-    >>> from axisfuzzy.core.fuzzarray import Fuzzarray, fuzzarray
-    >>> # Assuming Fuzznum and Fuzzarray are properly initialized
-    >>> # Fuzznum + Fuzznum
-    >>> # result = operate('add', Fuzznum(1), Fuzznum(2))
-    >>> # Fuzznum * scalar
-    >>> # result = operate('mul', Fuzznum(5), 2)
-    >>> # Fuzzarray + Fuzzarray
-    >>> # arr1 = fuzzarray([1, 2])
-    >>> # arr2 = fuzzarray([3, 4])
-    >>> # result = operate('add', arr1, arr2)
+    .. code-block:: python
+
+        from axisfuzzy.core.fuzznums import fuzznum
+        from axisfuzzy.core.fuzzarray import fuzzarray
+
+        # Assume qrofn is the default mtype
+        a = fuzznum(md=0.5, nmd=0.3)
+        b = fuzznum(md=0.6, nmd=0.2)
+        arr1 = fuzzarray([a, b])
+        arr2 = fuzzarray([b, a])
+
+        # Fuzznum + Fuzznum -> returns Fuzznum
+        result_fn = operate('add', a, b)
+
+        # Fuzznum * scalar -> returns Fuzznum
+        result_fn_scalar = operate('mul', a, 2.0)
+
+        # Fuzzarray + Fuzzarray -> returns Fuzzarray
+        result_arr = operate('add', arr1, arr2)
+
+        # Fuzzarray + Fuzznum (broadcasting) -> returns Fuzzarray
+        result_arr_fn = operate('add', arr1, a)
+
+        # scalar + Fuzzarray (reverse operation) -> returns Fuzzarray
+        # Note: 'mul' is commutative and supported for reverse ops
+        result_rev_arr = operate('mul', 2.0, arr1)
+
+        # Fuzznum complement (unary op) -> returns Fuzznum
+        result_unary = operate('complement', a, None)
     """
     # Dynamically import the required classes to avoid circular imports.
     # These imports are placed here to prevent circular dependencies at module load time.

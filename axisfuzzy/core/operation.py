@@ -5,24 +5,41 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 """
-axisfuzzy.core.operation
-========================
+Operating system for fuzzy numbers and arrays.
 
 This module defines the abstract base classes for operations (``OperationMixin``)
 and a central registry (``OperationScheduler``) for managing and dispatching
-various fuzzy number operations within the FuzzLab framework.
+various fuzzy number operations within the AxisFuzzy framework.
 
-It provides a structured way to:
-- Define common interfaces for different types of operations (binary, unary, comparison, Fuzzarray).
-- Implement preprocessing and post-processing steps for operation execution.
-- Register and retrieve specific operation implementations based on fuzzy number types (``mtype``).
-- Monitor and report performance statistics for all executed operations.
+Overview
+--------
+- Provides a unified interface for all fuzzy number operations (arithmetic, logic, comparison, etc).
+- Supports registration and dispatch of per-mtype operation implementations.
+- Handles preprocessing, validation, and performance monitoring for all operations.
+- Enables efficient batch operations on Fuzzarray via backend-aware implementations.
 
-This module defines:
-- OperationMixin: abstract interface for per-mtype operation implementations.
-- OperationScheduler: singleton registry and performance monitor for operations.
-- Utilities: registration decorator and access to the global scheduler.
+Key Classes
+-----------
+- :class:`OperationMixin`: Abstract interface for per-mtype operation implementations.
+- :class:`OperationScheduler`: Singleton registry and performance monitor for operations.
+- Utilities: Registration decorator and access to the global scheduler.
 
+Notes
+-----
+- All operation implementations must inherit from :class:`OperationMixin` and register via ``@register_operation``.
+- The scheduler supports dynamic switching of t-norms and collects global performance statistics.
+- Operator overloading in :class:`~.fuzznums.Fuzznum` and :class:`~.fuzzarray.Fuzzarray` is dispatched via this system.
+
+Examples
+--------
+.. code-block:: python
+
+    # Register a new operation for a custom mtype
+    @register_operation
+    class MyAdd(OperationMixin):
+        def get_operation_name(self): return 'add'
+        def get_supported_mtypes(self): return ['mytype']
+        def _execute_binary_op_impl(self, s1, s2, tnorm): ...
 """
 
 import threading
@@ -45,39 +62,32 @@ class OperationMixin(ABC):
     performed on fuzzy numbers. Subclasses must implement the specific logic
     for each operation type.
 
-    Includes:
-    ------------
-    - Abstract methods for defining operation name and supported fuzzy number types.
-    - Static methods for preprocessing operands before execution, ensuring type
-      and value validity.
-    - Methods for post-processing results, such as rounding floating-point numbers.
-    - Execution methods that wrap the actual operation logic, including performance
-      timing and error handling.
-    - Abstract methods for the actual implementation of different operation types,
-      to be overridden by concrete subclasses.
-
-    Function:
-    --------
-    get_operation_name()
-        Return the unique operation name used by the registry.
-    get_supported_mtypes()
-        Return a list of supported mtype strings.
-    execute_binary_op(strategy_1, strategy_2, tnorm)
-        Preprocess, execute and time a binary operation.
-    execute_unary_op_operand(strategy, operand, tnorm)
-        Preprocess, execute and time a unary operation with scalar operand.
-    execute_unary_op_pure(strategy, tnorm)
-        Preprocess, execute and time a pure unary operation.
-    execute_comparison_op(strategy_1, strategy_2, tnorm)
-        Preprocess, execute and time a comparison operation.
-    execute_fuzzarray_op(fuzzarray_1, other, tnorm)
-        Execute an operation specialized for Fuzzarray instances.
+    Responsibilities
+    ----------------
+    - Define operation name and supported mtypes.
+    - Provide preprocessing and validation for operands.
+    - Implement core logic for binary, unary, comparison, and Fuzzarray-level operations.
+    - Record performance statistics for each operation type.
 
     Notes
     -----
-    Concrete subclasses must override the `_execute_*_impl` methods to
-    provide operation logic. The public `execute_*` wrappers handle
-    preprocessing and performance recording via :func:`get_registry_operation`.
+    - Subclasses must override the `_execute_*_impl` methods for supported operations.
+    - Public `execute_*` methods handle preprocessing, timing, and error handling.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        from axisfuzzy.core import OperationMixin, register_operation, OperationTNorm
+
+        @register_operation
+        class QROFNAddition(OperationMixin):
+            def get_operation_name(self) -> str: return 'add'
+            def get_supported_mtypes(self) -> list[str]: return ['qrofn']
+            def _execute_binary_op_impl(self, s1, s2, tnorm: OperationTNorm):
+                md = tnorm.t_conorm(s1.md, s2.md)
+                nmd = tnorm.t_norm(s1.nmd, s2.nmd)
+                return {'md': md, 'nmd': nmd, 'q': s1.q}
     """
 
     @abstractmethod
@@ -86,12 +96,19 @@ class OperationMixin(ABC):
         Returns the unique name of the operation (e.g., 'add', 'mul', 'gt').
 
         This name is used to identify and retrieve the operation from the
-        ``OperationScheduler``.
+        :class:`OperationScheduler`.
 
         Returns
         -------
         str
             Operation name used as key in the operation registry.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            op = QROFNAddition()
+            print(op.get_operation_name())  # 'add'
         """
         pass
 
@@ -101,13 +118,20 @@ class OperationMixin(ABC):
         Returns a list of fuzzy number membership types (mtypes) that this
         operation implementation supports.
 
-        For example, an operation might only be defined for 'intuitionistic'
-        fuzzy numbers, or for both 'intuitionistic' and 'pythagorean'.
+        For example, an operation might only be defined for 'qrofn'
+        fuzzy numbers, or for both 'qrofn' and 'qrohfn'.
 
         Returns
         -------
         list of str
             mtype strings for which this operation implementation is applicable.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            op = QROFNAddition()
+            print(op.get_supported_mtypes())  # ['qrofn']
         """
         pass
 
@@ -124,6 +148,15 @@ class OperationMixin(ABC):
         -------
         bool
             True if supported, False otherwise.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            from axisfuzzy.fuzztype.qrofs.op import QROFNAddition
+            op = QROFNAddition()
+            print(op.supports('qrofn'))  # True
+            print(op.supports('qrohfn')) # False
         """
         return mtype in self.get_supported_mtypes()
 
@@ -136,23 +169,24 @@ class OperationMixin(ABC):
         """
         Performs data preprocessing and validation for binary operations.
 
-        This static method ensures that both operands are not None, and that
-        their ``mtype`` and ``q`` (q-rung) attributes match, if present. It also
-        validates the presence of a T-norm instance.
+        Ensures both operands are not None, and that their ``mtype`` and ``q``
+        attributes match, if present. Also validates the presence of a T-norm instance.
 
         Parameters
         ----------
-        strategy_1, strategy_2 : object
-            Strategy instances (typically subclasses of FuzznumStrategy).
+        strategy_1 : FuzznumStrategy
+            The first strategy instance.
+        strategy_2 : FuzznumStrategy
+            The second strategy instance.
         tnorm : OperationTNorm
             T-norm configuration object.
 
         Raises
         ------
         ValueError
-            If ``strategy_1``, ``strategy_2``, or ``tnorm`` is None.
+            If `strategy_1`, `strategy_2`, or `tnorm` is None.
         TypeError
-            If ``mtype`` or ``q`` values of the strategies do not match.
+            If `mtype` or `q` values of the strategies do not match.
         """
         if strategy_1 is None or strategy_2 is None:
             raise ValueError('strategy_1 and strategy_2 cannot be None')
@@ -178,14 +212,14 @@ class OperationMixin(ABC):
                                   operand: Union[int, float],
                                   tnorm: OperationTNorm) -> None:
         """
-        Performs data preprocessing and validation for unary operations involving a scalar operand.
+        Performs data preprocessing for unary operations involving a scalar operand.
 
-        This static method ensures the strategy is not None, the operand is an
-        integer or float, and a T-norm instance is provided.
+        Ensures the strategy is not None, the operand is an integer or float,
+        and a T-norm instance is provided.
 
         Parameters
         ----------
-        strategy : object
+        strategy : FuzznumStrategy
             Strategy instance.
         operand : int or float
             Scalar operand.
@@ -212,13 +246,13 @@ class OperationMixin(ABC):
     def _preprocess_pure_unary(strategy: Any,
                                tnorm: OperationTNorm) -> None:
         """
-        Performs data preprocessing and validation for pure unary operations (no additional operand).
+        Performs data preprocessing for pure unary operations (no additional operand).
 
-        This static method ensures the strategy is not None and a T-norm instance is provided.
+        Ensures the strategy is not None and a T-norm instance is provided.
 
         Parameters
         ----------
-        strategy : object
+        strategy : FuzznumStrategy
             Strategy instance.
         tnorm : OperationTNorm
             T-norm configuration object.
@@ -226,7 +260,7 @@ class OperationMixin(ABC):
         Raises
         ------
         ValueError
-            If ``strategy`` or ``tnorm`` is None.
+            If `strategy` or `tnorm` is None.
         """
         if strategy is None:
             raise ValueError("Strategy instance cannot be None")
@@ -239,24 +273,25 @@ class OperationMixin(ABC):
                                strategy_2: Any,
                                tnorm: OperationTNorm) -> None:
         """
-        Performs data preprocessing and validation for comparison operations.
+        Performs data preprocessing for comparison operations.
 
-        Similar to binary operations, this method checks for non-None operands,
-        matching `mtype` and `q` values, and the presence of a T-norm instance.
+        Checks for non-None operands, matching `mtype` and `q` values, and the presence of a T-norm instance.
 
         Parameters
         ----------
-        strategy_1, strategy_2 : object
-            Strategy instances.
+        strategy_1 : FuzznumStrategy
+            The first strategy instance.
+        strategy_2 : FuzznumStrategy
+            The second strategy instance.
         tnorm : OperationTNorm
             T-norm configuration object.
 
         Raises
         ------
-            ValueError
-                If ``strategy_1``, ``strategy_2``, or `tnorm` is None.
-            TypeError
-                If ``mtype`` or ``q`` values of the strategies do not match.
+        ValueError
+            If `strategy_1`, `strategy_2`, or `tnorm` is None.
+        TypeError
+            If `mtype` or `q` values of the strategies do not match.
         """
         if strategy_1 is None or strategy_2 is None:
             raise ValueError('strategy_1 and strategy_2 cannot be None')
@@ -286,29 +321,42 @@ class OperationMixin(ABC):
         """
         Executes a binary operation between two strategy instances.
 
-        This method handles preprocessing, calls the concrete implementation,
-        post-processes the result, and records performance metrics.
+        Handles preprocessing, calls the concrete implementation,
+        and records performance metrics.
 
         Parameters
         ----------
-        strategy_1, strategy_2 : object
-            Operand strategy instances.
+        strategy_1 : FuzznumStrategy
+            The first operand strategy instance.
+        strategy_2 : FuzznumStrategy
+            The second operand strategy instance.
         tnorm : OperationTNorm
             T-norm configuration used for the operation.
 
-        Return
+        Returns
         -------
         Dict[str, Any]
-            The result of the binary operation.
+            The result of the binary operation, typically a dictionary of
+            component values for a new fuzzy number.
 
         Raises
         ------
-        ValueError
-            If preprocessing fails.
-        TypeError
-            If preprocessing fails due to type mismatch.
         NotImplementedError
-            If ``_execute_binary_op_impl`` is not overridden by subclass.
+            If `_execute_binary_op_impl` is not overridden by the subclass.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            from axisfuzzy.fuzztype.qrofs.op import QROFNAddition
+            from axisfuzzy.core import fuzznum, OperationTNorm
+
+            op = QROFNAddition()
+            a = fuzznum(mtype='qrofn', md=0.5, nmd=0.3, q=2)._strategy_instance
+            b = fuzznum(mtype='qrofn', md=0.6, nmd=0.2, q=2)._strategy_instance
+            tnorm = OperationTNorm(norm_type='algebraic', q=2)
+            res = op.execute_binary_op(a, b, tnorm)
+            # res is {'md': 0.8, 'nmd': 0.06, 'q': 2}
         """
         op_name = self.get_operation_name()
         start_time = time.perf_counter()
@@ -330,15 +378,15 @@ class OperationMixin(ABC):
         """
         Executes a unary operation involving a strategy instance and a scalar operand.
 
-        This method handles preprocessing, calls the concrete implementation,
-        post-processes the result, and records performance metrics.
+        Handles preprocessing, calls the concrete implementation,
+        and records performance metrics.
 
         Parameters
         ----------
-        strategy : object
-            Strategy instance.
+        strategy : FuzznumStrategy
+            The strategy instance.
         operand : int or float
-            Scalar operand.
+            The scalar operand (e.g., the exponent in a power operation).
         tnorm : OperationTNorm
             T-norm configuration used for the operation.
 
@@ -349,12 +397,8 @@ class OperationMixin(ABC):
 
         Raises
         ------
-        ValueError
-            If preprocessing fails.
-        TypeError
-            If preprocessing fails due to type mismatch.
         NotImplementedError
-            If ``_execute_unary_op_operand_impl`` is not overridden by subclass.
+            If `_execute_unary_op_operand_impl` is not overridden by the subclass.
         """
         op_name = self.get_operation_name()
         start_time = time.perf_counter()
@@ -375,13 +419,13 @@ class OperationMixin(ABC):
         """
         Executes a pure unary operation on a strategy instance (no additional operand).
 
-        This method handles preprocessing, calls the concrete implementation,
-        post-processes the result, and records performance metrics.
+        Handles preprocessing, calls the concrete implementation,
+        and records performance metrics.
 
         Parameters
         ----------
-        strategy : object
-            Strategy instance.
+        strategy : FuzznumStrategy
+            The strategy instance.
         tnorm : OperationTNorm
             T-norm configuration used for the operation.
 
@@ -392,10 +436,8 @@ class OperationMixin(ABC):
 
         Raises
         ------
-        ValueError
-            If preprocessing fails.
         NotImplementedError
-            If ``_execute_unary_op_pure_impl`` is not overridden by subclass.
+            If `_execute_unary_op_pure_impl` is not overridden by the subclass.
         """
         op_name = self.get_operation_name()
         start_time = time.perf_counter()
@@ -417,29 +459,27 @@ class OperationMixin(ABC):
         """
         Executes a comparison operation between two strategy instances.
 
-        This method handles preprocessing, calls the concrete implementation,
-        post-processes the result, and records performance metrics.
+        Handles preprocessing, calls the concrete implementation,
+        and records performance metrics.
 
         Parameters
         ----------
-        strategy_1, strategy_2 : object
-            Operand strategy instances.
+        strategy_1 : FuzznumStrategy
+            The first operand strategy instance.
+        strategy_2 : FuzznumStrategy
+            The second operand strategy instance.
         tnorm : OperationTNorm
             T-norm configuration used for the comparison.
 
         Returns
         -------
         Dict[str, bool]
-            The result of the comparison operation (e.g., {'value': True/False}).
+            The result of the comparison, e.g., ``{'value': True}``.
 
         Raises
         ------
-        ValueError
-            If preprocessing fails.
-        TypeError
-            If preprocessing fails due to type mismatch.
         NotImplementedError
-            If ``_execute_comparison_op_impl`` is not overridden by subclass.
+            If `_execute_comparison_op_impl` is not overridden by the subclass.
         """
         op_name = self.get_operation_name()
         start_time = time.perf_counter()
@@ -461,28 +501,28 @@ class OperationMixin(ABC):
         """
         Executes an operation specifically designed for Fuzzarray instances.
 
-        This method calls the concrete implementation and records performance metrics.
+        Calls the concrete implementation and records performance metrics.
         Preprocessing for Fuzzarray operations is typically handled within the
-        ``_execute_fuzzarray_op_impl`` itself due to their complex nature.
+        `_execute_fuzzarray_op_impl` itself due to their complex nature.
 
         Parameters
         ----------
-        fuzzarray_1 : object
-            Fuzzarray instance.
-        other : object or None
-            Second operand (Fuzzarray, Fuzznum, scalar or ndarray).
+        fuzzarray_1 : Fuzzarray
+            The first Fuzzarray instance.
+        other : Fuzzarray, Fuzznum, scalar, or None
+            The second operand.
         tnorm : OperationTNorm
             T-norm configuration used for the operation.
 
         Returns
         -------
         Any
-            The result of the Fuzzarray operation (e.g., a new Fuzzarray or a boolean).
+            The result of the Fuzzarray operation (e.g., a new Fuzzarray or a boolean array).
 
         Raises
         ------
         NotImplementedError
-            If ``_execute_fuzzarray_op_impl`` is not overridden by subclass.
+            If `_execute_fuzzarray_op_impl` is not overridden by the subclass.
         """
         op_name = self.get_operation_name()
         start_time = time.perf_counter()
@@ -501,14 +541,14 @@ class OperationMixin(ABC):
                                 strategy_2: Any,
                                 tnorm: OperationTNorm) -> Dict[str, Any]:
         """
-        Implementation hook for binary operations.
-
-        Subclasses should override this method.
+        Implementation hook for binary operations. Subclasses must override this.
 
         Parameters
         ----------
-        strategy_1, strategy_2 : object
-            Operand strategy instances.
+        strategy_1 : FuzznumStrategy
+            The first operand strategy instance.
+        strategy_2 : FuzznumStrategy
+            The second operand strategy instance.
         tnorm : OperationTNorm
             T-norm configuration.
 
@@ -520,7 +560,7 @@ class OperationMixin(ABC):
         Raises
         ------
         NotImplementedError
-            If not overridden by subclass.
+            If not overridden by the subclass.
         """
         raise NotImplementedError(f"Binary operation '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
@@ -530,14 +570,14 @@ class OperationMixin(ABC):
                                        operand: Union[int, float],
                                        tnorm: OperationTNorm) -> Dict[str, Any]:
         """
-        Implementation hook for unary operations with scalar operand.
+        Implementation hook for unary operations with a scalar operand. Subclasses must override this.
 
         Parameters
         ----------
-        strategy : object
-            Strategy instance.
+        strategy : FuzznumStrategy
+            The strategy instance.
         operand : int or float
-            Scalar operand.
+            The scalar operand.
         tnorm : OperationTNorm
             T-norm configuration.
 
@@ -549,7 +589,7 @@ class OperationMixin(ABC):
         Raises
         ------
         NotImplementedError
-            If not overridden by subclass.
+            If not overridden by the subclass.
         """
         raise NotImplementedError(f"Unary operation with operand '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
@@ -558,12 +598,12 @@ class OperationMixin(ABC):
                                     strategy: Any,
                                     tnorm: OperationTNorm) -> Dict[str, Any]:
         """
-        Implementation hook for pure unary operations.
+        Implementation hook for pure unary operations. Subclasses must override this.
 
         Parameters
         ----------
-        strategy : object
-            Strategy instance.
+        strategy : FuzznumStrategy
+            The strategy instance.
         tnorm : OperationTNorm
             T-norm configuration.
 
@@ -575,7 +615,7 @@ class OperationMixin(ABC):
         Raises
         ------
         NotImplementedError
-            If not overridden by subclass.
+            If not overridden by the subclass.
         """
         raise NotImplementedError(f"Pure unary operation '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
@@ -585,24 +625,26 @@ class OperationMixin(ABC):
                                     strategy_2: Any,
                                     tnorm: OperationTNorm) -> Dict[str, bool]:
         """
-        Implementation hook for comparison operations.
+        Implementation hook for comparison operations. Subclasses must override this.
 
         Parameters
         ----------
-        strategy_1, strategy_2 : object
-            Operand strategy instances.
+        strategy_1 : FuzznumStrategy
+            The first operand strategy instance.
+        strategy_2 : FuzznumStrategy
+            The second operand strategy instance.
         tnorm : OperationTNorm
             T-norm configuration.
 
         Returns
         -------
         dict
-            Boolean result dictionary.
+            Boolean result dictionary, e.g., ``{'value': True}``.
 
         Raises
         ------
         NotImplementedError
-            If not overridden by subclass.
+            If not overridden by the subclass.
         """
         raise NotImplementedError(f"Comparison operation '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
@@ -612,26 +654,26 @@ class OperationMixin(ABC):
                                    other: Optional[Any],
                                    tnorm: OperationTNorm) -> Any:
         """
-        Implementation hook for Fuzzarray-level operations.
+        Implementation hook for Fuzzarray-level operations. Subclasses must override this.
 
         Parameters
         ----------
-        fuzzarray_1 : object
-            Fuzzarray instance.
-        other : object or None
-            Second operand.
+        fuzzarray_1 : Fuzzarray
+            The first Fuzzarray instance.
+        other : Fuzzarray, Fuzznum, scalar, or None
+            The second operand.
         tnorm : OperationTNorm
             T-norm configuration.
 
         Returns
         -------
         object
-            Result produced by the concrete implementation.
+            Result produced by the concrete implementation (e.g., a new Fuzzarray).
 
         Raises
         ------
         NotImplementedError
-            If not overridden by subclass.
+            If not overridden by the subclass.
         """
         raise NotImplementedError(f"Fuzzarray operation '{self.get_operation_name()}' "
                                   f"not implemented for {self.__class__.__name__}")
@@ -639,26 +681,80 @@ class OperationMixin(ABC):
 
 class OperationScheduler:
     """
-    A singleton class that acts as a central registry and dispatcher for fuzzy number operations.
+    A singleton registry and dispatcher for all fuzzy number operations.
 
-    This scheduler manages:
-        - Registration of ``OperationMixin`` implementations for different fuzzy number types.
-        - Configuration of the default T-norm used for operations.
-        - Collection and reporting of performance statistics for all executed operations.
+    The ``OperationScheduler`` is the central nervous system for all mathematical
+    and logical operations within the AxisFuzzy framework. It acts as a singleton,
+    accessible via ``get_registry_operation()``, ensuring a single source of truth
+    for how operations are defined, configured, and executed.
+
+    Key Responsibilities:
+    ---------------------
+    1.  **Operation Registration**:
+        It maintains a registry mapping an operation's name (e.g., `'add'`) and
+        a specific fuzzy number type (``mtype``, e.g., `'qrofn'`) to a concrete
+        :class:`OperationMixin` implementation. This registration is typically
+        handled automatically by the ``@register_operation`` decorator. This
+        decoupled design allows new operations or support for new `mtype` to be
+        added modularly without altering the core framework.
+
+    2.  **Operation Dispatch**:
+        When an operation is invoked (e.g., ``fuzznum1 + fuzznum2``), the dispatch
+        system queries the scheduler using ``get_operation(op_name, mtype)`` to
+        find the correct implementation for the given operands. If no specific
+        implementation is found, it signals that the operation is not supported.
+
+    3.  **Global T-Norm Configuration**:
+        The scheduler holds the global default T-norm configuration (e.g.,
+        'algebraic', 'einstein'). This ensures that all fuzzy operations, by
+        default, use a consistent mathematical basis. This can be changed at
+        runtime via ``set_t_norm()``, allowing for framework-wide adjustments
+        to the underlying logic for experimental purposes.
+
+    4.  **Performance Monitoring**:
+        It includes a built-in, thread-safe performance monitor. For every
+        operation executed through the system, the scheduler records the
+        execution time and updates statistics, such as total call counts and
+        average execution times per operation type. This is invaluable for
+        debugging, performance tuning, and understanding computational costs.
 
     Attributes
     ----------
-    _operations : dict of str to dict of str to OperationMixin
-        A nested dictionary storing registered operations. The structure is
-        ``{op_name: {mtype: operation_instance}}``.
+    _operations : dict
+        The core registry, structured as ``{op_name: {mtype: operation_instance}}``.
     _default_t_norm_type : str
-        The type of the default T-norm (e.g., 'algebraic').
-    _default_t_norm_params : dict of str to Any
-        Parameters for the default T-norm.
-    _performance_stats : dict of str to Any
-        A dictionary holding global performance metrics.
+        The name of the default T-norm (e.g., 'algebraic').
+    _default_t_norm_params : dict
+        Parameters for the default T-norm (e.g., ``{'p': 2}`` for 'hamacher').
+    _performance_stats : dict
+        A dictionary holding all performance metrics.
     _stats_lock : threading.Lock
-        A lock to ensure thread-safe access to performance statistics.
+        A lock ensuring thread-safe updates to the performance statistics.
+
+    Examples
+    --------
+    While direct interaction is rare for end-users, understanding its internal
+    role is key for developers.
+
+    .. code-block:: python
+
+        # 1. Access the global scheduler instance
+        scheduler = get_registry_operation()
+
+        # 2. Change the global T-norm for all subsequent operations
+        scheduler.set_t_norm('hamacher', p=2)
+
+        # 3. Retrieve a specific operation implementation
+        # This is what FuzznumStrategy does internally.
+        add_op_for_qrofn = scheduler.get_operation('add', 'qrofn')
+
+        # 4. Check which operations are available for a given mtype
+        print(scheduler.get_available_ops('qrofn'))
+        # Output: ['add', 'sub', 'mul', 'div', 'gt', 'lt', ...]
+
+        # 5. After running some operations, get performance stats
+        # stats = scheduler.get_performance_stats(time_unit='us')
+        # print(stats['average_times_by_operation_type'])
     """
 
     def __init__(self):
@@ -666,7 +762,7 @@ class OperationScheduler:
         Initializes the OperationScheduler.
 
         Sets up the internal dictionaries for operations and performance statistics,
-        and initializes the default T-norm configuration.
+        and initializes the default T-norm configuration from the global config.
         """
         self._operations: Dict[str, Dict[str, OperationMixin]] = {}
         self._default_t_norm_type: str = 'algebraic'
@@ -676,16 +772,23 @@ class OperationScheduler:
         self._stats_lock = threading.Lock()
         self.reset_performance_stats()
 
-    def switch_t_norm(self, t_norm_type: str, **params: Any):
+    def set_t_norm(self, t_norm_type: str, **params: Any):
         """
         Change the scheduler's default t-norm configuration.
 
         Parameters
         ----------
         t_norm_type : str
-            Name of the t-norm implementation (e.g., 'algebraic').
+            Name of the t-norm implementation (e.g., 'algebraic', 'einstein').
         **params : dict
-            Implementation-specific parameters.
+            Implementation-specific parameters (e.g., `p=2` for 'hamacher').
+
+        Examples
+        --------
+        .. code-block:: python
+
+            scheduler = get_registry_operation()
+            scheduler.set_t_norm('hamacher', p=2)
         """
         self._default_t_norm_type = t_norm_type
         self._default_t_norm_params = params
@@ -696,17 +799,17 @@ class OperationScheduler:
 
         Returns
         -------
-        tuple
-            (t_norm_type, params)
+        tuple[str, dict]
+            A tuple containing (t_norm_type, params).
         """
         return self._default_t_norm_type, self._default_t_norm_params
 
     def register(self, operation: OperationMixin) -> None:
         """
-        Registers an ``OperationMixin`` instance with the scheduler.
+        Registers an :class:`OperationMixin` instance with the scheduler.
 
-        Operations are registered based on their ``op_name`` and supported ``mtype``s.
-        A warning is issued if an operation for a specific ``mtype`` is already registered.
+        Operations are registered based on their `op_name` and supported `mtype`s.
+        A warning is issued if an operation for a specific `mtype` is already registered.
 
         Parameters
         ----------
@@ -729,30 +832,30 @@ class OperationScheduler:
         Parameters
         ----------
         op_name : str
-            Operation name.
+            The name of the operation (e.g., 'add').
         mtype : str
-            Membership type.
+            The membership type (e.g., 'qrofn').
 
         Returns
         -------
         OperationMixin or None
-            Registered operation instance or None if not found.
+            The registered operation instance, or None if not found.
         """
         return self._operations.get(op_name, {}).get(mtype)
 
     def get_available_ops(self, mtype: str) -> List[str]:
         """
-        List operation names available for a given mtype.
+        List all operation names available for a given mtype.
 
         Parameters
         ----------
         mtype : str
-            Membership type.
+            The membership type to query.
 
         Returns
         -------
         list of str
-            Available operation names.
+            A list of available operation names.
         """
         operations = []
         for op_name, mtype_ops in self._operations.items():
@@ -802,15 +905,12 @@ class OperationScheduler:
 
         The statistics include total operations, total time, average time per operation,
         and counts/average times grouped by operation name and type. Time values
-        are converted to the specified unit and rounded to the default precision.
+        are converted to the specified unit and rounded.
 
         Parameters
         ----------
         time_unit : str, optional
-            Unit used to display time.
-            Supported values include 's' (seconds), 'ms' (milliseconds),
-            'us' (microseconds), and 'ns' (nanoseconds).
-            Defaults to 'us' (microseconds).
+            Unit for displaying time. Supported: 's', 'ms', 'us', 'ns'. Defaults to 'us'.
 
         Returns
         -------
@@ -819,7 +919,7 @@ class OperationScheduler:
 
         Raises
         ------
-        RuntimeError
+        ValueError
             If an unsupported `time_unit` is provided.
         """
         time_unit_dict = {
@@ -912,7 +1012,7 @@ def register_operation(cls_or_eager=None, *, eager: bool = True):
     cls_or_eager : type or None
         When used without parentheses this is the decorated class; otherwise None.
     eager : bool, optional
-        If True (default) instantiate and register the operation immediately.
+        If True (default), instantiate and register the operation immediately.
 
     Returns
     -------
@@ -922,26 +1022,19 @@ def register_operation(cls_or_eager=None, *, eager: bool = True):
     Raises
     ------
     TypeError
-        If the decorated object is not a subclass of OperationMixin.
+        If the decorated object is not a subclass of :class:`OperationMixin`.
+    RuntimeError
+        If eager instantiation and registration fails.
 
     Examples
     --------
-    >>> @register_operation
-    >>> class MyAddition(OperationMixin):
-    >>>    operation_name = 'add'
-    >>>    supported_mtypes = ['my_type']
-    >>>    def execute(self, a, b, tnorm=None):
-    >>>        # Implement addition logic
-    >>>        return result
+    .. code-block:: python
 
-    Notes
-    -----
-    - The decorated class must inherit from ``OperationMixin``.
-    - The class must define ``operation_name`` and ``supported_mtypes`` attributes.
-    - Re-registering operations with the same name/type will follow the overriding policy of ``OperationScheduler``.
-    - If eager is True the decorator will instantiate the class and call
-      :meth:`OperationScheduler.register`. Errors during instantiation are
-      reported as RuntimeError with contextual information.
+        @register_operation
+        class MyAddition(OperationMixin):
+            def get_operation_name(self): return 'add'
+            def get_supported_mtypes(self): return ['my_type']
+            # ... implement _execute_*_impl methods ...
     """
     def _register_class(cls):
         """Actual registration logic"""

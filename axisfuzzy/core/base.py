@@ -5,13 +5,19 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 """
-axisfuzzy.core.base
-===================
+Core abstractions for single-element fuzzy-number implementations.
 
-Abstract strategy base for single-element fuzzy-number implementations.
+This module defines :class:`FuzznumStrategy`, the primary abstract base
+class that concrete fuzzy-number types (``mtype``) must inherit from.
+It provides attribute declaration/validation, change callbacks, per-instance
+operation caching and a uniform operation dispatch helper that integrates
+with the operation registry.
 
-This module defines FuzznumStrategy, the core abstract base class that
-concrete fuzzy-number implementations (mtypes) should inherit from.
+Notes
+-----
+- Implementations of specific fuzzy types live under ``axisfuzzy/fuzztype/``.
+- See examples in ``axisfuzzy/fuzztype/qrofs/qrofn.py`` and
+  ``axisfuzzy/fuzztype/qrohfs/qrohfn.py`` for concrete usages.
 """
 
 import json
@@ -28,58 +34,102 @@ if TYPE_CHECKING:
 
 class FuzznumStrategy(ABC):
     """
-    Abstract base class for fuzzy-number strategies.
+    Abstract base for a single-element fuzzy-number strategy.
 
-    Concrete implementations should declare their data attributes (via
-    annotations or class-level defaults) and implement `report` / `str`.
+    The strategy represents the data and behavior of a single fuzzy number.
+    Subclasses declare data attributes (via annotations or class-level defaults)
+    and implement the presentation and operation-specific logic. Key responsibilities
+    include:
+
+    - Enforce a "declared attribute" contract: assignments to attributes not
+      declared in the subclass raise ``AttributeError`` (strict mode).
+    - Provide attribute validators, transformers and change callbacks.
+    - Offer an operation dispatcher with caching via :meth:`execute_operation`.
+    - Collect declared attributes at class creation via ``__init_subclass__``.
 
     Parameters
     ----------
     q : int, optional
-        q-rung parameter. If ``None``, subclasses or configuration defaults
-        will be used.
+        q-rung parameter used by many fuzzy types. If ``None`` the library
+        default (from :func:`axisfuzzy.config.get_config`) is used.
 
     Attributes
     ----------
     mtype : str
-        The registered fuzzy-number type string for this strategy class.
-    q : int
-        Effective q-rung for this instance.
-    _declared_attributes : set
-        Names of attributes declared for the strategy.
-    _op_cache : LruCache
-        Per-instance operation result cache.
-    _attribute_validators : dict
-        Mapping from attribute name to validator callable.
-    _change_callbacks : dict
-        Mapping from attribute name to change-callback callable.
-
-    Examples
-    --------
-    Basic usage showing a minimal concrete strategy, adding a validator and a
-    change callback, and changing an attribute value.
-
-    >>> class MyStrategy(FuzznumStrategy):
-    ...     # declare a public attribute via annotation
-    ...     value: float = 0.5
-    ...     def report(self) -> str:
-    ...         return f"MyStrategy(value={self.value})"
-    ...     def str(self) -> str:
-    ...         return f"{self.value}"
-    ...
-    >>> s = MyStrategy(q=2)
-    >>> # register a validator that enforces 0 <= value <= 1
-    >>> s.add_attribute_validator('value', lambda v: isinstance(v, (int, float)) and 0.0 <= v <= 1.0)
-    >>> # register a change callback to observe updates
-    >>> s.add_change_callback('value', lambda name, old, new: print(f"{name} changed {old}->{new}"))
-    >>> s.value = 0.8
-    value changed 0.5->0.8
+        Registered fuzzy-number type identifier for the concrete strategy class.
+    q : int or None
+        Effective q-rung for the instance.
 
     Notes
     -----
-    - Subclasses should call `super().__init__()` when overriding `__init__`.
-    - The class enforces "strict attribute mode": assigning attributes not
-      declared in `_declared_attributes` will raise AttributeError.
+    - Subclasses should call ``super().__init__()`` in their ``__init__``.
+    - Use :meth:`add_attribute_validator`, :meth:`add_attribute_transformer`
+      and :meth:`add_change_callback` inside subclass initialization to register
+      type-specific rules or reactive behavior.
+    - The default ``q`` validator enforces an integer in [1, 100]; subclasses
+      may override or refine this by registering a custom validator.
+
+    Raises
+    ------
+    AttributeError
+        When assigning to an undeclared attribute (strict mode).
+    ValueError
+        If a validator rejects a new attribute value.
+    RuntimeError
+        If a registered change callback raises an unexpected error.
+
+    Examples
+    --------
+    Minimal subclass pattern and validators. The following examples mirror
+    patterns used in the repository:
+
+    .. code-block:: python
+
+        # Example (simple numeric attributes)
+        class MyStrategy(FuzznumStrategy):
+            mtype = 'mytype'
+            a: float = 0.0
+            b: float = 1.0
+
+            def __init__(self, q=None):
+                super().__init__(q=q)
+                # ensure a and b are in [0, 1]
+                self.add_attribute_validator('a', lambda v: isinstance(v, (int, float)) and 0.0 <= v <= 1.0)
+                self.add_attribute_validator('b', lambda v: isinstance(v, (int, float)) and 0.0 <= v <= 1.0)
+
+            def report(self) -> str:
+                return f"a={self.a}, b={self.b}"
+
+            def str(self) -> str:
+                return f"<{self.a},{self.b}>"
+
+    Concrete examples from the codebase:
+
+    - q-rung orthopair fuzzy number (QROFN):
+      see :mod:`axisfuzzy.fuzztype.qrofs.qrofn` where membership attributes
+      ``md`` and ``nmd`` are registered with validators and change callbacks
+      that enforce the q-rung constraint :math:`\\mu^q + \\nu^q \\leq 1`
+
+
+    - q-rung hesitant fuzzy number (QROHFN):
+      see :mod:`axisfuzzy.fuzztype.qrohfs.qrohfn` which demonstrates usage
+      of attribute transformers to coerce inputs into numpy arrays and
+      validators that check elementwise ranges and shapes.
+
+    Implementation hints
+    --------------------
+    - Use transformers to normalise inputs (e.g., convert lists -> np.ndarray)
+      before validation and storage.
+    - Register change callbacks when inter-dependent attributes must trigger
+      cross-checks (e.g., enforcing md/nmd constraints whenever either changes).
+    - Prefer registering validators/transformers in ``__init__`` so that they
+      are instance-local and do not unintentionally share state across
+      instances.
+
+    See Also
+    --------
+    :class:`axisfuzzy.fuzztype.qrofs.qrofn.QROFNStrategy`
+    :class:`axisfuzzy.fuzztype.qrohfs.qrohfn.QROHFNStrategy`
     """
 
     mtype: str = get_config().DEFAULT_MTYPE
@@ -241,7 +291,7 @@ class FuzznumStrategy(ABC):
             # and a ValueError is raised, preventing the invalid value from being set.
             if not validator(value):
                 raise ValueError(f"Validation failed for attribute '{name}' with value '{value}'")
-            
+
         # Pre-process or transform the value before setting.
         if name in self._attribute_transformers:
             transformer = self._attribute_transformers[name]
@@ -274,29 +324,41 @@ class FuzznumStrategy(ABC):
                                 attr_name: str,
                                 validator: Callable[[Any], bool]) -> None:
         """
-        Register a validator for an attribute.
+        Register a validator for a specific attribute.
 
-        This method allows registering a custom validation function for a specific
-        attribute. The validator will be called whenever the attribute is set,
-        ensuring data integrity.
+        Validators are primarily used to ensure that attribute values meet
+        specific conditions or constraints when they are set.
+        The validator is called whenever the attribute is set via
+        ``__setattr__``. If the validator returns ``False`` the assignment is
+        rejected and a :class:`ValueError` is raised.
 
         Parameters
         ----------
         attr_name : str
-            Name of the attribute to validate.
-        validator : callable
-            Callable that accepts the attribute value and returns True if valid.
+            Name of the attribute to validate. Should be one of the names
+            returned by :meth:`get_declared_attributes` or an instance attribute.
+        validator : Callable[[Any], bool]
+            Callable that accepts the candidate value and returns ``True`` if
+            the value is acceptable, ``False`` otherwise.
+
+        Raises
+        ------
+        TypeError
+            If ``validator`` is not callable.
+
+        Notes
+        -----
+        - Validators are stored per-instance (registered inside ``__init__`` of
+          the concrete strategy). Registering a validator replaces any
+          previously registered validator for the same attribute.
+        - Validators are executed before transformers.
 
         Examples
         --------
-        >>> # assume `s` is an instance of a concrete FuzznumStrategy with attribute 'p'
-        >>> s.add_attribute_validator('p', lambda v: isinstance(v, (int, float)) and 0 <= v <= 1)
-        >>> s.p = 0.3   # valid assignment
-        >>> try:
-        ...     s.p = 1.5  # validator will reject this assignment
-        ... except ValueError:
-        ...     print('invalid')
-        invalid
+        .. code-block:: python
+
+            # inside a strategy __init__:
+            self.add_attribute_validator('md', lambda v: v is None or 0.0 <= float(v) <= 1.0)
         """
         self._attribute_validators[attr_name] = validator
 
@@ -304,46 +366,83 @@ class FuzznumStrategy(ABC):
                             attr_name: str,
                             callback: Callable[[str, Any, Any], None]) -> None:
         """
-        Register a change callback for an attribute.
+        Register a post-assignment change callback for an attribute.
 
-        This method allows registering a function to be called whenever a specific
-        attribute's value changes. Callbacks can be used to trigger side effects,
-        update dependent properties, or perform additional validation after a change.
+        The callback is invoked after the attribute value has been successfully
+        assigned. Its signature must be ``(attr_name, old_value, new_value)``.
+        Callbacks may raise :class:`ValueError` to reject an assignment, or any
+        other exception which will be wrapped as :class:`RuntimeError` by
+        ``__setattr__``.
 
         Parameters
         ----------
         attr_name : str
-            Name of the attribute to monitor.
-        callback : callable
-            Callable with signature (attr_name, old_value, new_value).
-        
+            Attribute name to monitor.
+        callback : Callable[[str, Any, Any], None]
+            Callable invoked after assignment; may perform cross-attribute checks
+            or trigger side-effects.
+
+        Raises
+        ------
+        TypeError
+            If ``callback`` is not callable.
+
+        Notes
+        -----
+        - Callbacks are executed after validators and transformers and after the
+          value has been stored on the instance.
+        - If multiple callbacks for the same attribute are needed, wrap them in
+          a small dispatcher function or register a single callback that calls
+          others.
+
         Examples
         --------
-        >>> # assume `s` is an instance of a concrete FuzznumStrategy with attribute 'score'
-        >>> def on_change(name, old, new):
-        ...     print(f"{name} changed from {old} to {new}")
-        ...
-        >>> s.add_change_callback('score', on_change)
-        >>> s.score = 0.7
-        score changed from None to 0.7
+        .. code-block:: python
+
+            def on_md_change(name, old, new):
+                # enforce relationship with other attribute(s)
+                if new is not None and self.nmd is not None and self.q is not None:
+                    if new**self.q + self.nmd**self.q > 1.0:
+                        raise ValueError("q-rung constraint violated")
+            self.add_change_callback('md', on_md_change)
         """
         self._change_callbacks[attr_name] = callback
-    
+
     def add_attribute_transformer(self,
                                   attr_name: str,
                                   transformer: Callable[[Any], Any]) -> None:
         """
-        Register a value transformer for an attribute.
+        Register a transformer for an attribute value.
 
-        The transformer is called after validation but before the value is set.
-        It can be used to normalize or convert the input value to a standard format.
+        Transformers receive the candidate value (after validators pass) and
+        must return the value that will be stored on the instance. Typical uses
+        are type coercion, normalization or conversion (e.g. list -> ndarray).
 
         Parameters
         ----------
         attr_name : str
-            Name of the attribute to transform.
-        transformer : Callable
-            Callable that accepts a value and returns the transformed value.
+            Attribute name to transform.
+        transformer : Callable[[Any], Any]
+            Callable that takes the incoming value and returns the transformed
+            value to be stored.
+
+        Raises
+        ------
+        TypeError
+            If ``transformer`` is not callable.
+
+        Notes
+        -----
+        - Transformers run after validators and before the value is written.
+        - If a transformer raises an exception, the assignment fails.
+        - Register transformers during ``__init__`` to keep them instance-local.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            # coerce lists to numpy arrays for attribute 'md'
+            self.add_attribute_transformer('md', lambda v: None if v is None else np.asarray(v, dtype=float))
         """
         self._attribute_transformers[attr_name] = transformer
 
@@ -397,6 +496,7 @@ class FuzznumStrategy(ABC):
         str or None
             MD5 hex digest representing the key, or None if generation fails.
         """
+
         def get_state_dict(obj: 'FuzznumStrategy'):
             """Helper function to get a serializable state dictionary of a FuzznumStrategy."""
             # Get all explicitly declared attributes of the FuzznumStrategy instance.
@@ -438,36 +538,57 @@ class FuzznumStrategy(ABC):
                           op_name: str,
                           operand: Optional[Union['FuzznumStrategy', int, float]]) -> Dict[str, Any]:
         """
-        Executes a specified operation with another operand.
+        Dispatch and execute a named operation for this strategy instance.
 
-        This method acts as a central dispatcher for performing various fuzzy
-        number operations (e.g., addition, multiplication, comparison, complement).
-        It retrieves the appropriate operation handler from the global registry
-        based on the operation name and the fuzzy number's `mtype`. It also
-        manages caching of operation results.
+        This method is the per-instance entry point to the operation subsystem.
+        It resolves the appropriate :class:`OperationMixin` implementation from
+        the global operation registry, builds a t-norm configuration, performs
+        caching, and finally calls the concrete operation implementation.
 
         Parameters
         ----------
         op_name : str
-            The name of the operation to execute (e.g., 'add', 'mul', 'complement').
-        operand : Optional[Union[FuzznumStrategy, int, float]]
-            The second operand for the operation. Can be another FuzznumStrategy instance,
-            an integer, or a float, depending on the operation.
+            Operation identifier (for example: ``'add'``, ``'complement'``,
+            ``'gt'``). See :meth:`get_available_operations` for supported names.
+        operand : FuzznumStrategy or int or float or None
+            Second operand for binary/comparison operations, scalar for
+            unary-with-operand operations, or ``None`` for pure unary ops.
 
         Returns
         -------
-            Dict[str, Any]
-                A dictionary containing the result of the operation.
-                The structure of the dictionary depends on the specific operation.
+        dict
+            Operation-specific result. Concrete operations define the returned
+            dictionary structure (commonly includes keys like ``'value'`` or
+            component arrays).
 
         Raises
         ------
-            NotImplementedError
-                If the requested operation is not supported for the current `mtype`.
-            TypeError
-                If the operand type is incompatible with the operation.
-            ValueError
-                If an unknown operation type is requested.
+        NotImplementedError
+            If no operation implementation is registered for this instance's
+            ``mtype`` and the requested ``op_name``.
+        TypeError
+            If the provided ``operand`` has an incompatible type for the
+            requested operation (e.g. scalar where a strategy was expected).
+        ValueError
+            If ``op_name`` is unknown or preprocessing fails.
+
+        Notes
+        -----
+        - Results are cached per-instance when a stable cache key can be created.
+        - The t-norm configuration used is obtained from the global operation
+          registry; this method wraps the concrete operation call with timing
+          and caching logic.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            # binary operation with another strategy instance
+            res = my_strategy.execute_operation('add', other_strategy)
+            print(res)  # operation-defined dict
+
+            # unary complement
+            res = my_strategy.execute_operation('complement', None)
         """
         # Get the global operation registry.
         from .operation import get_registry_operation
@@ -533,7 +654,8 @@ class FuzznumStrategy(ABC):
         return result
 
     def get_declared_attributes(self) -> Set[str]:
-        """Retrieves a copy of the set of declared attribute names for this strategy.
+        """
+        Retrieves a copy of the set of declared attribute names for this strategy.
 
         This method provides introspection capabilities, allowing external code
         to discover which attributes are explicitly defined as data members
@@ -543,11 +665,19 @@ class FuzznumStrategy(ABC):
         -------
         set
             Copy of the declared attributes set.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            attrs = instance.get_declared_attributes()
+            # e.g. {'md', 'nmd', 'q'}
         """
         return self._declared_attributes.copy()
 
     def get_available_operations(self) -> List[str]:
-        """Gets the names of all operations supported by the current fuzzy number type.
+        """
+        Gets the names of all operations supported by the current fuzzy number type.
 
         This method queries the global operation registry to determine which
         operations are registered and available for the `mtype` of this
@@ -558,6 +688,13 @@ class FuzznumStrategy(ABC):
         List[str]
             A list of strings, where each string is the name of an
             operation supported by this fuzzy number type.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            ops = s.get_available_operations()
+            # ['add', 'complement', 'gt', ...]
         """
         from .operation import get_registry_operation
         operation = get_registry_operation()
@@ -566,17 +703,32 @@ class FuzznumStrategy(ABC):
     def validate_all_attributes(self) -> Dict[str, Any]:
         """Validates all attributes of the FuzznumStrategy instance.
 
-        This method provides a unified interface to trigger a comprehensive
-        health check of the instance's state. It performs both the general
-        `_validate()` checks and individual attribute validations.
+        This method runs both the centralized _validate() hook (for
+        inter-attribute constraints) and any per-attribute validators registered via
+        :meth:`add_attribute_validator`. It collects failures rather than
+        raising immediately to provide a consolidated report.
 
-        Returns:
+        Returns
         -------
-        Dict[str, Any]
-            A dictionary containing the validation results.
-            It includes:
-            - 'is_valid' (bool): True if all validations pass, False otherwise.
-            - 'errors' (List[str]): A list of error messages for failed validations.
+        dict
+            A dictionary with two keys:
+            - ``is_valid`` (bool): True if all checks passed.
+            - ``errors`` (List[str]): Human-readable error messages for failures.
+
+        Notes
+        -----
+        - Use this method in tests or validation pipelines to obtain a full
+          diagnostic report without raising exceptions.
+        - For strict enforcement, call :meth:`_validate` directly and let it
+          raise exceptions on serious violations.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            report = s.validate_all_attributes()
+            if not report['is_valid']:
+                print('\\n'.join(report['errors']))
         """
         validation_result = {
             'is_valid': True,

@@ -5,15 +5,13 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 """
-axisfuzzy.core.cache
-=====================
-
 Lightweight Least Recently Used (LRU) cache used by core components.
 
 This module provides a minimal LRU cache implementation backed by
 collections.OrderedDict. It is intended for small, fast caches such as
 operation-result caching inside FuzznumStrategy instances.
 """
+
 from collections import OrderedDict
 from typing import Any, Optional
 

@@ -6,13 +6,47 @@
 #  Software: AxisFuzzy
 
 """
-axisfuzzy.core.fuzznums
-=======================
 High-level Fuzznum wrapper and factory utilities.
 
-This module provides the Fuzznum facade which binds a concrete per-element
-strategy (FuzznumStrategy) implementation to a lightweight user-facing
-object. The module also contains the convenient factory function `fuzznum`.
+This module provides the :class:`Fuzznum` facade, which binds a concrete per-element
+strategy (:class:`FuzznumStrategy`) implementation to a lightweight user-facing
+object. It also provides the convenient factory function :func:`fuzznum`.
+
+Overview
+--------
+- `Fuzznum` is the main user-facing class for single fuzzy numbers.
+- It delegates all logic and data to a registered `FuzznumStrategy` subclass, determined by `mtype`.
+- All mathematical operations, validation, and formatting are handled by the strategy.
+- The facade exposes strategy attributes and methods as if they were native to `Fuzznum`.
+
+Notes
+-----
+- The actual fuzzy number logic is implemented in strategy classes (see `axisfuzzy/core/base.py`).
+- The registry system allows new fuzzy number types to be plugged in without modifying this module.
+- Operator overloading is supported via the dispatcher system.
+
+Examples
+--------
+.. code-block:: python
+
+    from axisfuzzy.core.fuzznums import fuzznum
+
+    # Create a default fuzzy number (mtype and q from config)
+    a = fuzznum()
+    b = fuzznum(mtype='qrofn', q=3, md=0.7, nmd=0.2)
+
+    # Access attributes
+    print(a.mtype, a.q)
+
+    # Set fuzzy number attributes
+    a.md = 0.5
+    a.nmd = 0.3
+
+    # Use operator overloading (requires operation registration)
+    c = a + b
+
+    # Serialize and deserialize
+    d = fuzznum.from_dict(a.to_dict())
 """
 
 import difflib
@@ -27,7 +61,7 @@ from .base import FuzznumStrategy
 
 class Fuzznum:
     """
-    Thin facade object representing a single fuzzy number.
+    Facade object representing a single fuzzy number.
 
     Fuzznum binds a concrete strategy implementation (subclass of
     :class:`axisfuzzy.core.base.FuzznumStrategy`) at construction time and
@@ -61,15 +95,20 @@ class Fuzznum:
 
     Examples
     --------
-    Create a default Fuzznum using the configured default mtype and q,
-    then perform a simple operation (operator dispatching requires the
-    appropriate operations to be registered for the configured mtype).
+    .. code-block:: python
 
-    >>> from axisfuzzy.core.fuzznums import fuzznum
-    >>> a = fuzznum()        # uses DEFAULT_MTYPE and DEFAULT_Q from config
-    >>> b = fuzznum()
-    >>> # Binary operators delegate to dispatcher/registry (requires ops registered)
-    >>> # result = a + b
+        from axisfuzzy.core.fuzznums import fuzznum
+
+        # Create a QROFN fuzzy number
+        a = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        print(a.md, a.nmd)
+
+        # Copy and modify
+        b = a.copy()
+        b.md = 0.8
+
+        # Serialize/deserialize
+        d = fuzznum.from_dict(a.to_dict())
     """
 
     __array_priority__ = 1.0
@@ -771,13 +810,26 @@ def fuzznum(mtype: Optional[str] = None,
     """
     Factory function to create a Fuzznum instance.
 
-    Args:
-        mtype:  The type of fuzzy number strategy to use.
-        q:  The discretization level for the fuzzy number.
-        **kwargs: Additional parameters specific to the chosen fuzzy number strategy.
+    Parameters
+    ----------
+    mtype : str, optional
+        The type of fuzzy number strategy to use. If omitted, uses the default from config.
+    q : int, optional
+        The discretization level for the fuzzy number. If omitted, uses the default from config.
+    **kwargs : dict
+        Additional parameters specific to the chosen fuzzy number strategy.
 
-    Returns:
+    Returns
+    -------
+    Fuzznum
         An instance of Fuzznum configured with the specified strategy and parameters.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        a = fuzznum(mtype='qrofn', q=3, md=0.7, nmd=0.2)
+        print(a)
     """
     mtype = mtype or get_config().DEFAULT_MTYPE
     q = q or get_config().DEFAULT_Q

@@ -1,5 +1,5 @@
-base
-==================
+core.base
+=========
 
 .. automodule:: axisfuzzy.core.base
    :members:

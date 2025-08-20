@@ -6,19 +6,17 @@
 #  Software: AxisFuzzy
 
 """
-axisfuzzy.core.registry
-=======================
+Central registry for fuzzy number types (``mtype``).
 
-Central registry for fuzzy number types (`mtype`).
-
-This module provides the `FuzznumRegistry`, a thread-safe singleton class
+The registry module is a cornerstone of AxisFuzzy's extensibility, allowing developers
+to register and integrate new types of fuzzy numbers seamlessly. 
+This module provides the :class:`~.base.FuzznumRegistry``, a thread-safe singleton class
 that serves as the central directory for all fuzzy number implementations
-within the AxisFuzzy ecosystem. It maps a unique string identifier, the
-membership type or `mtype`, to its corresponding concrete implementation
-classes:
+within AxisFuzzy. It maps a unique string identifier, the membership type
+or ``mtype``, to its corresponding concrete implementation classes:
 
-- :class:`~.base.FuzznumStrategy`: Handles the logic and mathematics for a
-  single fuzzy number.
+- :class:`~.base.FuzznumStrategy`: Define rules, constraints, and basic
+  operations for fuzzy numbers.
 - :class:`~.backend.FuzzarrayBackend`: Manages the high-performance,
   Struct-of-Arrays (SoA) data storage for :class:`~.fuzzarray.Fuzzarray`.
 
@@ -26,9 +24,6 @@ The registry supports transactional registrations, an observer pattern for
 monitoring changes, and comprehensive introspection capabilities. A suite of
 factory functions and decorators is also provided for convenient interaction
 with the global registry instance.
-
-This module is a cornerstone of AxisFuzzy's extensibility, allowing developers
-to define and integrate new types of fuzzy numbers seamlessly.
 """
 
 import threading
@@ -46,29 +41,30 @@ class FuzznumRegistry:
     A thread-safe, singleton registry for fuzzy number implementations.
 
     This class manages the association between a membership type string (`mtype`)
-    and the corresponding `FuzznumStrategy` and `FuzzarrayBackend` classes that
+    and the corresponding ``FuzznumStrategy`` and ``FuzzarrayBackend`` classes that
     define its behavior and storage. As a singleton, it ensures that there is
     only one central source of truth for all fuzzy number types throughout the
     application's lifecycle.
 
     The registry is designed for robustness and extensibility, featuring:
+
     - **Thread Safety**: All registration and retrieval operations are protected
-      by locks to prevent race conditions in multi-threaded environments.
+      by locks to prevent race conditions in multithreaded environments.
     - **Transactional Operations**: The `transaction` context manager allows
       for atomic batch registrations, ensuring that either all registrations
       in a batch succeed or none do, maintaining a consistent state.
     - **Observer Pattern**: External components can subscribe to registry events
       (e.g., registration, unregistration) to react dynamically to changes.
     - **Introspection**: Provides methods to query the registry's state, such
-      as listing all registered `mtype`s, checking their completeness, and
+      as listing all registered ``mtypes``, checking their completeness, and
       retrieving performance statistics.
 
     Attributes
     ----------
-    strategies : dict[str, type[FuzznumStrategy]]
-        A dictionary mapping `mtype` strings to their registered `FuzznumStrategy` classes.
-    backends : dict[str, type[FuzzarrayBackend]]
-        A dictionary mapping `mtype` strings to their registered `FuzzarrayBackend` classes.
+    strategies : dict[str, type[:class:`~.base.FuzznumStrategy`]]
+        A dictionary mapping `mtype` strings to their registered :class:`~.base.FuzznumStrategy` classes.
+    backends : dict[str, type[:class:`~.backend.FuzzarrayBackend`]]
+        A dictionary mapping `mtype` strings to their registered :class:`~.backend.FuzzarrayBackend` classes.
 
     Notes
     -----
@@ -81,24 +77,28 @@ class FuzznumRegistry:
 
     First, define a mock strategy and backend:
 
-    >>> from axisfuzzy.core.base import FuzznumStrategy
-    >>> from axisfuzzy.core.backend import FuzzarrayBackend
-    >>> class MyNewStrategy(FuzznumStrategy):
-    ...     mtype = 'mynewtype'
-    ...     # ... implementation ...
-    >>> class MyNewBackend(FuzzarrayBackend):
-    ...     mtype = 'mynewtype'
-    ...     # ... implementation ...
+    .. code-block:: python
+
+        from axisfuzzy.core.base import FuzznumStrategy
+        from axisfuzzy.core.backend import FuzzarrayBackend
+        class MyNewStrategy(FuzznumStrategy):
+            mtype = 'mynewtype'
+            # ... implementation ...
+        class MyNewBackend(FuzzarrayBackend):
+            mtype = 'mynewtype'
+            # ... implementation ...
 
     Now, get the global registry and register the new type:
 
-    >>> from axisfuzzy.core.registry import get_registry_fuzztype
-    >>> registry = get_registry_fuzztype()
-    >>> result = registry.register(strategy=MyNewStrategy, backend=MyNewBackend)
-    >>> print(result['mtype'])
-    mynewtype
-    >>> 'mynewtype' in registry.get_registered_mtypes()
-    True
+    .. code-block:: python
+
+        from axisfuzzy.core.registry import get_registry_fuzztype
+        registry = get_registry_fuzztype()
+        result = registry.register(strategy=MyNewStrategy, backend=MyNewBackend)
+        print(result['mtype'])
+        # mynewtype
+        'mynewtype' in registry.get_registered_mtypes()
+        # True
     """
     _instance: Optional['FuzznumRegistry'] = None
     _lock: threading.RLock = threading.RLock()
@@ -160,24 +160,27 @@ class FuzznumRegistry:
         Raises
         ------
         Exception
-            Any exception raised within the `with` block will be re-raised
+            Any exception raised within the ``with`` block will be re-raised
             after the rollback is complete.
 
         Examples
         --------
-        >>> # Assume MyStrategy, MyBackend, BadStrategy are defined
-        >>> registry = get_registry_fuzztype()
-        >>> try:
-        ...     with registry.transaction():
-        ...         registry.register(strategy=MyStrategy, backend=MyBackend)
-        ...         # This next line will raise a ValueError
-        ...         registry.register(strategy=BadStrategy)
-        ... except ValueError:
-        ...     print("Transaction failed and rolled back.")
-        ...
-        >>> # The first registration was also rolled back
-        >>> 'my_mtype' in registry.get_registered_mtypes()
-        False
+
+        .. code-block:: python
+
+            # Assume MyStrategy, MyBackend, BadStrategy are defined
+            registry = get_registry_fuzztype()
+            try:
+                with registry.transaction():
+                    registry.register(strategy=MyStrategy, backend=MyBackend)
+                    # This next line will raise a ValueError
+                    registry.register(strategy=BadStrategy)
+            except ValueError:
+                print("Transaction failed and rolled back.")
+
+             # The first registration was also rolled back
+            'my_mtype' in registry.get_registered_mtypes()
+            # False
         """
         if self._in_transaction:
             yield
@@ -226,9 +229,9 @@ class FuzznumRegistry:
         Parameters
         ----------
         observer : callable
-            A callable with the signature `observer(event_type, event_data)`,
-            where `event_type` is a string (e.g., 'register_strategy') and
-            `event_data` is a dictionary with details about the event.
+            A callable with the signature ``observer(event_type, event_data)``,
+            where ``event_type`` is a string (e.g., 'register_strategy') and
+            ``event_data`` is a dictionary with details about the event.
         """
         if observer not in self._observers:
             self._observers.append(observer)
@@ -260,23 +263,23 @@ class FuzznumRegistry:
 
     def register_strategy(self, strategy: Type[FuzznumStrategy]) -> Dict[str, Any]:
         """
-        Registers a single FuzznumStrategy subclass with the registry.
+        Registers a single ``FuzznumStrategy`` subclass with the registry.
 
         This method performs validation to ensure the provided class is a valid
-        subclass of `FuzznumStrategy` and has the required `mtype` attribute.
-        It then adds the class to the internal `strategies` mapping.
+        subclass of :class:`~.base.FuzznumStrategy` and has the required ``mtype`` attribute.
+        It then adds the class to the internal ``strategies`` mapping.
 
         Parameters
         ----------
-        strategy : FuzznumStrategy
-            The `FuzznumStrategy` subclass to register.
+        strategy : :class:`~.base.FuzznumStrategy`
+            The :class:`~.base.FuzznumStrategy` subclass to register.
 
         Returns
         -------
         dict
             A dictionary containing details of the registration, including
-            `mtype`, `component` ('strategy'), `registered_class` name, and
-            whether an existing registration was `overwrote_existing`.
+            ``mtype``, ``component`` ('strategy'), ``registered_class`` name, and
+            whether an existing registration was ``overwrote_existing``.
 
         Raises
         ------
@@ -310,27 +313,27 @@ class FuzznumRegistry:
         Registers a single FuzzarrayBackend subclass with the registry.
 
         This method performs validation to ensure the provided class is a valid
-        subclass of `FuzzarrayBackend` and has the required `mtype` attribute.
+        subclass of :class:`~.base.FuzzarrayBackend` and has the required `mtype` attribute.
         It then adds the class to the internal `backends` mapping.
 
         Parameters
         ----------
-        backend : FuzzarrayBackend
-            The `FuzzarrayBackend` subclass to register.
+        backend : :class:`~.base.FuzzarrayBackend`
+            The :class:`~.base.FuzzarrayBackend` subclass to register.
 
         Returns
         -------
         dict
             A dictionary containing details of the registration, including
-            `mtype`, `component` ('backend'), `registered_class` name, and
-            whether an existing registration was `overwrote_existing`.
+            ``mtype``, ``component`` ('backend'), ``registered_class`` name, and
+            whether an existing registration was ``overwrote_existing``.
 
         Raises
         ------
         TypeError
-            If `backend` is not a class or not a subclass of `FuzzarrayBackend`.
+            If ``backend`` is not a class or not a subclass of :class:`~.base.FuzzarrayBackend`.
         ValueError
-            If the `backend` class does not have an `mtype` attribute defined.
+            If the ``backend`` class does not have an `mtype` attribute defined.
         """
         self._validate_backend_class(backend)
         mtype = backend.mtype
@@ -356,33 +359,33 @@ class FuzznumRegistry:
                  strategy: Optional[Type[FuzznumStrategy]] = None,
                  backend: Optional[Type[FuzzarrayBackend]] = None) -> Dict[str, Any]:
         """
-        Registers a strategy and/or a backend for a given `mtype`.
+        Registers a strategy and a backend for a given fuzzy type ``mtype``.
 
         This is the primary method for registering the components of a fuzzy
         number type. It can register a strategy, a backend, or both in a
         single, thread-safe operation. It validates the inputs and ensures
-        that if both are provided, their `mtype` attributes match.
+        that if both are provided, their ``mtype`` attributes match.
 
         Parameters
         ----------
-        strategy : FuzznumStrategy, optional
-            The `FuzznumStrategy` subclass to register.
-        backend : FuzzarrayBackend, optional
-            The `FuzzarrayBackend` subclass to register.
+        strategy : :class:`~.base.FuzznumStrategy`, optional
+            The :class:`~.base.FuzznumStrategy` subclass to register.
+        backend : :class:`~.base.FuzzarrayBackend`, optional
+            The :class:`~.base.FuzzarrayBackend` subclass to register.
 
         Returns
         -------
         dict
             A dictionary summarizing the registration bundle, containing the
-            `mtype` and a list of `details` for each component registered.
+            ``mtype`` and a list of ``details`` for each component registered.
 
         Raises
         ------
         ValueError
-            If neither `strategy` nor `backend` is provided, or if their
-            `mtype` attributes do not match.
+            If neither ``strategy`` nor ``backend`` is provided, or if their
+            ``mtype`` attributes do not match.
         TypeError
-            If the provided `strategy` or `backend` are not valid classes.
+            If the provided ``strategy`` or ``backend`` are not valid classes.
         """
 
         if not strategy and not backend:
@@ -458,19 +461,19 @@ class FuzznumRegistry:
         registrations : list[dict]
             A list where each item is a dictionary, typically with 'strategy'
             and/or 'backend' keys pointing to the classes to be registered.
-            Example: `[{'strategy': QROFNStrategy, 'backend': QROFNBackend}, ...]`
+            Example: ``[{'strategy': QROFNStrategy, 'backend': QROFNBackend}, ...]``
 
         Returns
         -------
         dict
-            A dictionary where keys are the `mtype`s of the successfully
+            A dictionary where keys are the ``mtypes`` of the successfully
             registered types and values are the detailed results from the
-            `register` method.
+            ``register`` method.
 
         Raises
         ------
         TypeError
-            If `registrations` is not a list or if an item in the list is not a dict.
+            If ``registrations`` is not a list or if an item in the list is not a dict.
         ValueError, TypeError
             If any individual registration fails its validation, the exception
             is re-raised after the transaction is rolled back.
@@ -506,18 +509,18 @@ class FuzznumRegistry:
                    remove_strategy: bool = True,
                    remove_backend: bool = True) -> Dict[str, Any]:
         """
-        Removes a strategy and/or backend for a given `mtype` from the registry.
+        Removes a strategy and/or backend for a given ``mtype`` from the registry.
 
         This allows for the dynamic removal of fuzzy number types.
 
         Parameters
         ----------
         mtype : str
-            The `mtype` identifier of the fuzzy number type to unregister.
+            The ``mtype`` identifier of the fuzzy number type to unregister.
         remove_strategy : bool, default True
-            If True, removes the associated `FuzznumStrategy` class.
+            If True, removes the associated :class:`~.base.FuzznumStrategy` class.
         remove_backend : bool, default True
-            If True, removes the associated `FuzzarrayBackend` class.
+            If True, removes the associated :class:`~.base.FuzzarrayBackend` class.
 
         Returns
         -------
@@ -528,7 +531,7 @@ class FuzznumRegistry:
         Raises
         ------
         TypeError
-            If `mtype` is not a string.
+            If ``mtype`` is not a string.
         """
 
         if not isinstance(mtype, str):
@@ -559,22 +562,22 @@ class FuzznumRegistry:
 
     def get_strategy(self, mtype: str) -> Type[FuzznumStrategy]:
         """
-        Retrieves the registered `FuzznumStrategy` class for a given `mtype`.
+        Retrieves the registered :class:`~.base.FuzznumStrategy` class for a given ``mtype``.
 
         Parameters
         ----------
         mtype : str
-            The `mtype` identifier.
+            The ``mtype`` identifier.
 
         Returns
         -------
         type[FuzznumStrategy]
-            The registered `FuzznumStrategy` subclass.
+            The registered :class:`~.base.FuzznumStrategy` subclass.
 
         Raises
         ------
         ValueError
-            If no strategy is found for the specified `mtype`.
+            If no strategy is found for the specified ``mtype``.
         """
         strategy_cls = self.strategies.get(mtype)
         if strategy_cls is None:
@@ -583,22 +586,22 @@ class FuzznumRegistry:
 
     def get_backend(self, mtype: str) -> Type[FuzzarrayBackend]:
         """
-        Retrieves the registered `FuzzarrayBackend` class for a given `mtype`.
+        Retrieves the registered :class:`~.base.FuzzarrayBackend` class for a given ``mtype``.
 
         Parameters
         ----------
         mtype : str
-            The `mtype` identifier.
+            The ``mtype`` identifier.
 
         Returns
         -------
         type[FuzzarrayBackend]
-            The registered `FuzzarrayBackend` subclass.
+            The registered :class:`~.base.FuzzarrayBackend` subclass.
 
         Raises
         ------
         ValueError
-            If no backend is found for the specified `mtype`.
+            If no backend is found for the specified ``mtype``.
         """
         backend_cls = self.backends.get(mtype)
         if backend_cls is None:
@@ -607,18 +610,18 @@ class FuzznumRegistry:
 
     def get_registered_mtypes(self) -> Dict[str, Dict[str, Any]]:
         """
-        Provides a comprehensive overview of all registered `mtype`s.
+        Provides a comprehensive overview of all registered ``mtypes``.
 
         This introspection method returns a dictionary detailing the status of
-        every `mtype` known to the registry, including whether it has a
+        every ``mtype`` known to the registry, including whether it has a
         registered strategy and/or backend, and the names of the associated classes.
 
         Returns
         -------
         dict
-            A dictionary where keys are `mtype` strings. Each value is another
-            dictionary containing boolean flags `has_strategy`, `has_backend`,
-            `is_complete`, and the string names `strategy_class` and `backend_class`.
+            A dictionary where keys are ``mtype`` strings. Each value is another
+            dictionary containing boolean flags ``has_strategy``, ``has_backend``,
+            ``is_complete``, and the string names ``strategy_class`` and ``backend_class``.
         """
         all_mtypes = set(self.strategies.keys()) | set(self.backends.keys())
 
@@ -649,9 +652,9 @@ class FuzznumRegistry:
         Returns
         -------
         dict
-            A dictionary containing statistics such as `total_strategies`,
-            `total_backends`, `complete_types`, `registration_stats`, and
-            `observer_count`.
+            A dictionary containing statistics such as ``total_strategies``,
+            ``total_backends``, ``complete_types``, ``registration_stats``, and
+            ``observer_count``.
         """
         return {
             'total_strategies': len(self.strategies),
@@ -665,15 +668,15 @@ class FuzznumRegistry:
         """
         Performs a health check on the registry to find incomplete registrations.
 
-        An `mtype` is considered "incomplete" if it has a registered strategy
+        An ``mtype`` is considered "incomplete" if it has a registered strategy
         but no backend, or vice versa. A healthy registry has no incomplete types.
 
         Returns
         -------
         dict
             A dictionary containing health status information, including an
-            `is_healthy` boolean flag, and lists of `complete_types`,
-            `incomplete_types`, `missing_strategies`, and `missing_backends`.
+            ``is_healthy`` boolean flag, and lists of ``complete_types``,
+            ``incomplete_types``, ``missing_strategies``, and ``missing_backends``.
         """
         
         complete_types = set(self.strategies.keys()) & set(self.backends.keys())
@@ -700,7 +703,7 @@ _registry_lock = threading.RLock()
 
 def get_registry_fuzztype() -> FuzznumRegistry:
     """
-    Access the global singleton instance of `FuzznumRegistry`.
+    Access the global singleton instance of :class:`~.base.FuzznumRegistry`.
 
     This is the standard factory function for obtaining the registry. It ensures
     that only one instance of the registry exists across the entire application,
@@ -708,7 +711,7 @@ def get_registry_fuzztype() -> FuzznumRegistry:
 
     Returns
     -------
-    FuzznumRegistry
+    :class:`~.base.FuzznumRegistry`
         The global singleton registry instance.
     """
     global _registry_instance
@@ -721,9 +724,71 @@ def get_registry_fuzztype() -> FuzznumRegistry:
     return _registry_instance
 
 
+def get_fuzztype_strategy(mtype: str) -> Type[FuzznumStrategy]:
+    """
+    A convenience function to retrieve a strategy class from the global registry.
+
+    This function is a simple, error-suppressing wrapper around the ``get_strategy``
+    method of the global :class:`~.base.FuzznumRegistry` instance.
+
+    Parameters
+    ----------
+    mtype : str
+        The ``mtype`` identifier for which to retrieve the strategy.
+
+    Returns
+    -------
+    type[FuzznumStrategy] or None
+        The registered :class:`~.base.FuzznumStrategy` subclass if found, otherwise ``None``.
+    """
+    try:
+        return get_registry_fuzztype().get_strategy(mtype)
+    except ValueError as e:
+        raise e
+
+
+def get_fuzztype_backend(mtype: str) -> Type[FuzzarrayBackend]:
+    """
+    A convenience function to retrieve a backend class from the global registry.
+
+    This function is a simple, error-suppressing wrapper around the ``get_backend``
+    method of the global :class:`~.base.FuzznumRegistry` instance.
+
+    Parameters
+    ----------
+    mtype : str
+        The ``mtype`` identifier for which to retrieve the backend.
+
+    Returns
+    -------
+    type[FuzzarrayBackend] or None
+        The registered :class:`~.base.FuzzarrayBackend` subclass if found, otherwise ``None``.
+    """
+    try:
+        return get_registry_fuzztype().get_backend(mtype)
+    except ValueError as e:
+        raise e
+
+
+def get_fuzztype_mtypes() -> Dict[str, Dict[str, Any]]:
+    """
+    A convenience function to get an overview of all registered mtypes.
+
+    This function is a simple wrapper around the ``get_registered_mtypes`` method
+    of the global :class:`~.base.FuzznumRegistry` instance.
+
+    Returns
+    -------
+    dict
+        A dictionary where keys are ``mtype`` strings and values are dictionaries
+        detailing the registration status for that ``mtype``.
+    """
+    return get_registry_fuzztype().get_registered_mtypes()
+
+
 def register_strategy(cls: Type[FuzznumStrategy]) -> Type[FuzznumStrategy]:
     """
-    A class decorator for automatically registering a `FuzznumStrategy`.
+    A class decorator for automatically registering a :class:`~.base.FuzznumStrategy`.
 
     This decorator provides a convenient way to register a strategy class with
     the global registry at the time of its definition.
@@ -731,7 +796,7 @@ def register_strategy(cls: Type[FuzznumStrategy]) -> Type[FuzznumStrategy]:
     Parameters
     ----------
     cls : FuzznumStrategy
-        The `FuzznumStrategy` subclass to be decorated and registered.
+        The :class:`~.base.FuzznumStrategy` subclass to be decorated and registered.
 
     Returns
     -------
@@ -740,12 +805,14 @@ def register_strategy(cls: Type[FuzznumStrategy]) -> Type[FuzznumStrategy]:
 
     Examples
     --------
-    >>> from axisfuzzy.core.registry import register_strategy
-    >>>
-    >>> @register_strategy
-    ... class MyNewStrategy(FuzznumStrategy):
-    ...     mtype = 'decorated_strategy'
-    ...     # ... implementation ...
+
+    .. code-block:: python
+
+        from axisfuzzy.core.registry import register_strategy
+        @register_strategy
+        class MyNewStrategy(FuzznumStrategy):
+            mtype = 'decorated_strategy'
+            # ... implementation ...
     """
     get_registry_fuzztype().register_strategy(cls)
     return cls
@@ -753,7 +820,7 @@ def register_strategy(cls: Type[FuzznumStrategy]) -> Type[FuzznumStrategy]:
 
 def register_backend(cls: Type[FuzzarrayBackend]) -> Type[FuzzarrayBackend]:
     """
-    A class decorator for automatically registering a `FuzzarrayBackend`.
+    A class decorator for automatically registering a :class:`~.base.FuzzarrayBackend`.
 
     This decorator provides a convenient way to register a backend class with
     the global registry at the time of its definition.
@@ -761,7 +828,7 @@ def register_backend(cls: Type[FuzzarrayBackend]) -> Type[FuzzarrayBackend]:
     Parameters
     ----------
     cls : type[FuzzarrayBackend]
-        The `FuzzarrayBackend` subclass to be decorated and registered.
+        The :class:`~.base.FuzzarrayBackend` subclass to be decorated and registered.
 
     Returns
     -------
@@ -770,12 +837,15 @@ def register_backend(cls: Type[FuzzarrayBackend]) -> Type[FuzzarrayBackend]:
 
     Examples
     --------
-    >>> from axisfuzzy.core.registry import register_backend
-    >>>
-    >>> @register_backend
-    ... class MyNewBackend(FuzzarrayBackend):
-    ...     mtype = 'decorated_backend'
-    ...     # ... implementation ...
+
+    .. code-block:: python
+
+        from axisfuzzy.core.registry import register_backend
+
+        @register_backend
+        class MyNewBackend(FuzzarrayBackend):
+            mtype = 'decorated_backend'
+            # ... implementation ...
     """
     get_registry_fuzztype().register_backend(cls)
     return cls
@@ -786,26 +856,30 @@ def register_fuzztype(strategy: Optional[Type[FuzznumStrategy]] = None,
     """
     A convenience function to register a strategy and/or backend with the global registry.
 
-    This function is a simple wrapper around the `register` method of the
-    global `FuzznumRegistry` instance.
+    This method provides a convenient way to register both strategies and backends simultaneously; 
+    however, it is generally recommended to use the ``@register_strategy`` and 
+    ``@register_backend`` decorators for registration.
 
     Parameters
     ----------
     strategy : type[FuzznumStrategy], optional
-        The `FuzznumStrategy` subclass to register.
+        The :class:`~.base.FuzznumStrategy` subclass to register.
     backend : type[FuzzarrayBackend], optional
-        The `FuzzarrayBackend` subclass to register.
+        The :class:`~.base.FuzzarrayBackend` subclass to register.
 
     Returns
     -------
     dict
-        The result dictionary from the underlying `register` call.
+        The result dictionary from the underlying ``register`` call.
 
     Examples
     --------
-    >>> # Assuming MyStrategy and MyBackend classes are defined
-    >>> from axisfuzzy.core.registry import register_fuzztype
-    >>> register_fuzztype(strategy=MyStrategy, backend=MyBackend)
+
+    .. code-block:: python
+
+         # Assuming MyStrategy and MyBackend classes are defined
+        from axisfuzzy.core.registry import register_fuzztype
+        register_fuzztype(strategy=MyStrategy, backend=MyBackend)
     """
     return get_registry_fuzztype().register(
         strategy=strategy, backend=backend)
@@ -815,8 +889,8 @@ def register_batch_fuzztypes(registrations: List[Dict[str, Any]]) -> Dict[str, D
     """
     A convenience function to batch-register multiple fuzzy types with the global registry.
 
-    This function is a simple wrapper around the `batch_register` method of the
-    global `FuzznumRegistry` instance. It performs the registrations within a
+    This function is the ``batch_register`` method of the
+    global :class:`~.base.FuzznumRegistry` instance. It performs the registrations within a
     single transaction, ensuring atomicity.
 
     Parameters
@@ -824,14 +898,14 @@ def register_batch_fuzztypes(registrations: List[Dict[str, Any]]) -> Dict[str, D
     registrations : list[dict]
         A list where each item is a dictionary specifying the components to
         register. Each dictionary should have 'strategy' and/or 'backend' keys.
-        Example: `[{'strategy': QROFNStrategy, 'backend': QROFNBackend}, ...]`
+        Example: ``[{'strategy': QROFNStrategy, 'backend': QROFNBackend}, ...]``
 
     Returns
     -------
     dict
-        A dictionary where keys are the `mtype`s of the successfully
+        A dictionary where keys are the ``mtypes`` of the successfully
         registered types and values are the detailed results from the
-        underlying `register` method.
+        underlying ``register`` method.
     """
     return get_registry_fuzztype().batch_register(registrations)
 
@@ -842,17 +916,17 @@ def unregister_fuzztype(mtype: str,
     """
     A convenience function to unregister a fuzzy type from the global registry.
 
-    This function is a simple wrapper around the `unregister` method of the
-    global `FuzznumRegistry` instance.
+    This function is a simple wrapper around the ``unregister`` method of the
+    global :class:`~.base.FuzznumRegistry` instance.
 
     Parameters
     ----------
     mtype : str
-        The `mtype` identifier of the fuzzy number type to unregister.
+        The ``mtype`` identifier of the fuzzy number type to unregister.
     remove_strategy : bool, default True
-        If True, removes the associated `FuzznumStrategy` class.
+        If True, removes the associated :class:`~.base.FuzznumStrategy` class.
     remove_backend : bool, default True
-        If True, removes the associated `FuzzarrayBackend` class.
+        If True, removes the associated :class:`~.base.FuzzarrayBackend` class.
 
     Returns
     -------
@@ -865,64 +939,3 @@ def unregister_fuzztype(mtype: str,
         remove_backend=remove_backend
     )
 
-
-def get_fuzztype_strategy(mtype: str) -> Type[FuzznumStrategy]:
-    """
-    A convenience function to retrieve a strategy class from the global registry.
-
-    This function is a simple, error-suppressing wrapper around the `get_strategy`
-    method of the global `FuzznumRegistry` instance.
-
-    Parameters
-    ----------
-    mtype : str
-        The `mtype` identifier for which to retrieve the strategy.
-
-    Returns
-    -------
-    type[FuzznumStrategy] or None
-        The registered `FuzznumStrategy` subclass if found, otherwise `None`.
-    """
-    try:
-        return get_registry_fuzztype().get_strategy(mtype)
-    except ValueError as e:
-        raise e
-
-
-def get_fuzztype_backend(mtype: str) -> Type[FuzzarrayBackend]:
-    """
-    A convenience function to retrieve a backend class from the global registry.
-
-    This function is a simple, error-suppressing wrapper around the `get_backend`
-    method of the global `FuzznumRegistry` instance.
-
-    Parameters
-    ----------
-    mtype : str
-        The `mtype` identifier for which to retrieve the backend.
-
-    Returns
-    -------
-    type[FuzzarrayBackend] or None
-        The registered `FuzzarrayBackend` subclass if found, otherwise `None`.
-    """
-    try:
-        return get_registry_fuzztype().get_backend(mtype)
-    except ValueError as e:
-        raise e
-
-
-def get_fuzztype_mtypes() -> Dict[str, Dict[str, Any]]:
-    """
-    A convenience function to get an overview of all registered mtypes.
-
-    This function is a simple wrapper around the `get_registered_mtypes` method
-    of the global `FuzznumRegistry` instance.
-
-    Returns
-    -------
-    dict
-        A dictionary where keys are `mtype` strings and values are dictionaries
-        detailing the registration status for that `mtype`.
-    """
-    return get_registry_fuzztype().get_registered_mtypes()

@@ -23,13 +23,13 @@ Core Component Overview
 
    * - Module
      - Description
-   * - :doc:`config`
+   * - :doc:`config/index`
      - Configure the system, providing global configuration and default values
-   * - :doc:`core`
+   * - :doc:`core/index`
      - Core Data Structures (Fuzznum, Fuzzarray, FuzznumStrategy)
    * - :doc:`fuzzify`
      - Fuzzification system, converting precise values into fuzzy numbers
-   * - :doc:`extension`
+   * - :doc:`extension/index`
      - Expand the system to add specialized functions for different types.
    * - :doc:`mixin`
      - Mixin system provides array operations similar to NumPy

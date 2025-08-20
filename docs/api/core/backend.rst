@@ -1,4 +1,4 @@
-backend
+core.backend
 =======================
 
 .. automodule:: axisfuzzy.core.backend

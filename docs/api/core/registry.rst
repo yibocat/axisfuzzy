@@ -1,4 +1,4 @@
-registry
+core.registry
 =======================
 
 .. automodule:: axisfuzzy.core.registry
