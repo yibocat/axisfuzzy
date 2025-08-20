@@ -23,7 +23,7 @@ class QROFNBackend(FuzzarrayBackend):
     NumPy arrays, enabling high-performance vectorized operations.
     """
 
-    mtype = "qrofn"
+    mtype = 'qrofn'
 
     def __init__(self, shape: Tuple[int, ...], q: Optional[int] = None, **kwargs):
         """
@@ -148,53 +148,6 @@ class QROFNBackend(FuzzarrayBackend):
             ">"
         )
         return np.array(combined, dtype=object)
-
-    # def format_elements(self, format_spec: str = "") -> np.ndarray:
-    #     """
-    #     高性能批量格式化：
-    #     默认 / 'c' 使用向量化字符串操作 (np.char.*)，避免 np.vectorize。
-    #     特殊格式 'p','j','r'（少用）回退逐元素。
-    #     """
-    #     precision = get_config().DEFAULT_PRECISION
-    #     if format_spec in ('p', 'j', 'r'):
-    #         out = np.empty(self.shape, dtype=object)
-    #         # 创建一个策略实例用于格式化
-    #
-    #         # strategy_cls = get_fuzztype_strategy(self.mtype)
-    #         # strategy_formatter = strategy_cls(q=self.q)
-    #
-    #         strategy_formatter = QROFNStrategy(q=self.q)
-    #         it = np.nditer(self.mds, flags=['multi_index'])
-    #         while not it.finished:
-    #             idx = it.multi_index
-    #             md = float(self.mds[idx])
-    #             nmd = float(self.nmds[idx])
-    #             out[idx] = strategy_formatter.format_from_components(md, nmd, format_spec)  # type: ignore
-    #             it.iternext()
-    #         return out
-    #
-    #     # 批量数值格式化
-    #     fmt = f"%.{precision}f"
-    #     md_strs = np.char.mod(fmt, np.round(self.mds, precision))
-    #     nmd_strs = np.char.mod(fmt, np.round(self.nmds, precision))
-    #
-    #     def _trim(arr: np.ndarray) -> np.ndarray:
-    #         # 去掉尾部 0
-    #         trimmed = np.char.rstrip(np.char.rstrip(arr, '0'), '.')
-    #         # 若全部被去掉（例如 "0.0000"）则恢复为 "0"
-    #         return np.where(trimmed == '', '0', trimmed)
-    #
-    #     md_trimmed = _trim(md_strs)
-    #     nmd_trimmed = _trim(nmd_strs)
-    #
-    #     combined = np.char.add(
-    #         np.char.add(
-    #             np.char.add("<", md_trimmed),
-    #             np.char.add(",", nmd_trimmed)
-    #         ),
-    #         ">"
-    #     )
-    #     return np.array(combined, dtype=object)
 
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROFNBackend':

@@ -228,7 +228,7 @@ def _qrohfn_std(arr: Union[Fuzznum, Fuzzarray],
 def _qrohfn_score(arr: Union[Fuzznum, Fuzzarray]) -> Union[float, np.ndarray]:
     """Score for QROHFN: (mean(md))^q - (mean(nmd))^q"""
     if isinstance(arr, Fuzznum):
-        return np.mean(arr.md) ** arr.q - np.mean(arr.nmd) ** arr.q
+        return (np.mean(arr.md) ** arr.q - np.mean(arr.nmd) ** arr.q).item()
 
     mds, nmds = arr.backend.get_component_arrays()
     # 使用 frompyfunc 消除 Python-level 循环
@@ -239,7 +239,7 @@ def _qrohfn_score(arr: Union[Fuzznum, Fuzzarray]) -> Union[float, np.ndarray]:
 def _qrohfn_acc(arr: Union[Fuzznum, Fuzzarray]) -> Union[float, np.ndarray]:
     """Accuracy for QROHFN: (mean(md))^q + (mean(nmd))^q"""
     if isinstance(arr, Fuzznum):
-        return np.mean(arr.md) ** arr.q + np.mean(arr.nmd) ** arr.q
+        return (np.mean(arr.md) ** arr.q + np.mean(arr.nmd) ** arr.q).item()
 
     mds, nmds = arr.backend.get_component_arrays()
     ufunc = np.frompyfunc(lambda md, nmd: np.mean(md)**arr.q + np.mean(nmd)**arr.q, 2, 1)
@@ -249,7 +249,7 @@ def _qrohfn_acc(arr: Union[Fuzznum, Fuzzarray]) -> Union[float, np.ndarray]:
 def _qrohfn_ind(arr: Union[Fuzznum, Fuzzarray]) -> Union[float, np.ndarray]:
     """Indeterminacy for QROHFN: 1 - (mean(md)^q + mean(nmd)^q)"""
     if isinstance(arr, Fuzznum):
-        return 1.0 - (np.mean(arr.md) ** arr.q + np.mean(arr.nmd) ** arr.q)
+        return (1.0 - (np.mean(arr.md) ** arr.q + np.mean(arr.nmd) ** arr.q)).item()
 
     mds, nmds = arr.backend.get_component_arrays()
     ufunc = np.frompyfunc(lambda md, nmd: 1.0 - (np.mean(md)**arr.q + np.mean(nmd)**arr.q), 2, 1)

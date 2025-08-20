@@ -8,5 +8,7 @@
 from . import qrohfn
 from . import backend
 from . import op
+from . import ext
 from . import random
+from . import extension
 from . import fuzzification

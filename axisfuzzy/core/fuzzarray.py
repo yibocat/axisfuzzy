@@ -688,7 +688,7 @@ class Fuzzarray:
             separator=' ',
             formatter={'object': lambda x: x},  # type: ignore
             prefix='Fuzzarray(',
-            max_line_width=90
+            max_line_width=100
         )
         return f"Fuzzarray({array_str}, mtype='{self.mtype}', q={self.q}, shape={self.shape})"
 
@@ -701,7 +701,7 @@ class Fuzzarray:
             separator=' ',
             formatter={'object': lambda x: x},  # type: ignore
             prefix='',
-            max_line_width=80
+            max_line_width=90
         )
 
     def __format__(self, format_spec: str = "") -> Any:

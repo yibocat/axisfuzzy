@@ -145,7 +145,7 @@ class Config:
     )
 
     DISPLAY_EDGE_ITEMS_LARGE: int = field(
-        default=2,
+        default=3,
         metadata={
             'category': 'display',
             'description': 'Number of edge items to display for each dimension of a large array.',
@@ -165,7 +165,7 @@ class Config:
     )
 
     DISPLAY_EDGE_ITEMS_HUGE: int = field(
-        default=1,
+        default=2,
         metadata={
             'category': 'display',
             'description': 'Number of edge items to display for each dimension of a huge array.',
