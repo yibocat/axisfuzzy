@@ -13,7 +13,7 @@ Complete AxisFuzzy API documentation and user guide.
     fuzzify
     extension/index
     mixin/index
-    random
+    random/index
 
 Core Component Overview
 ============

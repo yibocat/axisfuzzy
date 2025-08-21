@@ -20,7 +20,7 @@ from .registry import RandomGeneratorRegistry
 
 # --- Core Generation API ---
 @overload
-def random_fuzz(
+def rand(
     mtype: Optional[str] = ...,
     q: int = ...,
     shape: None = ...,
@@ -30,7 +30,7 @@ def random_fuzz(
 ) -> Fuzznum: ...
 
 @overload
-def random_fuzz(
+def rand(
     mtype: Optional[str] = ...,
     q: int = ...,
     shape: Union[int, Tuple[int, ...]] = ...,
@@ -81,27 +81,27 @@ def get_generator(mtype: str) -> Optional[BaseRandomGenerator]: ...
 def list_registered() -> List[str]: ...
 def is_registered(mtype: str) -> bool: ...
 
-# --- Alias ---
-# Remove the old alias assignment:
-# rand = random_fuzz
-
-# Explicitly define the alias 'rand' with the full signature of 'random_fuzz'
-@overload
-def rand(
-    mtype: Optional[str] = ...,
-    q: int = ...,
-    shape: None = ...,
-    seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
-    rng: Optional[np.random.Generator] = ...,
-    **params: Any
-) -> Fuzznum: ...
-
-@overload
-def rand(
-    mtype: Optional[str] = ...,
-    q: int = ...,
-    shape: Union[int, Tuple[int, ...]] = ...,
-    seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
-    rng: Optional[np.random.Generator] = ...,
-    **params: Any
-) -> Fuzzarray: ...
+# # --- Alias ---
+# # Remove the old alias assignment:
+# # rand = random_fuzz
+#
+# # Explicitly define the alias 'rand' with the full signature of 'random_fuzz'
+# @overload
+# def rand(
+#     mtype: Optional[str] = ...,
+#     q: int = ...,
+#     shape: None = ...,
+#     seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
+#     rng: Optional[np.random.Generator] = ...,
+#     **params: Any
+# ) -> Fuzznum: ...
+#
+# @overload
+# def rand(
+#     mtype: Optional[str] = ...,
+#     q: int = ...,
+#     shape: Union[int, Tuple[int, ...]] = ...,
+#     seed: Optional[Union[int, np.random.SeedSequence, np.random.BitGenerator]] = ...,
+#     rng: Optional[np.random.Generator] = ...,
+#     **params: Any
+# ) -> Fuzzarray: ...
