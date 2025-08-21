@@ -10,10 +10,9 @@ The AxisFuzzy extension system is a highly flexible mechanism that allows develo
 
 .. toctree::
 
-    :maxdepth: 2
+    :maxdepth: 1
     :caption: Extension Modules
 
     registry
     decorator
     dispatcher
-    injector

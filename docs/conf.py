@@ -59,7 +59,7 @@ extensions = [
     'sphinx_autodoc_typehints', # 在 autodoc 输出中漂亮地渲染 Python 3 类型提示
     'sphinx.ext.mathjax',     # 使用 MathJax 渲染数学公式
     'sphinx.ext.autosummary', # 为 API 文档生成摘要表格
-    'sphinx_tabs',            # 添加标签页功能
+    'sphinx_tabs.tabs',       # 添加标签页功能
 ]
 
 # 包含模板的路径，相对于此目录。
@@ -98,6 +98,10 @@ autodoc_default_options = {
     'member-order': 'alphabetical', # 成员排序方式：按字母顺序
                                 # 可选值有 'bysource'（按源代码顺序）、'alphabetical'（按字母顺序）、'groupwise'（按类型分组）
 }
+
+autodoc_typehints = "signature"  # 将类型提示放在签名中，而不是描述中
+autodoc_typehints_format = "short"  # 简化类型提示，避免完整路径
+python_use_unqualified_type_names = True # 解决由 .pyi 和动态注入引起的重复警告
 
 # Autosummary 配置:
 # 在构建过程中自动为 autosummary 指令生成存根页面。
@@ -145,11 +149,11 @@ html_theme_options = {
     "navbar_end": ["version-switcher", "navbar-icon-links", "theme-switcher"],
     "show_nav_level": 1,            # 减少默认展开级别，使导航更简洁
     "navigation_depth": 3,          # 减少导航深度
-    "footer_items": ["copyright"],  # 简化页脚，移除 sphinx-version
+    # "footer_items": ["copyright"],  # 简化页脚，移除 sphinx-version
     "primary_sidebar_end": [],      # 清空主侧边栏底部
     "show_toc_level": 2,            # 减少目录层级
-    "pygment_light_style": "github-light",
-    "pygment_dark_style": "github-dark",
+    "pygments_light_style": "github-light",
+    "pygments_dark_style": "github-dark",
 }
 
 # 不在页面底部显示"查看源码"链接。

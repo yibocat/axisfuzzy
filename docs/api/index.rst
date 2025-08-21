@@ -10,13 +10,13 @@ Complete AxisFuzzy API documentation and user guide.
     config/index
     core/index
     membership/index
-    fuzzify
+    fuzzifier/index
     extension/index
     mixin/index
     random/index
 
 Core Component Overview
-============
+========================
 
 .. list-table::
    :widths: 25 75
@@ -28,11 +28,11 @@ Core Component Overview
      - Configure the system, providing global configuration and default values
    * - :doc:`core/index`
      - Core Data Structures (Fuzznum, Fuzzarray, FuzznumStrategy)
-   * - :doc:`fuzzify`
+   * - :doc:`fuzzifier/index`
      - Fuzzification system, converting precise values into fuzzy numbers
    * - :doc:`extension/index`
      - Expand the system to add specialized functions for different types.
    * - :doc:`mixin/index`
      - Mixin system provides array operations similar to NumPy
-   * - :doc:`random`
+   * - :doc:`random/index`
      - Random Fuzzy Number Generation System

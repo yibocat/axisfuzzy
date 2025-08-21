@@ -1,8 +1,8 @@
 :html_theme.sidebar_secondary.remove:
 
-==============
+==========================
 random (axisfuzzy.random)
-==============
+==========================
 
 Introduction
 ------------
@@ -16,7 +16,7 @@ and deterministic behavior for scientific workflows.
 
 .. toctree::
 
-    :maxdepth: 2
+    :maxdepth: 1
     :caption: Extension Modules
 
     base

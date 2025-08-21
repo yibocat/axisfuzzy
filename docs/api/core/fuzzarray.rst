@@ -1,5 +1,5 @@
 core.Fuzzarray
-===========
+==============
 
 .. automodule:: axisfuzzy.core.fuzzarray
    :members:

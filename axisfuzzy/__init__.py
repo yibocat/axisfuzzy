@@ -116,7 +116,7 @@ __all__ = sorted(list(set(_static_api + _mixin_funcs + _extension_funcs)))
 
 # 4. 在所有模块都已加载、所有 API 都已声明后，执行动态注入。
 #    这会将 extension 和 mixin 函数附加到核心类和本模块的命名空间中。
-apply_extensions(globals())
+apply_extensions()
 apply_mixins(globals())
 
 # 5. 清理命名空间

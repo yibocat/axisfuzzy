@@ -1,8 +1,8 @@
 :html_theme.sidebar_secondary.remove:
 
-==============
+=================================
 membership(axisfuzzy.membership)
-==============
+=================================
 
 Introduction
 ------------
@@ -18,7 +18,7 @@ membership functions that are discovered and instantiated by the factory.
 
 .. toctree::
 
-    :maxdepth: 2
+    :maxdepth: 1
     :caption: Extension Modules
 
     base

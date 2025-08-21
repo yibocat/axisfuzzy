@@ -1,5 +1,5 @@
 core.Fuzznum
-========
+============
 
 .. automodule:: axisfuzzy.core.fuzznums
    :members:

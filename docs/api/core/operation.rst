@@ -1,5 +1,5 @@
 core.operation
-==========
+===============
 
 .. automodule:: axisfuzzy.core.operation
    :members:

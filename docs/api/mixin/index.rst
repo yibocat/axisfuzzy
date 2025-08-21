@@ -1,8 +1,8 @@
 :html_theme.sidebar_secondary.remove:
 
-==============
+========================
 mixin (axisfuzzy.mixin)
-==============
+========================
 
 Introduction
 ------------
@@ -13,7 +13,7 @@ instance methods and top-level functions during library initialization, offering
 
 .. toctree::
 
-    :maxdepth: 2
+    :maxdepth: 1
     :caption: Extension Modules
 
     registry
