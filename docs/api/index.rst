@@ -4,15 +4,16 @@ API
 
 Complete AxisFuzzy API documentation and user guide.
 
-.. toctree::
-   :maxdepth: 1
-   
-   config/index
-   core/index
-   fuzzify
-   extension/index
-   mixin/index
-   random
+..  toctree::
+    :maxdepth: 1
+
+    config/index
+    core/index
+    membership/index
+    fuzzify
+    extension/index
+    mixin/index
+    random
 
 Core Component Overview
 ============
@@ -31,7 +32,7 @@ Core Component Overview
      - Fuzzification system, converting precise values into fuzzy numbers
    * - :doc:`extension/index`
      - Expand the system to add specialized functions for different types.
-   * - :doc:`mixin`
+   * - :doc:`mixin/index`
      - Mixin system provides array operations similar to NumPy
    * - :doc:`random`
      - Random Fuzzy Number Generation System
