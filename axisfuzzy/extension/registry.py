@@ -4,19 +4,63 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
+
 """
-Extension Registry for FuzzLab.
+Extension Registry for AxisFuzzy.
 
-This module defines the core registry system for managing and retrieving
-external functions (extensions) based on their `mtype` (fuzzy number type).
-It supports specialized implementations for specific `mtype`s, fallback
-to default implementations, and priority-based selection.
+This module implements the extension registry that records and resolves
+"extensions" (external functions) by fuzzy-number type (``mtype``). It is the
+book-keeping backbone of the AxisFuzzy extension system and works together with:
 
-The registry is thread-safe and serves as the central repository for all
-extension metadata and callable functions, which are registered via the
-`@extension` decorator defined in `axisfuzzy.extension.decorator.py`.
-These registered functions are later injected into `Fuzznum` and `Fuzzarray`
-classes or the `axisfuzzy` top-level namespace by `axisfuzzy.extension.injector.py`.
+- axisfuzzy.extension.__init__ (activation entrypoint, ``apply_extensions``)
+- axisfuzzy.extension.decorator (declarative registration via ``@extension``, ``@batch_extension``)
+- axisfuzzy.extension.dispatcher (runtime dispatch proxies: instance methods, properties, top-level)
+- axisfuzzy.extension.injector (binds proxies to Fuzznum/Fuzzarray classes and module namespace)
+
+For a high-level overview of the extension architecture (Registration → Dispatch → Injection),
+
+Notes
+-----
+- The registry is thread-safe and supports both specialized (mtype-specific) and
+  default implementations for the same function name.
+- Implementations can specify how they should be exposed via ``injection_type``:
+  'instance_method', 'instance_property', 'top_level_function', or 'both'.
+- Priority values are used to prevent overwriting an existing implementation with an
+  equal or lower priority.
+
+Examples
+--------
+Register a specialized instance method for 'qrofn':
+
+.. code-block:: python
+
+    from axisfuzzy.extension import extension
+    from axisfuzzy.core import Fuzznum
+
+    @extension(name='distance', mtype='qrofn', target_classes=['Fuzznum'])
+    def qrofn_distance(x: Fuzznum, y: Fuzznum, p: int = 2) -> float:
+        q = x.q
+        return (((abs(x.md**q - y.md**q))**p + (abs(x.nmd**q - y.nmd**q))**p) / 2) ** (1/p)
+
+Register a dispatched read-only property:
+
+.. code-block:: python
+
+    @extension(name='score', mtype='qrofn',
+               target_classes=['Fuzznum', 'Fuzzarray'],
+               injection_type='instance_property')
+    def qrofn_score(obj):
+        return obj.md ** obj.q - obj.nmd ** obj.q
+
+Register a default fallback exposed also as a top-level function:
+
+.. code-block:: python
+
+    @extension(name='normalize', is_default=True, target_classes=['Fuzznum'],
+               injection_type='both')
+    def default_normalize(x):
+        # generic fallback
+        return x
 """
 
 import threading
@@ -29,27 +73,37 @@ from typing import Optional, List, Literal, Dict, Tuple, Callable, Any, Union
 @dataclass
 class FunctionMetadata:
     """
-    Dataclass to store metadata for a registered extension function.
+    Metadata describing a registered extension function.
 
-    Attributes:
-        name: The name of the extension function (e.g., 'distance', '_random').
-        mtype: The specific fuzzy number type (e.g., 'qrofn', 'ivfn') this
-            implementation is for. `None` indicates a general or default
-            implementation.
-        target_classes: A list of class names (e.g., ['Fuzznum', 'Fuzzarray'])
-            that this extension is intended to be injected into as an instance method.
-        injection_type: Specifies how the function should be injected:
-            'instance_method': As a method of `target_classes`.
-            'top_level_function': As a function in the `axisfuzzy` module namespace.
-            'both': Both as an instance method and a top-level function.
-        is_default: A boolean indicating if this is a default implementation
-            for the given `name`. Default implementations are used when no
-            `mtype`-specific implementation is found.
-        priority: An integer representing the priority of this implementation.
-            Higher values indicate higher priority. Used for resolving conflicts
-            when multiple implementations exist (though current logic primarily
-            uses it for preventing lower priority re-registrations).
-        description: An optional string providing a brief description of the function.
+    Attributes
+    ----------
+    name : str
+        Logical extension name (e.g., 'distance', 'score', '_random').
+    mtype : str or None
+        Target fuzzy-number type for the specialized implementation
+        (e.g., 'qrofn'). ``None`` indicates a default (fallback) implementation.
+    target_classes : list of str
+        Class names to inject into when exposed as instance members,
+        typically a subset of ['Fuzznum', 'Fuzzarray'].
+    injection_type : {'instance_method', 'instance_property', 'top_level_function', 'both'}
+        Exposure mode:
+        - 'instance_method': dispatched bound method on target classes
+        - 'instance_property': dispatched read-only property on target classes
+        - 'top_level_function': function injected into the top-level module namespace
+        - 'both': both instance method and top-level function
+    is_default : bool, optional
+        Whether this is a default (fallback) implementation for ``name``.
+        Defaults to False.
+    priority : int, optional
+        Registration priority. Higher values take precedence when preventing
+        re-registration with lower or equal priority. Defaults to 0.
+    description : str, optional
+        Short human-readable description for documentation. Defaults to "".
+
+    Notes
+    -----
+    This metadata is consumed by the injector and dispatcher to determine
+    how and where an extension should be exposed after registration.
     """
     name: str
     mtype: Optional[str]
@@ -66,18 +120,28 @@ class FunctionMetadata:
 
 class ExtensionRegistry:
     """
-    Central registry for managing FuzzLab's external extension functions.
+    Thread-safe registry for AxisFuzzy extension functions.
 
-    This class provides mechanisms to:
-        1. Register specialized function implementations based on `mtype`.
-        2. Register and manage default function implementations.
-        3. Retrieve the most appropriate function implementation given a function name
-           and an `mtype`, with fallback to default if no specialized implementation exists.
-        4. Ensure thread-safe operations for registration and retrieval.
+    The registry stores multiple implementations per logical extension name:
+    - at most one default (fallback) implementation
+    - zero or more specialized implementations keyed by ``mtype``
 
-    It works in conjunction with `axisfuzzy.extension.decorator.py` for registration
-    and `axisfuzzy.extension.dispatcher.py` and `axisfuzzy.extension.injector.py`
-    for function dispatching and injection.
+    It provides:
+    - A decorator factory (:meth:`register`) to register implementations
+    - Lookup by (name, mtype) with default fallback (:meth:`get_function`)
+    - Introspection helpers for documentation and injection
+
+    Notes
+    -----
+    The registry does not perform injection itself. Injection happens later
+    via :mod:`axisfuzzy.extension.injector`, which reads the metadata here and
+    attaches dispatcher proxies created by :mod:`axisfuzzy.extension.dispatcher`.
+
+    See Also
+    --------
+    axisfuzzy.extension.decorator : User-facing decorators that call this registry.
+    axisfuzzy.extension.injector : Attaches proxies to classes or module.
+    axisfuzzy.extension.dispatcher : Builds dispatched proxies used at runtime.
     """
 
     def __init__(self):
@@ -108,65 +172,73 @@ class ExtensionRegistry:
                  priority: int = 0,
                  **kwargs) -> Callable:
         """
-        Decorator factory to register an external function.
+        Decorator factory to register an extension function.
 
-        This method is typically called by the `@extension` decorator
-        (from `axisfuzzy.extension.decorator.py`) to register a function
-        with the registry. It returns a decorator that, when applied to a function,
-        stores that function and its metadata.
+        This method is used by :func:`axisfuzzy.extension.decorator.extension`
+        (or :func:`axisfuzzy.extension.decorator.batch_extension`) to declare a
+        function as a dispatched extension. It records the function and its
+        :class:`FunctionMetadata` in a thread-safe manner.
 
-        Args:
-            name: The name of the extension function (e.g., 'distance', '_random').
-            mtype: The specific fuzzy number type (e.g., 'qrofn', 'ivfn') this
-                implementation is for. `None` indicates a general or default
-                implementation.
-            target_classes: A string or list of strings representing the names of
-                classes (e.g., 'Fuzznum', 'Fuzzarray') that this extension is
-                intended to be injected into as an instance method. If `None`,
-                defaults to `['Fuzznum', 'Fuzzarray']`.
-            injection_type: Specifies how the function should be injected:
-                'instance_method', 'top_level_function', or 'both'.
-            is_default: A boolean indicating if this is a default implementation
-                for the given `name`.
-            priority: An integer representing the priority of this implementation.
-                Higher values indicate higher priority. If an implementation with
-                equal or higher priority already exists, a `ValueError` is raised.
-            **kwargs: Additional keyword arguments to be stored in the metadata.
+        Parameters
+        ----------
+        name : str
+            Extension name under which the function is registered.
+        mtype : str or None, optional
+            Specialized fuzzy-number type. If ``None``, registers as default
+            implementation for ``name``.
+        target_classes : str or list of str, optional
+            Injection targets. If ``None``, defaults to ['Fuzznum', 'Fuzzarray'].
+        injection_type : Literal['instance_method', 'instance_property', 'top_level_function', 'both'], optional
+            Exposure mode (method/property/top-level/both). Default is 'both'.
+        is_default : bool, optional
+            Register as default implementation. Default is False.
+        priority : int, optional
+            Priority for conflict prevention. Existing entries with higher or
+            equal priority block re-registration. Default is 0.
+        **kwargs
+            Additional metadata stored into :class:`FunctionMetadata`.
 
-        Returns:
-            A decorator function that takes the actual implementation function
-            as an argument and registers it.
+        Returns
+        -------
+        callable
+            A decorator that takes the implementation function and registers it.
 
-        Raises:
-            ValueError: If a default implementation with higher or equal priority
-                already exists for the given `name`, or if a specialized
-                implementation for the given `name` and `mtype` with higher
-                or equal priority already exists.
+        Raises
+        ------
+        ValueError
+            If attempting to re-register a default or specialized implementation
+            when an existing one with higher or equal priority is already present.
 
-        Examples:
-            Registering a specialized 'distance' function for 'qrofn' mtype:
-            ```python
-            # In axisfuzzy/fuzzy/qrofs/_func.py
+        Examples
+        --------
+        Specialized method:
+
+        .. code-block:: python
+
             from axisfuzzy.extension import extension
             from axisfuzzy.core import Fuzznum
 
-            @extension('distance', mtype='qrofn', target_classes=['Fuzznum'])
-            def qrofn_distance(fuzz1: Fuzznum, fuzz2: Fuzznum) -> float:
-                # ... qrofn specific distance calculation ...
-                return 0.0
-            ```
+            @extension(name='distance', mtype='qrofn', target_classes=['Fuzznum'])
+            def qrofn_distance(x: Fuzznum, y: Fuzznum) -> float:
+                q = x.q
+                return ((abs(x.md**q - y.md**q)**2 + abs(x.nmd**q - y.nmd**q)**2)/2) ** 0.5
 
-            Registering a default 'distance' function:
-            ```python
-            # In a general extension module
-            from axisfuzzy.extension import extension
-            from axisfuzzy.core import Fuzznum
+        Default top-level + instance:
 
-            @extension('distance', is_default=True, target_classes=['Fuzznum'])
-            def default_distance(fuzz1: Fuzznum, fuzz2: Fuzznum) -> float:
-                # ... general distance calculation ...
-                return 0.0
-            ```
+        .. code-block:: python
+
+            @extension(name='normalize', is_default=True,
+                       target_classes=['Fuzznum'], injection_type='both')
+            def normalize_default(x): return x
+
+        Dispatched read-only property:
+
+        .. code-block:: python
+
+            @extension(name='score', mtype='qrofn',
+                       target_classes=['Fuzznum','Fuzzarray'],
+                       injection_type='instance_property')
+            def qrofn_score(obj): return obj.md**obj.q - obj.nmd**obj.q
         """
         # Normalize target_classes to always be a list of strings.
         if isinstance(target_classes, str):
@@ -232,28 +304,33 @@ class ExtensionRegistry:
 
     def get_function(self, name: str, mtype: str) -> Optional[Callable]:
         """
-        Retrieves the appropriate function implementation for a given name and mtype.
+        Retrieve a function implementation for ``(name, mtype)`` with fallback.
 
-        This method first attempts to find a specialized implementation for the
-        given `mtype`. If no such specialized implementation exists, it falls back
-        to the default implementation for the given `name`.
+        The lookup algorithm is:
+        1) Try specialized implementation registered for this ``mtype``.
+        2) If not found, return the default implementation for ``name`` (if any).
+        3) Otherwise return ``None``.
 
-        Args:
-            name: The name of the extension function (e.g., 'distance').
-            mtype: The `mtype` of the fuzzy number for which the function is needed.
-                   If `None`, only the default implementation will be considered.
+        Parameters
+        ----------
+        name : str
+            Extension name to look up.
+        mtype : str
+            Fuzzy-number type for which to retrieve the specialized implementation.
 
-        Returns:
-            The callable function implementation if found, otherwise `None`.
+        Returns
+        -------
+        callable or None
+            The resolved implementation function or ``None`` if not found.
 
-        Examples:
-            ```python
-            registry = get_registry_extension()
-            # Assuming 'qrofn_distance' was registered for mtype 'qrofn'
-            qrofn_impl = registry.get_function('distance', 'qrofn')
-            # Assuming 'default_distance' was registered as default
-            default_impl = registry.get_function('distance', 'some_other_mtype')
-            ```
+        Examples
+        --------
+        .. code-block:: python
+
+            reg = get_registry_extension()
+            fn = reg.get_function('distance', 'qrofn')  # specialized
+            if fn is None:
+                raise RuntimeError('No distance registered')
         """
         with self._lock:
             # First, try to find a specialized implementation if mtype is provided.
@@ -269,7 +346,23 @@ class ExtensionRegistry:
 
     def get_top_level_function_names(self) -> List[str]:
         """
-        Returns a list of names for all functions registered for top-level injection.
+        List function names that should be injected as top-level functions.
+
+        This scans both specialized and default registrations and collects
+        any name whose ``injection_type`` is 'top_level_function' or 'both'.
+
+        Returns
+        -------
+        list of str
+            Sorted unique function names requiring top-level injection.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            reg = get_registry_extension()
+            for fn_name in reg.get_top_level_function_names():
+                print('top-level:', fn_name)
         """
         names = set()
         for func_name, implementations in self._functions.items():
@@ -287,22 +380,29 @@ class ExtensionRegistry:
 
     def get_metadata(self, name: str, mtype: Optional[str] = None) -> Optional[FunctionMetadata]:
         """
-        Retrieves the metadata for a registered function.
+        Retrieve metadata for a registered function.
 
-        Args:
-            name: The name of the extension function.
-            mtype: The specific `mtype` for which to retrieve metadata. If `None`,
-                it attempts to retrieve metadata for the default implementation.
+        Parameters
+        ----------
+        name : str
+            Extension name to inspect.
+        mtype : str or None, optional
+            If provided, returns specialized metadata for that ``mtype``.
+            Otherwise, returns default metadata when available.
 
-        Returns:
-            The `FunctionMetadata` object if found, otherwise `None`.
+        Returns
+        -------
+        FunctionMetadata or None
+            Stored metadata object or ``None`` if not present.
 
-        Examples:
-            ```python
-            registry = get_registry_extension()
-            qrofn_meta = registry.get_metadata('distance', 'qrofn')
-            default_meta = registry.get_metadata('distance', None)
-            ```
+        Examples
+        --------
+        .. code-block:: python
+
+            reg = get_registry_extension()
+            meta = reg.get_metadata('distance', 'qrofn')
+            if meta:
+                print(meta.injection_type, meta.target_classes)
         """
         with self._lock:
             # If mtype is provided, try to get specialized metadata.
@@ -317,45 +417,54 @@ class ExtensionRegistry:
 
     def list_functions(self) -> Dict[str, Dict[str, Any]]:
         """
-        Lists all registered functions along with their implementation details.
+        List all registered names with their implementation summaries.
 
-        This method provides a structured overview of all specialized and
-        default implementations currently registered in the system.
+        The result is a structured summary that groups specialized and default
+        registrations per logical name. This is primarily intended for
+        documentation, debugging, and injection planning.
 
-        Returns:
-            A dictionary where keys are function names, and values are dictionaries
-            containing 'implementations' (for mtype-specific versions) and 'default'
-            (for the default version, if any).
+        Returns
+        -------
+        dict
+            A dictionary with the following structure:
 
-            Example structure:
-            ```json
-            {
-                "distance": {
-                    "implementations": {
-                        "qrofn": {
-                            "priority": 0,
-                            "target_classes": ["Fuzznum", "Fuzzarray"],
-                            "injection_type": "both"
-                        }
-                    },
-                    "default": {
-                        "priority": 0,
-                        "target_classes": ["Fuzznum"],
-                        "injection_type": "instance_method"
-                    }
-                },
-                "_random": {
-                    "implementations": {
-                        "qrofn": {
+            .. code-block:: xml
+
+                {
+                    "distance": {
+                        "implementations": {
+                            "qrofn": {
+                                "priority": 0,
+                                "target_classes": ["Fuzznum", "Fuzzarray"],
+                                "injection_type": "both",
+                            }
+                        },
+                        "default": {
                             "priority": 0,
                             "target_classes": ["Fuzznum"],
-                            "injection_type": "top_level_function"
-                        }
+                            "injection_type": "instance_method",
+                        },
                     },
-                    "default": null
+                    "_random": {
+                        "implementations": {
+                            "qrofn": {
+                                "priority": 0,
+                                "target_classes": ["Fuzznum"],
+                                "injection_type": "top_level_function",
+                            }
+                        },
+                        "default": None,
+                    },
                 }
-            }
-            ```
+
+        Examples
+        --------
+        .. code-block:: python
+
+            reg = get_registry_extension()
+            summary = reg.list_functions()
+            for name, info in summary.items():
+                print(name, '=>', info)
         """
         with self._lock:
             result = {}
@@ -388,10 +497,18 @@ class ExtensionRegistry:
     @staticmethod
     def _get_timestamp():
         """
-        Helper static method to get the current timestamp in ISO format.
+        Current timestamp helper (ISO 8601).
 
-        Returns:
-            A string representing the current timestamp.
+        Returns
+        -------
+        str
+            ISO formatted timestamp.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            ts = ExtensionRegistry._get_timestamp()
         """
         return datetime.datetime.now().isoformat()
 
@@ -404,19 +521,23 @@ _extension_registry_lock = threading.RLock()
 
 def get_registry_extension() -> ExtensionRegistry:
     """
-    Retrieves the global singleton instance of `ExtensionRegistry`.
+    Get the global singleton :class:`ExtensionRegistry`.
 
-    This function ensures that only one instance of the registry exists
-    across the application, providing a central point for managing extensions.
+    Implements double-checked locking to initialize the singleton in a
+    thread-safe manner on first use.
 
-    Returns:
-        The singleton `ExtensionRegistry` instance.
+    Returns
+    -------
+    ExtensionRegistry
+        The global registry instance.
 
-    Examples:
-        ```python
-        registry = get_registry_extension()
-        # Use the registry to register or retrieve functions
-        ```
+    Examples
+    --------
+    .. code-block:: python
+
+        reg = get_registry_extension()
+        # Use reg.register(...) via decorators in axisfuzzy.extension.decorator
+        # or call reg.get_function(...) during dispatch.
     """
     global _extension_registry
     # Double-checked locking for thread-safe singleton initialization.

@@ -1,7 +1,7 @@
-extension.decorator
+extension.dispatcher
 =======================
 
-.. automodule:: axisfuzzy.extension.decorator
+.. automodule:: axisfuzzy.extension.dispatcher
    :members:
    :undoc-members:
    :show-inheritance:

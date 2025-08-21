@@ -6,18 +6,74 @@
 #  Software: AxisFuzzy
 
 """
-Extension Dispatcher for FuzzLab.
+Extension Dispatcher for AxisFuzzy.
 
-This module defines the `ExtensionDispatcher` class, which is responsible for
-creating dynamic "proxy" functions. These proxy functions, when called,
-intelligently dispatch the call to the correct underlying extension
-implementation based on the `mtype` of the `Fuzznum` or `Fuzzarray` object
-involved in the operation.
+This module defines the machinery for building dynamic "proxy" callables that
+resolve and invoke the correct extension implementation at runtime based on the
+mtype of involved fuzzy objects.
 
-The dispatcher works in conjunction with `axisfuzzy.extension.registry.py`
-(to look up implementations) and `axisfuzzy.extension.injector.py` (to inject
-these proxy functions into classes or the top-level namespace).
+It works in concert with:
+
+- axisfuzzy.extension.registry: Stores registered implementations and metadata.
+- axisfuzzy.extension.injector: Attaches dispatcher-built proxies to classes or
+  the top-level namespace.
+
+Design
+------
+The dispatcher is stateless and thread-safe. It builds three kinds of proxies:
+
+- Instance method proxies (callable as ``obj.fn(...)``).
+- Instance property proxies (accessed as ``obj.prop``).
+- Top-level function proxies (callable as ``axisfuzzy.fn(obj, ...)``).
+
+Each proxy performs a registry lookup by ``(name, mtype)``, falling back to a
+default implementation when a specialized one is not available.
+
+Notes
+-----
+- Top-level proxy resolves ``mtype`` from one of:
+  1) explicit keyword argument ``mtype=...``,
+  2) the first positional argument if it is a Fuzznum/Fuzzarray instance,
+  3) the library default (from config) otherwise.
+- Instance proxies read the mtype from the bound object.
+- Error messages include available specialized mtypes and whether a default
+  implementation exists, aiding debugging.
+
+Examples
+--------
+Create and use a dispatched instance method:
+
+.. code-block:: python
+
+    from axisfuzzy.extension.dispatcher import get_extension_dispatcher
+    dispatcher = get_extension_dispatcher()
+    dist_method = dispatcher.create_instance_method('distance')
+
+    # Typically attached by the injector:
+    # Fuzznum.distance = dist_method
+    # x.distance(y) -> dispatches to ('distance', x.mtype)
+
+Create and use a top-level function:
+
+.. code-block:: python
+
+    from axisfuzzy.extension.dispatcher import get_extension_dispatcher
+    dispatcher = get_extension_dispatcher()
+    dist_func = dispatcher.create_top_level_function('distance')
+
+    # Typically attached to `axisfuzzy` module:
+    # axisfuzzy.distance(x, y) -> dispatches using x.mtype, unless mtype='...' is passed.
+
+Create and use a dispatched property:
+
+.. code-block:: python
+
+    score_prop = dispatcher.create_instance_property('score')
+    # Typically attached by injector:
+    # Fuzznum.score = score_prop
+    # x.score -> dispatches to ('score', x.mtype)
 """
+
 from typing import Callable
 
 from .registry import get_registry_extension
@@ -27,54 +83,66 @@ from ..core import Fuzznum, get_registry_fuzztype, Fuzzarray
 
 class ExtensionDispatcher:
     """
-    Manages the creation of dispatching functions for FuzzLab extensions.
+    Factory for creating dispatching proxies for AxisFuzzy extensions.
 
-    This class generates callable "proxies" that, when invoked, determine
-    the appropriate extension function to execute based on the `mtype`
-    of the fuzzy number object. It ensures that the correct specialized
-    or default implementation is called at runtime.
+    The dispatcher generates closures and property descriptors that will resolve
+    the correct extension implementation (specialized by ``mtype``) at call time.
+
+    Notes
+    -----
+    The dispatcher itself does not store function implementations; it exclusively
+    queries the global :class:`ExtensionRegistry` via :func:`get_registry_extension`.
     """
 
     def __init__(self):
         """
-        Initializes the ExtensionDispatcher.
+        Initialize the dispatcher and bind to the global registry.
 
-        It obtains a reference to the global `ExtensionRegistry` to
-        perform function lookups.
+        The dispatcher remains stateless and obtains the registry handle once.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            from axisfuzzy.extension.dispatcher import ExtensionDispatcher
+            disp = ExtensionDispatcher()
         """
         self.registry = get_registry_extension()
 
     def create_instance_method(self, func_name: str) -> Callable:
         """
-        Creates a dispatching function suitable for an instance method.
+        Create an instance method proxy for an extension.
 
-        This function returns a closure that, when bound as a method to
-        a `Fuzznum` or `Fuzzarray` instance, will extract the instance's
-        `mtype` and use it to find and call the correct registered
-        extension implementation.
+        The returned function is intended to be bound as an instance method on
+        ``Fuzznum``/``Fuzzarray``. When invoked, it reads ``obj.mtype`` and
+        resolves the implementation using the global extension registry.
 
-        Args:
-            func_name: The name of the extension function to dispatch (e.g., 'distance').
+        Parameters
+        ----------
+        func_name : str
+            Logical extension name (e.g., 'distance', 'score').
 
-        Returns:
-            A callable function (`method_dispatcher`) that acts as a proxy
-            for the actual extension implementation.
+        Returns
+        -------
+        Callable
+            A callable suitable for binding as an instance method.
 
-        Raises:
-            AttributeError: If the object on which the method is called lacks a 'mtype' attribute.
-            NotImplementedError: If no implementation for the given `func_name` and `mtype`
-                                 (or a suitable default) is found in the registry.
+        Raises
+        ------
+        AttributeError
+            If the bound object has no ``mtype`` attribute.
+        NotImplementedError
+            If the registry does not have a specialized or default implementation.
 
-        Examples:
-            ```python
-            # This method is typically called by ExtensionInjector
-            # to create methods like Fuzznum.distance.
+        Examples
+        --------
+        .. code-block:: python
+
+            from axisfuzzy.extension import get_extension_dispatcher
             dispatcher = get_extension_dispatcher()
-            distance_method = dispatcher.create_instance_method('distance')
+            Fuzznum.distance = dispatcher.create_instance_method('distance')
 
-            # Later, this 'distance_method' would be set as Fuzznum.distance
-            # fuzznum_instance.distance(other_fuzznum) would then call method_dispatcher
-            ```
+            d = x.distance(y)
         """
         def method_dispatcher(obj, *args, **kwargs):
             """
@@ -115,47 +183,53 @@ class ExtensionDispatcher:
 
     def create_top_level_function(self, func_name: str) -> Callable:
         """
-        Creates a dispatching function suitable for a top-level module function.
+        Create a top-level function proxy for an extension.
 
-        This function returns a closure that, when called as a global function
-        (e.g., `axisfuzzy.distance(...)`), will expect a `Fuzznum` or `Fuzzarray`
-        object as its first argument. It then extracts the `mtype` from this
-        object to find and call the correct registered extension implementation.
+        The returned function expects a ``Fuzznum``/``Fuzzarray`` instance as the
+        first positional argument (or an explicit ``mtype=...`` in kwargs).
+        It then resolves and invokes the implementation.
 
-        Args:
-            func_name: The name of the extension function to dispatch (e.g., 'distance').
+        Parameters
+        ----------
+        func_name : str
+            Logical extension name (e.g., 'distance', 'read_csv').
 
-        Returns:
-            A callable function (`function_dispatcher`) that acts as a proxy
-            for the actual extension implementation.
+        Returns
+        -------
+        Callable
+            A callable suitable for injection into the top-level module namespace.
 
-        Raises:
-            TypeError: If the first argument is not a `Fuzznum` or `Fuzzarray` instance.
-            AttributeError: If the first argument lacks a 'mtype' attribute.
-            NotImplementedError: If no implementation for the given `func_name` and `mtype`
-                                 (or a suitable default) is found in the registry.
+        Raises
+        ------
+        ValueError
+            If an explicit ``mtype`` is invalid (not registered).
+        NotImplementedError
+            If the registry does not have a specialized or default implementation.
 
-        Examples:
-            ```python
-            # This method is typically called by ExtensionInjector
-            # to create top-level functions like axisfuzzy.distance.
+        Notes
+        -----
+        ``mtype`` resolution order:
+        1) ``kwargs['mtype']`` if present (and removed before the final call),
+        2) ``args[0].mtype`` if the first argument is a ``Fuzznum``/``Fuzzarray``,
+        3) ``config.DEFAULT_MTYPE`` otherwise.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            from axisfuzzy.extension import get_extension_dispatcher
             dispatcher = get_extension_dispatcher()
-            distance_func = dispatcher.create_top_level_function('distance')
+            distance = dispatcher.create_top_level_function('distance')
 
-            # Later, this 'distance_func' would be set as axisfuzzy.distance
-            # axisfuzzy.distance(fuzznum_instance, other_fuzznum) would then call function_dispatcher
-            ```
+            # axisfuzzy.distance(x, y) -> dispatches using x.mtype
+            # axisfuzzy.distance(x, y, mtype='qrofn') -> forces 'qrofn'
         """
         def function_dispatcher(*args, **kwargs):
             """
-            The actual dispatching logic for top-level functions.
+            Internal dispatcher for top-level functions.
 
-            This function is dynamically attached to the axisfuzzy module namespace.
-            It expects the first argument to be a Fuzznum/Fuzzarray instance
-            to extract its mtype and find the correct extension implementation.
+            It resolves ``mtype`` and invokes the registered implementation.
             """
-            # 1. Try to get mtype from kwargs. 'pop' is used to remove it so it
-            #    doesn't get passed to the final implementation, as it's a dispatch key.
             fuzznum_registry = get_registry_fuzztype()
             config = get_config()
 
@@ -208,42 +282,43 @@ class ExtensionDispatcher:
 
     def create_instance_property(self, func_name: str) -> property:
         """
-        Creates a dispatching property suitable for an instance property.
+        Create an instance property proxy for an extension.
 
-        This function returns a property object that, when accessed on
-        a `Fuzznum` or `Fuzzarray` instance, will extract the instance's
-        `mtype` and use it to find and call the correct registered
-        extension implementation.
+        The returned property, when accessed, reads ``obj.mtype`` and resolves
+        a getter implementation from the global registry.
 
-        Args:
-            func_name: The name of the extension function to dispatch (e.g., 'score').
+        Parameters
+        ----------
+        func_name : str
+            Logical extension name for a read-only property (e.g., 'score').
 
-        Returns:
-            A property object that acts as a proxy for the actual extension implementation.
+        Returns
+        -------
+        property
+            A read-only property whose getter dispatches to the registered implementation.
 
-        Raises:
-            AttributeError: If the object lacks a 'mtype' attribute.
-            NotImplementedError: If no implementation for the given `func_name` and `mtype`
-                                 (or a suitable default) is found in the registry.
+        Raises
+        ------
+        AttributeError
+            If the bound object has no ``mtype`` attribute.
+        NotImplementedError
+            If the registry does not have a specialized or default implementation.
 
-        Examples:
-            ```python
-            # This method is typically called by ExtensionInjector
-            # to create properties like Fuzznum.score.
+        Examples
+        --------
+        .. code-block:: python
+
+            from axisfuzzy.extension import get_extension_dispatcher
             dispatcher = get_extension_dispatcher()
-            score_property = dispatcher.create_instance_property('score')
+            Fuzznum.score = dispatcher.create_instance_property('score')
 
-            # Later, this 'score_property' would be set as Fuzznum.score
-            # fuzznum_instance.score would then call the property getter
-            ```
+            s = x.score
         """
         def property_getter(obj):
             """
-            The actual dispatching logic for instance properties.
+            Internal getter for instance properties.
 
-            This function is dynamically attached to Fuzznum/Fuzzarray instances
-            as a property getter. It extracts the mtype from `obj` and uses it
-            to find the correct extension implementation.
+            It extracts ``obj.mtype`` and invokes the implementation.
             """
             mtype = getattr(obj, 'mtype', None)
             if mtype is None:
@@ -279,19 +354,18 @@ _dispatcher = ExtensionDispatcher()
 
 def get_extension_dispatcher() -> ExtensionDispatcher:
     """
-    Retrieves the global singleton instance of `ExtensionDispatcher`.
+    Get the global singleton :class:`ExtensionDispatcher`.
 
-    This function ensures that only one instance of the dispatcher exists
-    across the application, providing a central point for creating
-    dispatching proxies.
+    Returns
+    -------
+    ExtensionDispatcher
+        The global dispatcher instance.
 
-    Returns:
-        The singleton `ExtensionDispatcher` instance.
+    Examples
+    --------
+    .. code-block:: python
 
-    Examples:
-        ```python
+        from axisfuzzy.extension.dispatcher import get_extension_dispatcher
         dispatcher = get_extension_dispatcher()
-        # Use the dispatcher to create proxy functions/methods
-        ```
     """
     return _dispatcher

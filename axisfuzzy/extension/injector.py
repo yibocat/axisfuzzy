@@ -6,16 +6,44 @@
 #  Software: AxisFuzzy
 
 """
-Extension Injector for FuzzLab.
+Extension Injector for AxisFuzzy.
 
-This module defines the `ExtensionInjector` class, which is responsible for
-dynamically injecting registered extension functions into `Fuzznum`, `Fuzzarray`
-classes, and the `axisfuzzy` top-level namespace.
+This module is responsible for "activating" registered extensions: it reads
+the metadata from the ExtensionRegistry and creates appropriate dispatching
+proxies using the ExtensionDispatcher, then attaches them to:
 
-It acts as the "activator" of the extension system, taking the metadata from
-`axisfuzzy.extension.registry.py` and the proxy functions from
-`axisfuzzy.extension.dispatcher.py` to make extensions callable as methods
-or functions.
+- Target classes as instance methods or properties (e.g., Fuzznum, Fuzzarray)
+- The top-level module namespace as functions (e.g., axisfuzzy.distance)
+
+Architecture
+------------
+- Registration: ``@extension`` and ``@batch_extension`` capture functions and
+  metadata into the global registry.
+- Dispatch: ``ExtensionDispatcher`` builds proxies that pick the right function
+  at call-time based on ``mtype``.
+- Injection: ``ExtensionInjector`` uses registry summaries to decide where
+  and how to attach proxies. Typically triggered once during library init
+  (e.g., by :func:`axisfuzzy.extension.apply_extensions`).
+
+Notes
+-----
+- Injection avoids overwriting: attributes are only added if not already present
+  on target classes or the module namespace.
+- A single proxy per logical name is created and shared across targets.
+
+Examples
+--------
+Inject all registered extensions during initialization:
+
+.. code-block:: python
+
+    from axisfuzzy.extension import get_extension_injector
+    from axisfuzzy.core import Fuzznum, Fuzzarray
+    import axisfuzzy
+
+    injector = get_extension_injector()
+    class_map = {'Fuzznum': Fuzznum, 'Fuzzarray': Fuzzarray}
+    injector.inject_all(class_map, axisfuzzy.__dict__)
 """
 
 from typing import Dict, Type, Any
@@ -26,53 +54,64 @@ from .dispatcher import get_extension_dispatcher
 
 class ExtensionInjector:
     """
-    Manages the dynamic injection of FuzzLab extension functions.
+    Injector that binds dispatched proxies to classes and module namespace.
 
-    The injector reads registered function metadata from the `ExtensionRegistry`
-    and uses the `ExtensionDispatcher` to create callable proxies. These proxies
-    are then attached to the specified target classes (like `Fuzznum` and `Fuzzarray`)
-    or the `axisfuzzy` module's global namespace, making the extensions
-    seamlessly available to users.
+    The injector composes the registry (for metadata) and the dispatcher
+    (for proxy creation) to make extensions available to users.
+
+    See Also
+    --------
+    axisfuzzy.extension.registry : Stores registered functions and metadata.
+    axisfuzzy.extension.dispatcher : Builds call-time dispatch proxies.
     """
 
     def __init__(self):
         """
-        Initializes the ExtensionInjector.
+        Initialize the injector and bind to the global registry and dispatcher.
 
-        It obtains references to the global `ExtensionRegistry` and
-        `ExtensionDispatcher` instances.
+        Examples
+        --------
+        .. code-block:: python
+
+            from axisfuzzy.extension import ExtensionInjector
+            inj = ExtensionInjector()
         """
         self.registry = get_registry_extension()
         self.dispatcher = get_extension_dispatcher()
 
     def inject_all(self, class_map: Dict[str, Type], module_namespace: Dict[str, Any]):
         """
-        Injects all registered extension functions into their respective targets.
+        Inject all registered extension functions based on registry metadata.
 
-        This is the main entry point for the injection process, typically called
-        during FuzzLab's initialization (e.g., by `apply_extensions()`).
-        It iterates through all functions known to the `ExtensionRegistry`
-        and delegates their injection to `_inject_function`.
+        This scans the registry summary (``list_functions``) to:
+        - Determine union of target classes declaring interest for a function.
+        - Determine union of injection types ('instance_method', 'instance_property',
+          'top_level_function', 'both').
+        - Create at most one proxy per function name and attach to requested targets.
 
-        Args:
-            class_map: A dictionary mapping class names (strings) to their
-                actual class objects (e.g., `{'Fuzznum': Fuzznum, 'Fuzzarray': Fuzzarray}`).
-                This is used to resolve target classes for method injection.
-            module_namespace: The dictionary representing the target module's
-                namespace (e.g., `axisfuzzy.__dict__`) where top-level functions
-                should be injected.
+        Parameters
+        ----------
+        class_map : dict
+            Maps class names to class objects (e.g., {'Fuzznum': Fuzznum, 'Fuzzarray': Fuzzarray}).
+        module_namespace : dict
+            Target module ``__dict__`` to inject top-level functions.
 
-        Examples:
-            ```python
-            # This is typically called internally by axisfuzzy.extension.apply_extensions()
+        Notes
+        -----
+        - Safe injection: existing attributes are not overwritten.
+        - Idempotent in practice: repeated calls do not duplicate attributes,
+          as existence checks prevent redefinition.
+
+        Examples
+        --------
+        .. code-block:: python
+
             from axisfuzzy.core import Fuzznum, Fuzzarray
             import axisfuzzy
+            from axisfuzzy.extension import get_extension_injector
 
-            injector = get_extension_injector()
-            class_map = {'Fuzznum': Fuzznum, 'Fuzzarray': Fuzzarray}
-            module_namespace = axisfuzzy.__dict__
-            injector.inject_all(class_map, module_namespace)
-            ```
+            inj = get_extension_injector()
+            inj.inject_all({'Fuzznum': Fuzznum, 'Fuzzarray': Fuzzarray}, axisfuzzy.__dict__)
         """
         functions = self.registry.list_functions()
 
@@ -85,21 +124,33 @@ class ExtensionInjector:
                          class_map: Dict[str, Type],
                          module_namespace: Dict[str, Any]):
         """
-        Injects a single extension function based on its metadata.
+        Inject a single logical function according to aggregated metadata.
 
-        This method determines where and how a specific function should be
-        injected (as an instance method, a top-level function, or both)
-        by analyzing its registered metadata. It then uses the `ExtensionDispatcher`
-        to create the necessary proxy functions and attaches them to the
-        appropriate classes or module namespace.
+        The injector collects all declared target classes and injection types
+        across specialized and default registrations, then attaches a single
+        proxy per exposure kind.
 
-        Args:
-            func_name: The name of the function to inject.
-            func_info: A dictionary containing all metadata for the function,
-                as returned by `ExtensionRegistry.list_functions()`. This includes
-                information about specialized and default implementations.
-            class_map: The mapping of class names to class objects.
-            module_namespace: The target module's namespace dictionary.
+        Parameters
+        ----------
+        func_name : str
+            Logical extension name.
+        func_info : dict
+            Metadata summary as returned by :meth:`ExtensionRegistry.list_functions`.
+        class_map : dict
+            Mapping from class names to class objects.
+        module_namespace : dict
+            Target module namespace for top-level functions.
+
+        Notes
+        -----
+        - Instance method/property: bound to each declared class if not already present.
+        - Top-level functions: set on the module namespace if not already present.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            inj._inject_function('distance', functions['distance'], class_map, axisfuzzy.__dict__)
         """
         # Collect all unique target classes and injection types declared for this function.
         target_classes = set()
@@ -155,19 +206,18 @@ _injector = ExtensionInjector()
 
 def get_extension_injector() -> ExtensionInjector:
     """
-    Retrieves the global singleton instance of `ExtensionInjector`.
+    Get the global singleton :class:`ExtensionInjector`.
 
-    This function ensures that only one instance of the injector exists
-    across the application, providing a central point for managing
-    the injection of extensions.
+    Returns
+    -------
+    ExtensionInjector
+        The global injector instance.
 
-    Returns:
-        The singleton `ExtensionInjector` instance.
+    Examples
+    --------
+    .. code-block:: python
 
-    Examples:
-        ```python
+        from axisfuzzy.extension import get_extension_injector
         injector = get_extension_injector()
-        # Use the injector to trigger the injection process
-        ```
     """
     return _injector

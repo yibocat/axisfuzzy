@@ -1,7 +1,7 @@
-extension.decorator
+extension.registry
 =======================
 
-.. automodule:: axisfuzzy.extension.decorator
+.. automodule:: axisfuzzy.extension.registry
    :members:
    :undoc-members:
    :show-inheritance:
