@@ -33,7 +33,7 @@ Examples
 
     # Create a default fuzzy number (mtype and q from config)
     a = fuzznum()
-    b = fuzznum(mtype='qrofn', q=3, md=0.7, nmd=0.2)
+    b = fuzznum((0.7,0.2))
 
     # Access attributes
     print(a.mtype, a.q)
@@ -97,10 +97,14 @@ class Fuzznum:
     --------
     .. code-block:: python
 
-        from axisfuzzy.core.fuzznums import fuzznum
+        from axisfuzzy.core.fuzznums import fuzznum, Fuzznum
+
+        # Create a QROFN Fuzzy number through a class method
+        a = Fuzznum('qrofn').create(md=0.5, nmd=0.2)
+        print(a.md, a.nmd)
 
         # Create a QROFN fuzzy number
-        a = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        a = fuzznum((0.6,0.3))
         print(a.md, a.nmd)
 
         # Copy and modify
@@ -525,7 +529,8 @@ class Fuzznum:
 
             for attr in required_attrs:
                 if not hasattr(self, attr):
-                    validation_result['issues'].append(f"The initialized object is missing required attributes.: {attr}")
+                    validation_result['issues'].append(
+                        f"The initialized object is missing required attributes.: {attr}")
                     validation_result['is_valid'] = False
 
             try:
@@ -804,7 +809,8 @@ class Fuzznum:
 
 # ================================= 工厂函数 =================================
 
-def fuzznum(mtype: Optional[str] = None,
+def fuzznum(values: tuple = None,
+            mtype: Optional[str] = None,
             q: Optional[int] = None,
             **kwargs: Any) -> Fuzznum:
     """
@@ -812,11 +818,14 @@ def fuzznum(mtype: Optional[str] = None,
 
     Parameters
     ----------
+    values : tuple
+        Membership degree value tuple of fuzzy numbers, adapted to different mtypes.
+        If none, convert to settings based on kwargs.
     mtype : str, optional
         The type of fuzzy number strategy to use. If omitted, uses the default from config.
     q : int, optional
-        The discretization level for the fuzzy number. If omitted, uses the default from config.
-    **kwargs : dict
+        The q-rung value for the fuzzy number. If omitted, uses the default from config.
+    kwargs : dict
         Additional parameters specific to the chosen fuzzy number strategy.
 
     Returns
@@ -826,15 +835,34 @@ def fuzznum(mtype: Optional[str] = None,
 
     Examples
     --------
+
     .. code-block:: python
 
-        a = fuzznum(mtype='qrofn', q=3, md=0.7, nmd=0.2)
-        print(a)
+        a = fuzznum((0.5,0.3), mtype='qrofn')
+        print(a)    # <0.5,0.3>
+
+    .. code-block:: python
+
+        a = fuzznum(mtype='qrofn', md=0.7, nmd=0.2)
+        print(a)    # <0.7,0.2>
     """
     mtype = mtype or get_config().DEFAULT_MTYPE
     q = q or get_config().DEFAULT_Q
 
-    instance = Fuzznum(mtype, q)
-    if kwargs:
-        return instance.create(**kwargs)
-    return instance
+    if values is not None:
+        from .registry import get_registry_fuzztype
+        registry = get_registry_fuzztype()
+        if mtype not in registry.strategies:
+            raise ValueError(f"Unsupported mtype '{mtype}'. Available mtypes: {', '.join(registry.strategies.keys())}")
+        strategy_cls = registry.strategies[mtype]
+        attr_names = [a for a in strategy_cls().get_declared_attributes() if a != 'q' and a != 'mtype']
+        attr_names = attr_names[:len(values)]
+        tuple_kwargs = dict(zip(attr_names, values))
+        tuple_kwargs.update(kwargs)
+        instance = Fuzznum(mtype, q)
+        return instance.create(**tuple_kwargs)
+    else:
+        instance = Fuzznum(mtype, q)
+        if kwargs:
+            return instance.create(**kwargs)
+        return instance

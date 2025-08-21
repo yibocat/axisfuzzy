@@ -135,7 +135,7 @@ class FuzznumStrategy(ABC):
     mtype: str = get_config().DEFAULT_MTYPE
     q: Optional[int] = get_config().DEFAULT_Q
 
-    _declared_attributes: Set[str] = set()
+    _declared_attributes: List[str] = []
     _op_cache: LruCache = LruCache()
     _attribute_validators: Dict[str, Callable[[Any], bool]] = {}
     _change_callbacks: Dict[str, Callable[[str, Any, Any], None]] = {}
@@ -208,26 +208,38 @@ class FuzznumStrategy(ABC):
         """Hook for subclasses to declare their own attributes."""
         super().__init_subclass__(**kwargs)
 
-        # 1. Inherit declared attributes from parent strategies
-        base_attrs = set()
+        # 1. Inherit declared attributes from parent strategies, preserving order.
+        parent_attrs = []
         for base in cls.__bases__:
-            if issubclass(base, FuzznumStrategy):
-                base_attrs.update(getattr(base, '_declared_attributes', set()))
+            if hasattr(base, '_declared_attributes'):
+                for attr in base._declared_attributes:
+                    if attr not in parent_attrs:
+                        parent_attrs.append(attr)
 
-        # 2. Collect attributes defined in the current class
-        current_class_attrs = set()
-        # 2a. Add attributes from type annotations (for instance state)
-        current_class_attrs.update(
-            attr for attr in cls.__annotations__ if not attr.startswith('_')
-        )
-        # 2b. Add attributes from class-level assignments (like mtype, q)
-        # We inspect __dict__ to only get attributes from the current class
-        for attr_name, attr_value in cls.__dict__.items():
-            if not attr_name.startswith('_') and not callable(attr_value):
-                current_class_attrs.add(attr_name)
+        # 2. Collect attributes defined in the current class, preserving order.
+        # Since Python 3.6, both __annotations__ and __dict__ preserve insertion order.
+        current_class_attrs = []
 
-        # 3. Combine inherited and current class attributes
-        cls._declared_attributes = base_attrs.union(current_class_attrs)
+        # 2a. Add attributes from type annotations
+        if hasattr(cls, '__annotations__'):
+            for attr in cls.__annotations__:
+                if not attr.startswith('_') and attr not in current_class_attrs:
+                    current_class_attrs.append(attr)
+
+        # 2b. Add attributes from class-level assignments
+        for attr_name in cls.__dict__:
+            if not attr_name.startswith('_') and not callable(getattr(cls, attr_name)):
+                if attr_name not in current_class_attrs:
+                    current_class_attrs.append(attr_name)
+
+        # 3. Combine parent and current class attributes, maintaining order.
+        # The final list starts with parent attributes, followed by new ones.
+        combined_attrs = list(parent_attrs)
+        for attr in current_class_attrs:
+            if attr not in combined_attrs:
+                combined_attrs.append(attr)
+
+        cls._declared_attributes = combined_attrs
 
         # 4. Initialize other necessary structures for the new subclass
         cls._attribute_validators = {}
@@ -273,7 +285,7 @@ class FuzznumStrategy(ABC):
         if name not in self._declared_attributes and name != 'q':
             raise AttributeError(
                 f"Attribute '{name}' not declared in {self.__class__.__name__}. "
-                f"Declared attributes: {sorted(self._declared_attributes)}"
+                f"Declared attributes: {self._declared_attributes}"
             )
 
         # Get the old value of the attribute before it's changed.
@@ -653,25 +665,25 @@ class FuzznumStrategy(ABC):
 
         return result
 
-    def get_declared_attributes(self) -> Set[str]:
+    def get_declared_attributes(self) -> List[str]:
         """
-        Retrieves a copy of the set of declared attribute names for this strategy.
+        Retrieves a copy of the list of declared attribute names for this strategy.
 
         This method provides introspection capabilities, allowing external code
         to discover which attributes are explicitly defined as data members
-        of a `FuzznumStrategy` instance or its subclasses.
+        of a `FuzznumStrategy` instance or its subclasses, in their definition order.
 
         Returns
         -------
-        set
-            Copy of the declared attributes set.
+        List[str]
+            Copy of the declared attributes list, preserving definition order.
 
         Examples
         --------
         .. code-block:: python
 
             attrs = instance.get_declared_attributes()
-            # e.g. {'md', 'nmd', 'q'}
+            # e.g. ['md', 'nmd']
         """
         return self._declared_attributes.copy()
 

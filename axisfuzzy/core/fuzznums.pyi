@@ -6,7 +6,7 @@
 #  Software: AxisFuzzy
 
 
-from typing import Any, Optional, Dict, Callable, Set, List, Tuple, Iterator, Union
+from typing import Any, Optional, Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -111,7 +111,8 @@ class Fuzznum:
     def __bool__(self) -> bool: ...
     def __format__(self, format_spec: str) -> str: ...
 
-def fuzznum(mtype: Optional[str] = None,
+def fuzznum(values: tuple = None,
+            mtype: Optional[str] = None,
             q: Optional[int] = None,
             **kwargs: Any) -> Fuzznum: ...
 
