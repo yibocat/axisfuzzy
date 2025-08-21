@@ -4,6 +4,69 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
+
+"""
+AxisFuzzy Mixin System Initialization Module.
+
+This module serves as the entry point for the AxisFuzzy mixin system, which provides
+mtype-agnostic structural operations for :class:`Fuzznum` and :class:`Fuzzarray`
+classes. It handles the registration import, dynamic injection, and initialization
+of all mixin functions.
+
+The mixin system enables NumPy-like operations such as ``reshape``, ``flatten``,
+``transpose``, and ``concatenate`` that work uniformly across all fuzzy number types
+without requiring mtype-specific dispatch logic.
+
+Key Components
+--------------
+- **Registration Import**: Automatically imports :mod:`axisfuzzy.mixin.register` to
+  trigger all ``@register_mixin`` decorators during module loading.
+- **Dynamic Injection**: Provides :func:`apply_mixins` to inject registered functions
+  into target classes and the module namespace.
+- **Initialization Control**: Maintains global state to ensure injection happens only once.
+
+Architecture
+------------
+The mixin system follows a three-phase lifecycle:
+
+1. **Registration Phase**: Functions are registered via ``@register_mixin`` decorators
+   when :mod:`axisfuzzy.mixin.register` is imported.
+
+2. **Storage Phase**: The :class:`MixinFunctionRegistry` stores all registered
+   functions and their metadata.
+
+3. **Injection Phase**: :func:`apply_mixins` dynamically attaches registered functions
+   to :class:`Fuzznum`/:class:`Fuzzarray` classes and the top-level namespace.
+
+Usage
+-----
+The mixin system is typically activated during library initialization:
+
+.. code-block:: python
+
+    from axisfuzzy.mixin import apply_mixins
+
+    # Inject all registered mixin functions
+    apply_mixins()
+
+    # Now functions are available:
+    # arr.reshape(2, 3)  # instance method
+    # axisfuzzy.reshape(arr, 2, 3)  # top-level function
+
+Notes
+-----
+- Injection is idempotent: multiple calls to :func:`apply_mixins` are safe.
+- Functions are injected into the main :mod:`axisfuzzy` namespace by default.
+- Registration happens automatically when this module is imported.
+- Failed injections generate warnings but don't raise exceptions.
+
+See Also
+--------
+axisfuzzy.mixin.registry : Core registry and injection infrastructure.
+axisfuzzy.mixin.register : Registration declarations for standard operations.
+axisfuzzy.mixin.factory : Implementation layer for mixin operations.
+"""
+
 import warnings
 from typing import Dict, Any
 
@@ -11,8 +74,8 @@ from typing import Dict, Any
 from .registry import get_registry_mixin
 from ..core import Fuzznum, Fuzzarray
 
-# 关键修复：导入 register 模块以触发所有 @register 装饰器的执行。
-# 这个导入本身没有用到任何变量，但它的副作用是填充了 mixin 注册表。
+# Critical fix: Import the register module to trigger execution of all @register decorators.
+# This import itself doesn't use any variables, but its side effect is to populate the mixin registry.
 from . import register
 
 _applied = False
@@ -20,10 +83,41 @@ _applied = False
 
 def _apply_functions(target_module_globals: Dict[str, Any] | None = None) -> bool:
     """
-    将注册的功能动态注入到目标模块的命名空间以及 Fuzznum/Fuzzarray 类中。
+    Dynamically inject registered functions into target module namespace and Fuzznum/Fuzzarray classes.
 
-    如果 target_module_globals 为 None，则默认注入到 axisfuzzy 顶级模块（axisfuzzy.__dict__）。
-    返回 True 表示注入成功或已应用；False 表示注入失败。
+    This function performs the final injection phase of the mixin system, attaching
+    all registered functions to their specified targets. It handles both instance
+    method injection (on classes) and top-level function injection (in module namespace).
+
+    Parameters
+    ----------
+    target_module_globals : dict or None, optional
+        Target module's global namespace for top-level function injection.
+        If None, defaults to :mod:`axisfuzzy` package globals.
+
+    Returns
+    -------
+    bool
+        True if injection succeeds or has already been applied; False if injection fails.
+
+    Notes
+    -----
+    - Injection is idempotent: subsequent calls return True immediately.
+    - Failures are handled gracefully with warnings rather than exceptions.
+    - Falls back to local module globals if main package import fails.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        from axisfuzzy.mixin import _apply_functions
+
+        # Inject into axisfuzzy package (default)
+        success = _apply_functions()
+
+        # Inject into custom namespace
+        my_globals = {}
+        success = _apply_functions(my_globals)
     """
     global _applied
     if _applied:
@@ -41,8 +135,7 @@ def _apply_functions(target_module_globals: Dict[str, Any] | None = None) -> boo
             import axisfuzzy
             target_module_globals = axisfuzzy.__dict__
         except Exception as e:
-
-            # 这里可以添加日志记录或其他处理方式
+            # Log or handle the exception as needed
             # _logger.exception("Failed to import axisfuzzy for mixin top-level injection: %s", e)
 
             warnings.warn(f"Failed to import axisfuzzy for mixin top-level injection: {e}")
@@ -54,14 +147,14 @@ def _apply_functions(target_module_globals: Dict[str, Any] | None = None) -> boo
         _applied = True
         return True
     except Exception as e:
-        # 这里可以添加日志记录或其他处理方式
+        # Log or handle the exception as needed
         # _logger.exception("Failed to apply mixin functions: %s", e)
 
         warnings.warn(f"Failed to injection mixin functions: {e}")
         return False
 
 
-# 自动注入（保留以兼容现有行为），但经过幂等与异常保护
+# Automatic injection (preserved for backward compatibility), with idempotent and exception protection
 # _apply_functions()
 
 apply_mixins = _apply_functions
