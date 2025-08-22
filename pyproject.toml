@@ -9,4 +9,12 @@ dependencies = [
     "matplotlib>=3.10.5",
     "pytest>=8.4.1",
     "numba>=0.61.2",
+    "pandas>=2.3.2",
+    "pandas-stubs==2.3.0.250703",
+    "myst-parser>=4.0.1",
+    "sphinx-copybutton>=0.5.2",
+    "sphinx-design>=0.6.1",
+    "sphinx-autodoc-typehints>=3.2.0",
+    "sphinx-tabs>=3.4.7",
+    "pydata-sphinx-theme>=0.16.1",
 ]
