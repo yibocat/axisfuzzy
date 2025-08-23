@@ -13,12 +13,44 @@ This module provides the core components for building and running declarative,
 graph-based analysis pipelines using Analysis Components.
 - ``FuzzyPipeline``: The main class for constructing a computational graph (DAG).
 - ``StepOutput``: A symbolic object representing the future output of a pipeline step.
+- ``ExecutionState``: An immutable object representing the pipeline's state at a point in execution.
+- ``FuzzyPipelineIterator``: An iterator for simple, step-by-step observation of pipeline execution.
 """
+import time
 import uuid
 from collections import deque
 from typing import List, Dict, Any, Tuple, Union, Optional, Callable
 
+# --- Dependency Check ---
+try:
+    import networkx as nx
+    _NX_AVAILABLE = True
+except ImportError:
+    _NX_AVAILABLE = False
+
+# Graphviz rendering engine
+try:
+    import pydot
+    _PYDOT_AVAILABLE = True
+except ImportError:
+    _PYDOT_AVAILABLE = False
+
+# Matplotlib rendering engine
+try:
+    import matplotlib.pyplot as plt
+    _MPL_AVAILABLE = True
+except ImportError:
+    _MPL_AVAILABLE = False
+
+# IPython is used to display in the Notebook
+try:
+    from IPython.display import Image
+    _IPYTHON_AVAILABLE = True
+except ImportError:
+    _IPYTHON_AVAILABLE = False
+
 from .contracts import validate as validate_contract
+from .components.base import AnalysisComponent
 
 
 class StepOutput:
@@ -41,6 +73,7 @@ class StepOutput:
     pipeline : 'FuzzyPipeline'
         A reference to the parent pipeline instance that owns this step.
     """
+
     def __init__(self, step_id: str, output_name: str, pipeline: 'FuzzyPipeline'):
         self.step_id = step_id
         self.output_name = output_name
@@ -55,14 +88,202 @@ class StepOutput:
     # def then(...) -> ...
 
 
-class FuzzyPipeline:
+class ExecutionState:
+    """
+    Represents an immutable state of a pipeline's execution at a specific point.
+
+    This object encapsulates the results of all completed steps and provides
+    a method to execute the next step in the pipeline, returning a new
+    ExecutionState. This enables a functional, chainable approach to
+    step-by-step execution.
+
+    Instances of this class are intended to be created by `FuzzyPipeline.start_execution()`.
+
+    Attributes
+    ----------
+    pipeline : FuzzyPipeline
+        The pipeline this state belongs to.
+    step_results : Dict[str, Any]
+        A dictionary mapping step IDs to their computed results.
+    latest_step_id : Optional[str]
+        The ID of the most recently executed step. None for the initial state.
+    execution_order : List[str]
+        The pre-computed list of step IDs to be executed.
+    current_index : int
+        An index pointing to the next step to be executed in `execution_order`.
+    """
+
+    def __init__(self,
+                 pipeline: 'FuzzyPipeline',
+                 step_results: Dict[str, Any],
+                 execution_order: List[str],
+                 current_index: int,
+                 latest_step_id: Optional[str] = None):
+
+        self.pipeline = pipeline
+        self.step_results = dict(step_results)  # Create a copy to ensure immutability
+        self.execution_order = execution_order
+        self.current_index = current_index
+        self.latest_step_id = latest_step_id
+
+    @property
+    def latest_result(self) -> Any:
+        """The result of the most recently executed step."""
+        if self.latest_step_id is None:
+            return None
+        return self.step_results.get(self.latest_step_id)
+
+    def is_complete(self) -> bool:
+        """Check if the pipeline execution is complete."""
+        return self.current_index >= len(self.execution_order)
+
+    def run_next(self) -> 'ExecutionState':
+        """
+        Executes the next step in the pipeline and returns a new ExecutionState.
+
+        Returns
+        -------
+        ExecutionState
+            A new state object representing the pipeline after the next step
+            has been executed.
+
+        Raises
+        ------
+        StopIteration
+            If there are no more steps to execute.
+        """
+        if self.is_complete():
+            raise StopIteration("Pipeline execution is already complete.")
+
+        next_step_id = self.execution_order[self.current_index]
+        step_info = self.pipeline.get_step_info(next_step_id)
+
+        # Execute the step
+        resolved_inputs = self.pipeline._resolve_step_inputs(step_info, self.step_results)
+        tool_fn = step_info['callable']
+        result = tool_fn(**resolved_inputs)
+
+        # Create a new results dictionary for the next state
+        new_step_results = self.step_results.copy()
+        new_step_results[next_step_id] = result
+
+        # Return a new ExecutionState object
+        return ExecutionState(
+            pipeline=self.pipeline,
+            step_results=new_step_results,
+            execution_order=self.execution_order,
+            current_index=self.current_index + 1,
+            latest_step_id=next_step_id
+        )
+
+    def run_all(self) -> 'ExecutionState':
+        """
+        Executes all remaining steps in the pipeline.
+
+        Returns
+        -------
+        ExecutionState
+            The final state of the pipeline after all steps are executed.
+        """
+        current_state = self
+        while not current_state.is_complete():
+            current_state = current_state.run_next()
+        return current_state
+
+    def __repr__(self) -> str:
+        status = "Complete" if self.is_complete() else f"Next step {self.current_index + 1}/{len(self.execution_order)}"
+        latest_step_name = self.pipeline.get_step_info(self.latest_step_id)[
+            'display_name'] if self.latest_step_id else 'Initial'
+        return f"<ExecutionState ({status}), latest_step_completed='{latest_step_name}'>"
+
+
+class FuzzyPipelineIterator:
+    """
+    An iterator for step-by-step execution of a FuzzyPipeline.
+
+    This iterator allows users to execute a pipeline one step at a time for
+    observation. It is a convenient wrapper around the more powerful
+    `ExecutionState` object.
+
+    Parameters
+    ----------
+    pipeline : FuzzyPipeline
+        The pipeline to execute step by step.
+    initial_data : Union[Dict[str, Any], Any]
+        The initial data for the pipeline, in the same format as expected
+        by `FuzzyPipeline.run()`.
+    """
+
+    def __init__(self,
+                 pipeline: 'FuzzyPipeline',
+                 initial_data: Union[Dict[str, Any], Any]):
+        self.current_state = pipeline.start_execution(initial_data)
+        self.total_steps = len(self.current_state.execution_order)
+
+    def __iter__(self):
+        """Return the iterator object itself."""
+        return self
+
+    def __next__(self) -> Dict[str, Any]:
+        """
+        Execute the next step in the pipeline.
+
+        Returns
+        -------
+        dict[str, Any]
+            A dictionary containing information about the executed step:
+            - 'step_id': The unique identifier of the step
+            - 'step_name': The display name of the step
+            - 'step_index': The current step index (0-based)
+            - 'total_steps': Total number of executable steps
+            - 'result': The output of the step
+            - 'execution_time': Time taken to execute this step (in seconds)
+
+        Raises
+        ------
+        StopIteration
+            When all steps have been executed.
+        """
+        if self.current_state.is_complete():
+            raise StopIteration
+
+        start_time = time.perf_counter()
+        # Delegate execution to the current state object
+        next_state = self.current_state.run_next()
+        end_time = time.perf_counter()
+
+        # Update the iterator's internal state
+        self.current_state = next_state
+
+        # Build and return the report dictionary
+        step_info = self.current_state.pipeline.get_step_info(self.current_state.latest_step_id)
+        return {
+            'step_id': self.current_state.latest_step_id,
+            'step_name': step_info['display_name'],
+            'step_index': self.current_state.current_index - 1,
+            'total_steps': self.total_steps,
+            'result': self.current_state.latest_result,
+            'execution_time': end_time - start_time
+        }
+
+    def get_current_state_dict(self) -> Dict[str, Any]:
+        """Returns a copy of the current step results dictionary."""
+        return self.current_state.step_results.copy()
+
+    def is_complete(self) -> bool:
+        """Checks if the pipeline execution is complete."""
+        return self.current_state.is_complete()
+
+
+class FuzzyPipeline(AnalysisComponent):
     """
     A builder for creating and executing a Directed Acyclic Graph (DAG) of
     fuzzy analysis operations using Analysis Components.
 
     This class provides a Fluent API for defining complex, non-linear workflows
     by linking component methods together. The graph is only executed when the
-    ``run`` method is called.
+    ``run`` method is called. As of Phase 3.B, it also supports nesting, allowing
+    a `FuzzyPipeline` instance to be used as a step within another pipeline.
 
     Examples
     --------
@@ -86,7 +307,19 @@ class FuzzyPipeline:
         # 4. The pipeline is now a defined graph, ready to be run.
         #    df.fuzzy.run(p)
     """
-    def __init__(self):
+
+    def __init__(self, name: Optional[str] = None):
+        """
+        Initializes a new FuzzyPipeline.
+
+        Parameters
+        ----------
+        name : str, optional
+            An optional name for the pipeline, used for display purposes when nested.
+            If not provided, a default name will be generated.
+        """
+        self.name = name or f"FuzzyPipeline_{uuid.uuid4().hex[:8]}"
+
         # _steps: 这是一个字典，存储了管道中所有步骤（节点）的定义。
         # 键是每个步骤的唯一ID (step_id)，值是一个字典，包含了该步骤的所有元数据和依赖信息。
         # 它是 DAG 在内存中的核心表示。
@@ -98,6 +331,21 @@ class FuzzyPipeline:
         # 这些是 DAG 的起始点，其真实数据由 run 方法的 initial_data 参数提供。
         # 示例: {'init_data': 'input_id_xyz'}
         self._input_nodes: Dict[str, str] = {}
+
+    @property
+    def steps(self) -> List[Dict[str, Any]]:
+        """Returns a list of all defined steps in the pipeline."""
+        return list(self._steps.values())
+
+    @property
+    def input_nodes(self) -> Dict[str, str]:
+        """Returns a dictionary of the pipeline's input nodes."""
+        return self._input_nodes.copy()
+
+    def __repr__(self) -> str:
+        num_inputs = len(self._input_nodes)
+        num_tasks = len(self._steps) - num_inputs
+        return f"<{self.name} with {num_inputs} inputs and {num_tasks} tasks>"
 
     def input(self,
               name: Optional[str] = None,
@@ -136,7 +384,7 @@ class FuzzyPipeline:
             self._steps[step_id] = {
                 "id": step_id,
                 "display_name": f"input.{name}",
-                "callable": None,               # Input nodes have no callable
+                "callable": None,  # Input nodes have no callable
                 "outputs": {"output": contract}
             }
         step_id = self._input_nodes[name]
@@ -146,29 +394,81 @@ class FuzzyPipeline:
         """
         Adds a new step to the pipeline using a callable component method.
 
-        This is now the ONLY way to add a computational step to the pipeline.
-        The provided callable must be a method decorated with @contract.
+        This method is the primary way to build the computation graph. It can accept:
+        1. A callable method from an `AnalysisComponent` instance, decorated with `@contract`.
+        2. Another `FuzzyPipeline` instance, enabling nested pipelines.
+
+        Parameters
+        ----------
+        callable_tool : Callable or FuzzyPipeline
+            The computational unit to add. Can be a decorated method or a sub-pipeline.
+        **kwargs :
+            The inputs for the step, mapping parameter names to `StepOutput` objects
+            from previous steps.
+
+        Returns
+        -------
+        StepOutput or dict[str, StepOutput]
+            Symbolic output(s) of the newly added step.
         """
+        if isinstance(callable_tool, FuzzyPipeline):
+            return self._add_pipeline_step(pipeline_tool=callable_tool, **kwargs)
+
         if not callable(callable_tool) or not hasattr(callable_tool, '_is_contract_method'):
             raise TypeError(
                 "The object passed to `add()` must be a callable method "
-                "decorated with @contract."
+                "decorated with @contract, or another FuzzyPipeline instance."
             )
         return self._add_step(callable_tool=callable_tool, **kwargs)
 
+    def _add_pipeline_step(self,
+                           pipeline_tool: 'FuzzyPipeline',
+                           **kwargs) -> Union[StepOutput, Dict[str, StepOutput]]:
+        """
+        Internal method to add a nested FuzzyPipeline as a single step.
+        """
+        # --- 1. Get contracts from the sub-pipeline ---
+        expected_inputs_contracts = pipeline_tool.get_input_contracts()
+        outputs_meta = pipeline_tool.get_output_contracts()
+        display_name = pipeline_tool.name
+
+        # --- 2. Create a wrapper callable for the sub-pipeline's run method ---
+        # This makes the sub-pipeline behave like a standard component method.
+        def pipeline_runner(**resolved_inputs):
+            return pipeline_tool.run(initial_data=resolved_inputs)
+
+        # --- 3. Use the generic _add_step logic with the dynamic info ---
+        return self._add_step(
+            callable_tool=pipeline_runner,
+            display_name_override=display_name,
+            input_contracts_override=expected_inputs_contracts,
+            output_contracts_override=outputs_meta,
+            **kwargs
+        )
+
     def _add_step(self,
                   callable_tool: Callable,
+                  display_name_override: Optional[str] = None,
+                  input_contracts_override: Optional[Dict[str, str]] = None,
+                  output_contracts_override: Optional[Dict[str, str]] = None,
                   **kwargs) -> Union[StepOutput, Dict[str, StepOutput]]:
         """
         Internal method to add a new step from a callable.
         """
-        # --- 1. Retrieve metadata directly from the callable ---
-        display_name = callable_tool.__qualname__
-        expected_inputs_contracts = getattr(callable_tool, '_contract_inputs', {})
-        outputs_meta = getattr(callable_tool, '_contract_outputs', {})
+        # --- 1. Retrieve metadata ---
+        is_nested_pipeline = display_name_override is not None
+        if is_nested_pipeline:
+            display_name = display_name_override
+            expected_inputs_contracts = input_contracts_override
+            outputs_meta = output_contracts_override
+        else:
+            display_name = callable_tool.__qualname__
+            expected_inputs_contracts = getattr(callable_tool, '_contract_inputs', {})
+            outputs_meta = getattr(callable_tool, '_contract_outputs', {})
+
         step_id = f"{display_name.replace('.', '_')}_{uuid.uuid4().hex[:8]}"
 
-        # --- 2. Separate data inputs and static parameters (no change in logic) ---
+        # --- 2. Separate data inputs and static parameters ---
         data_inputs_from_kwargs: Dict[str, StepOutput] = {}
         tool_parameters: Dict[str, Any] = {}
         for arg_name, value in kwargs.items():
@@ -177,13 +477,13 @@ class FuzzyPipeline:
             else:
                 tool_parameters[arg_name] = value
 
-        # --- 3. Graph-Time Validation (no change in logic) ---
+        # --- 3. Graph-Time Validation ---
         if set(expected_inputs_contracts.keys()) != set(data_inputs_from_kwargs.keys()):
             missing = set(expected_inputs_contracts.keys()) - set(data_inputs_from_kwargs.keys())
             extra = set(data_inputs_from_kwargs.keys()) - set(expected_inputs_contracts.keys())
             raise TypeError(f"Input mismatch for '{display_name}'. Missing: {missing}, Extra: {extra}")
 
-        resolved_dependencies = {}
+        # resolved_dependencies = {}
         for arg_name, value_step_output in data_inputs_from_kwargs.items():
             source_step_id = value_step_output.step_id
             source_output_name = value_step_output.output_name
@@ -191,12 +491,12 @@ class FuzzyPipeline:
             source_step_meta = self.get_step_info(source_step_id)
             promised_contract = source_step_meta['outputs'].get(source_output_name)
 
-            # 检查承诺的契约是否匹配期望的契约
+            # Check whether the committed contract matches the expected contract.
             expected_contract = expected_inputs_contracts.get(arg_name)
 
             contracts_match = (
-                promised_contract == 'any' or
-                expected_contract == promised_contract
+                    promised_contract == 'any' or
+                    expected_contract == promised_contract
             )
 
             if expected_contract and promised_contract and not contracts_match:
@@ -207,7 +507,7 @@ class FuzzyPipeline:
                 )
 
             # Storing the symbol object itself as a dependency
-            resolved_dependencies[arg_name] = value_step_output
+            # resolved_dependencies[arg_name] = value_step_output
 
         # --- 4. Register the new step in the graph ---
         self._steps[step_id] = {
@@ -221,7 +521,7 @@ class FuzzyPipeline:
             "dependencies": data_inputs_from_kwargs.copy()
         }
 
-        # --- 5. Create symbolic output(s) (no change in logic) ---
+        # --- 5. Create symbolic output(s) (logic unchanged) ---
         if len(outputs_meta) == 1:
             output_name = list(outputs_meta.keys())[0]
             return StepOutput(step_id=step_id, output_name=output_name, pipeline=self)
@@ -231,19 +531,92 @@ class FuzzyPipeline:
                 for name in outputs_meta.keys()
             }
 
+    def _get_terminal_step_ids(self) -> List[str]:
+        """Finds all step IDs that are not dependencies for any other step."""
+        all_step_ids = set(self._steps.keys())
+        dependency_ids = set()
+        for step_info in self._steps.values():
+            if 'dependencies' in step_info:
+                for dep_output in step_info['dependencies'].values():
+                    dependency_ids.add(dep_output.step_id)
+
+        terminal_ids = list(all_step_ids - dependency_ids)
+        # Filter out input nodes, as they can be terminal if unused, but aren't "outputs"
+        return [tid for tid in terminal_ids if tid not in self._input_nodes.values()]
+
+    def get_input_contracts(self) -> Dict[str, str]:
+        """
+        Gets the input contracts for this pipeline.
+
+        Returns
+        -------
+        dict[str, str]
+            A dictionary mapping input names to their contract names.
+        """
+        contracts = {}
+        for name, step_id in self._input_nodes.items():
+            step_info = self.get_step_info(step_id)
+            # Input nodes have a single output named 'output' with their contract
+            contracts[name] = step_info['outputs']['output']
+        return contracts
+
     def get_step_info(self, step_id: str) -> Dict[str, Any]:
         """Retrieves the metadata for a given step ID."""
         if step_id not in self._steps:
             raise ValueError(f"Step with ID {step_id} not found in this pipeline.")
         return self._steps[step_id]
 
+    def get_output_contracts(self) -> Dict[str, str]:
+        """
+        Gets the output contracts for this pipeline.
+
+        This is determined by inspecting the contracts of the terminal (leaf)
+        nodes in the pipeline's graph.
+
+        Returns
+        -------
+        dict[str, str]
+            A dictionary mapping output names to their contract names.
+        """
+        terminal_ids = self._get_terminal_step_ids()
+        output_contracts = {}
+
+        if not terminal_ids:
+            return {}
+
+        # If there's only one terminal node, its outputs become the pipeline's outputs.
+        if len(terminal_ids) == 1:
+            terminal_step_info = self.get_step_info(terminal_ids[0])
+            return terminal_step_info['outputs'].copy()
+
+        # If there are multiple terminal nodes, we create a single dictionary output.
+        # The key will be the step's display name, and the value will be a generic contract.
+        # This simplifies the connection logic for the parent pipeline.
+        for step_id in terminal_ids:
+            step_info = self.get_step_info(step_id)
+            step_outputs = step_info['outputs']
+            if len(step_outputs) == 1:
+                # If the terminal step has one output, use its name and contract
+                output_name = list(step_outputs.keys())[0]
+                output_contracts[f"{step_info['display_name']}_{output_name}"] = step_outputs[output_name]
+            else:
+                # If the terminal step has multiple outputs, bundle them
+                for name, contract in step_outputs.items():
+                    output_contracts[f"{step_info['display_name']}_{name}"] = contract
+
+        # If the consolidated outputs are more than one, we should ideally return
+        # a single 'PipelineResult' contract for simplicity.
+        if len(output_contracts) > 1:
+            return {'result': 'PipelineResult'}
+        else:
+            return output_contracts
+
     def _build_execution_order(self) -> List[str]:
         """
         Performs a topological sort of the graph to get a linear execution order.
 
-        This method builds an adjacency list and an in-degree count for all
-        steps, then uses Kahn's algorithm to sort them. It also detects
-        cyclical dependencies.
+        This method returns the full execution order including input nodes.
+        The filtering is handled by the execution engines.
 
         Returns
         -------
@@ -273,7 +646,6 @@ class FuzzyPipeline:
         while queue:
             current_id = queue.popleft()
             execution_order.append(current_id)
-
             for neighbor_id in adj[current_id]:
                 in_degree[neighbor_id] -= 1
                 if in_degree[neighbor_id] == 0:
@@ -283,12 +655,7 @@ class FuzzyPipeline:
         if len(execution_order) != len(self._steps):
             raise ValueError("A cycle was detected in the pipeline graph. Please check dependencies.")
 
-        # Filter out the input nodes, as they don't need to be "executed"
-        task_order = [
-            step_id for step_id in execution_order
-            if step_id not in self._input_nodes.values()
-        ]
-        return task_order
+        return execution_order
 
     @staticmethod
     def _resolve_step_inputs(step_info: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
@@ -300,15 +667,33 @@ class FuzzyPipeline:
         resolved_inputs_and_params = {}
 
         # 1. Resolve data inputs from state
-        for arg_name, step_output in step_info['inputs'].items():
-            source_result = state[step_output.step_id]
-            if isinstance(source_result, dict):
-                resolved_inputs_and_params[arg_name] = source_result.get(step_output.output_name)
-            else:
-                resolved_inputs_and_params[arg_name] = source_result
+        if 'inputs' in step_info:
+            for arg_name, step_output in step_info['inputs'].items():
+                source_step_id = step_output.step_id
+                source_step_info = step_output.pipeline.get_step_info(source_step_id)
+                source_result = state[source_step_id]
+
+                num_source_outputs = len(source_step_info['outputs'])
+
+                if num_source_outputs > 1:
+                    # Multiple output scenarios: Must be a dictionary, retrieve values by key
+                    if not isinstance(source_result, dict):
+                        raise TypeError(f"Step '{source_step_info['display_name']}' was expected to return "
+                                        f"a dict of multiple outputs, but returned {type(source_result).__name__}")
+                    resolved_inputs_and_params[arg_name] = source_result.get(step_output.output_name)
+                else:
+                    # Single output scenario
+                    if isinstance(source_result, dict) and len(source_result) == 1:
+                        # If the result is a dictionary with only one entry, automatically unpack it.
+                        resolved_inputs_and_params[arg_name] = list(source_result.values())[0]
+                    else:
+                        # If the result is not a dictionary, or if the dictionary
+                        # contains multiple entries (not conforming to the single output contract),
+                        # use it directly.
+                        resolved_inputs_and_params[arg_name] = source_result
 
         # 2. Add static parameters
-        resolved_inputs_and_params.update(step_info['parameters'])
+        resolved_inputs_and_params.update(step_info.get('parameters', {}))
 
         # 3. Runtime Contract Validation
         input_contracts = step_info['input_contracts']
@@ -322,6 +707,28 @@ class FuzzyPipeline:
                     )
         return resolved_inputs_and_params
 
+    def _format_final_output(self, final_state: 'ExecutionState') -> Any:
+        """
+        Helper method to format the final output from the final execution state.
+        """
+        all_step_ids = set(self._steps.keys())
+        source_step_ids = set(
+            dep.step_id for step in self._steps.values()
+            if 'dependencies' in step for dep in step['dependencies'].values()
+        )
+        terminal_step_ids = all_step_ids - source_step_ids
+
+        terminal_results = {}
+        for step_id in terminal_step_ids:
+            if step_id in final_state.step_results:
+                step_info = self.get_step_info(step_id)
+                terminal_results[step_info['display_name']] = final_state.step_results[step_id]
+
+        if len(terminal_results) == 1:
+            return list(terminal_results.values())[0]
+        else:
+            return terminal_results
+
     def run(self,
             initial_data: Union[Dict[str, Any], Any],
             return_intermediate: bool = False
@@ -332,7 +739,8 @@ class FuzzyPipeline:
         This method orchestrates the entire analysis workflow. It first performs a
         topological sort of the graph to determine a valid execution order. Then, it
         iterates through the steps, resolving symbolic inputs to concrete data,
-        performing runtime contract validation, and executing the component methods.
+        and providing data and receiving the final result(s). This method now uses
+        the underlying `ExecutionState` engine.
 
         Parameters
         ----------
@@ -419,90 +827,318 @@ class FuzzyPipeline:
             # `all_steps` contains results from fuzzifier.run and weighter.calculate
             # print(f"Fuzzified Table: {all_steps[fuzz_table.step_id]}")
         """
-        state: Dict[str, Any] = {}          # The state dictionary for execution
+        initial_state = self.start_execution(initial_data)
+        final_state = initial_state.run_all()
+
+        final_output = self._format_final_output(final_state)
+
+        if return_intermediate:
+            return final_output, final_state.step_results
+        else:
+            return final_output
+
+    def step_by_step(self, initial_data: Union[Dict[str, Any], Any]) -> FuzzyPipelineIterator:
+        """
+        Create an iterator for step-by-step execution of this pipeline.
+
+        This method provides a way to execute the pipeline incrementally,
+        allowing users to observe and interact with intermediate results.
+        Use this in a `for` loop or with `next()` for simple debugging and
+        process observation.
+
+        Parameters
+        ----------
+        initial_data : Union[Dict[str, Any], Any]
+            The initial data for the pipeline. Format is the same as for
+            the `run()` method.
+
+        Returns
+        -------
+        FuzzyPipelineIterator
+            An iterator that yields step-by-step execution results.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            # Basic usage
+            for step in pipeline.step_by_step(my_data):
+                print(f"Step {step['step_index'] + 1}/{step['total_steps']}: "
+                      f"{step['step_name']}")
+                print(f"Execution time: {step['execution_time']:.4f}s")
+
+                # Optionally examine the result
+                if isinstance(step['result'], dict):
+                    print(f"Result keys: {list(step['result'].keys())}")
+
+            # Manual iteration
+            iterator = pipeline.step_by_step(my_data)
+            first_step = next(iterator)
+            print("First step completed!")
+
+            # Check remaining steps
+            print(f"Remaining steps: {iterator.get_remaining_count()}")
+        """
+        return FuzzyPipelineIterator(self, initial_data)
+
+    def start_execution(self, initial_data: Union[Dict[str, Any], Any]) -> ExecutionState:
+        """
+        Initializes a step-by-step execution and returns the initial state object.
+
+        This method prepares the pipeline for a chainable, step-by-step execution.
+        It does not run any computational steps itself but returns an `ExecutionState`
+        object that can be used to run the next step. Use this for advanced control,
+        where each step's execution is triggered manually and returns a new state object.
+
+        Parameters
+        ----------
+        initial_data : Union[Dict[str, Any], Any]
+            The initial data for the pipeline. Format is the same as for
+            the `run()` method.
+
+        Returns
+        -------
+        ExecutionState
+            The initial state object, ready to execute the first step via `.then()`.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            # Start the execution
+            state0 = pipeline.start_execution(my_data)
+
+            # Execute the first step
+            state1 = state0.then()
+            print("Result of step 1:", state1.latest_result)
+
+            # Execute the second step
+            state2 = state1.then()
+            print("Result of step 2:", state2.latest_result)
+
+            # Run all remaining steps
+            final_state = state2.run_all()
+
+            # Get all results
+            all_results = final_state.step_results
+        """
+        # Prepare initial state dictionary
+        initial_state_dict = {}
         num_inputs = len(self._input_nodes)
 
-        # 1. Prepare and validate initial data, populating the initial state.
         if isinstance(initial_data, dict):
-            # Standard case: initial_data is a dictionary.
             if set(initial_data.keys()) != set(self._input_nodes.keys()):
                 raise KeyError(
-                    f"The keys in `initial_data` {list(initial_data.keys())} "
-                    f"do not match the pipeline's defined inputs {list(self._input_nodes.keys())}."
+                    f"The keys in `initial_data` {list(initial_data.keys())} do not match the "
+                    f"pipeline's defined inputs {list(self._input_nodes.keys())}."
                 )
             for input_name, data in initial_data.items():
                 input_step_id = self._input_nodes[input_name]
-                state[input_step_id] = data
+                initial_state_dict[input_step_id] = data
         else:
-            # Convenience case: initial_data is a single object.
-            if num_inputs == 0:
+            if num_inputs == 0 and initial_data is not None:
                 raise ValueError("Pipeline has no inputs, but data was provided.")
-            elif num_inputs > 1:
+            if num_inputs > 1:
                 raise TypeError(
                     f"Pipeline has multiple inputs ({list(self._input_nodes.keys())}), "
                     f"so `initial_data` must be a dictionary."
                 )
-            # num_inputs == 1, which is the only valid case here.
-            input_name = list(self._input_nodes.keys())[0]
-            input_step_id = self._input_nodes[input_name]
-            state[input_step_id] = initial_data
+            if num_inputs == 1:
+                input_name = list(self._input_nodes.keys())[0]
+                input_step_id = self._input_nodes[input_name]
+                initial_state_dict[input_step_id] = initial_data
 
-        # 2. Determine the execution order via topological sort.
-        execution_order = self._build_execution_order()
+        full_execution_order = self._build_execution_order()
+        executable_steps = [
+            step_id for step_id in full_execution_order
+            if step_id not in self._input_nodes.values()
+        ]
 
-        # 3. Execute each step in the determined order.
-        for step_id in execution_order:
-            step_info = self.get_step_info(step_id)
-            tool_fn = step_info['callable']
-
-            # Resolve symbolic inputs to concrete data from the state dictionary.
-            # This also performs runtime contract validation.
-            resolved_inputs = self._resolve_step_inputs(step_info, state)
-
-            # Execute the component method with the resolved inputs.
-            result = tool_fn(**resolved_inputs)
-
-            # Store the result of the step in the state dictionary.
-            state[step_id] = result
-
-        # 4. Identify terminal nodes to determine the final output.
-        all_step_ids = set(self._steps.keys())
-        source_step_ids = set(
-            dep.step_id for step in self._steps.values()
-            if 'dependencies' in step for dep in step['dependencies'].values()
+        return ExecutionState(
+            pipeline=self,
+            step_results=initial_state_dict,
+            execution_order=executable_steps,
+            current_index=0
         )
-        terminal_step_ids = all_step_ids - source_step_ids
 
-        # 5. Collect results from all terminal nodes.
-        terminal_results = {}
-        for step_id in terminal_step_ids:
-            # An input node can be a terminal node if it's not connected.
-            if step_id in state:
-                step_info = self.get_step_info(step_id)
-                # Use display_name for the key, which is more user-friendly.
-                terminal_results[step_info['display_name']] = state[step_id]
+    def _to_networkx(self) -> 'nx.DiGraph':
+        """
+        Converts the internal pipeline structure to a NetworkX DiGraph.
 
-        # 6. Format the final output based on the number of terminal results.
-        final_output: Any
-        if len(terminal_results) == 1:
-            # If there's only one terminal node, its result is the final output.
-            final_output = list(terminal_results.values())[0]
+        This is a helper method for visualization.
+
+        Returns
+        -------
+        nx.DiGraph
+            A NetworkX directed graph representing the pipeline.
+        """
+        if not _NX_AVAILABLE:
+            raise ImportError("Visualization requires `networkx`. "
+                              "Please install it using: pip install networkx")
+
+        g = nx.DiGraph(name=self.name)
+
+        for step_id, step_info in self._steps.items():
+            display_name = step_info['display_name']
+            is_nested_pipeline = isinstance(step_info.get('callable'), FuzzyPipeline)
+
+            if step_info.get('callable') is None:
+                node_type = 'input'
+                label = f"Input\n({display_name.split('.')[-1]})"
+            elif is_nested_pipeline:
+                node_type = 'pipeline'
+                label = f"Pipeline:\n{display_name}"
+            else:
+                node_type = 'component'
+                label = f"{display_name}"
+
+            g.add_node(step_id, label=label, node_type=node_type)
+
+            if 'dependencies' in step_info:
+                for arg_name, dep_output in step_info['dependencies'].items():
+                    source_id = dep_output.step_id
+                    source_output_name = dep_output.output_name
+                    source_step_info = self.get_step_info(source_id)
+                    contract = source_step_info['outputs'].get(source_output_name, 'any')
+                    edge_label = f"{source_output_name}: {contract}"
+                    g.add_edge(source_id, step_id, label=edge_label)
+        return g
+
+    def _visualize_graphviz(self, nx_graph, filename, format, show_contracts):
+        """Renders the graph using Graphviz."""
+        pdot_graph = pydot.Dot(graph_type='digraph', rankdir='TB', label=f'Pipeline: {self.name}', fontsize=20, labelloc='t')
+
+        styles = {
+            'input': {'shape': 'ellipse', 'fillcolor': '#E8F5E9', 'style': 'filled'},
+            'component': {'shape': 'box', 'fillcolor': '#E3F2FD', 'style': 'filled,rounded'},
+            'pipeline': {'shape': 'box', 'fillcolor': '#FFFDE7', 'style': 'filled,bold'}
+        }
+
+        for node_id, attrs in nx_graph.nodes(data=True):
+            node_style = styles.get(attrs['node_type'], {})
+            pdot_node = pydot.Node(name=node_id, label=attrs['label'], **node_style)
+            pdot_graph.add_node(pdot_node)
+
+        for u, v, attrs in nx_graph.edges(data=True):
+            edge_label = attrs.get('label', '') if show_contracts else ''
+            pdot_edge = pydot.Edge(u, v, label=edge_label, fontsize=10, fontcolor='#424242')
+            pdot_graph.add_edge(pdot_edge)
+
+        try:
+            if filename:
+                pdot_graph.write(filename, format=format)
+                print(f"Pipeline visualization saved to '{filename}'")
+                return None
+            elif _IPYTHON_AVAILABLE:
+                return Image(pdot_graph.create(format=format))
+            else:
+                # Fallback if not in IPython but no filename given
+                temp_filename = f"pipeline_view_{uuid.uuid4().hex[:6]}.{format}"
+                pdot_graph.write(temp_filename, format=format)
+                print(f"Not in an IPython environment. Visualization saved to '{temp_filename}'")
+                return None
+        except pydot.DotExecutableNotFoundError:
+            raise ImportError(
+                "Graphviz executable not found. Please install Graphviz and ensure "
+                "it is in your system's PATH. See https://graphviz.org/download/"
+            )
+
+    def _visualize_matplotlib(self, nx_graph, filename, show_contracts):
+        """Renders the graph using Matplotlib."""
+        pos = nx.spring_layout(nx_graph, seed=42)  # spring_layout is a decent default
+
+        plt.figure(figsize=(12, 8))
+
+        # Node colors
+        color_map = {
+            'input': '#90CAF9',
+            'component': '#A5D6A7',
+            'pipeline': '#FFD54F'
+        }
+        node_colors = [color_map.get(nx_graph.nodes[n]['node_type'], '#BDBDBD') for n in nx_graph.nodes]
+
+        # Draw nodes and labels
+        nx.draw_networkx_nodes(nx_graph, pos, node_color=node_colors, node_size=3000)
+        labels = {n: attrs['label'] for n, attrs in nx_graph.nodes(data=True)}
+        nx.draw_networkx_labels(nx_graph, pos, labels, font_size=8)
+
+        # Draw edges and edge labels
+        nx.draw_networkx_edges(nx_graph, pos, arrowstyle='->', arrowsize=20, connectionstyle='arc3,rad=0.1')
+        if show_contracts:
+            edge_labels = nx.get_edge_attributes(nx_graph, 'label')
+            nx.draw_networkx_edge_labels(nx_graph, pos, edge_labels=edge_labels, font_size=7)
+
+        plt.title(f"Pipeline: {self.name}")
+        plt.axis('off')
+
+        if filename:
+            plt.savefig(filename)
+            print(f"Pipeline visualization saved to '{filename}'")
         else:
-            # If there are zero or multiple terminal nodes, return a dictionary
-            # of all their results.
-            final_output = terminal_results
+            plt.show()
 
-        if return_intermediate:
-            return final_output, state
+    def visualize(self,
+                  filename: Optional[str] = None,
+                  format: str = 'png',
+                  show_contracts: bool = True,
+                  engine: str = 'auto') -> Optional['Image']:
+        """
+        Generates a visual representation of the pipeline's DAG.
+
+        This method attempts to use the best available rendering engine.
+        - 'graphviz': (Requires `pydot` and system-wide `Graphviz`) Provides high-quality, hierarchical layouts.
+        - 'matplotlib': (Requires `matplotlib`) Provides a basic, force-directed layout.
+
+        Parameters
+        ----------
+        filename : str, optional
+            The path to save the output image file. If None, the image is displayed directly.
+        format : str, default 'png'
+            The output format for the image (used by Graphviz engine).
+        show_contracts : bool, default True
+            If True, display data contract information on the edges.
+        engine : {'auto', 'graphviz', 'matplotlib'}, default 'auto'
+            The rendering engine to use. 'auto' will try 'graphviz' first,
+            then fall back to 'matplotlib'.
+
+        Returns
+        -------
+        IPython.display.Image or None
+            If using the 'graphviz' engine without a filename in an IPython
+            environment, returns an Image object. Otherwise, returns None.
+
+        Raises
+        ------
+        ImportError
+            If the chosen engine or its dependencies are not available.
+        """
+        nx_graph = self._to_networkx()
+
+        # Determine which engine to use
+        use_engine = None
+        if engine == 'auto':
+            if _PYDOT_AVAILABLE:
+                use_engine = 'graphviz'
+            elif _MPL_AVAILABLE:
+                use_engine = 'matplotlib'
+        elif engine == 'graphviz':
+            if not _PYDOT_AVAILABLE:
+                raise ImportError("The 'graphviz' engine requires `pydot`. Please run: pip install pydot")
+            use_engine = 'graphviz'
+        elif engine == 'matplotlib':
+            if not _MPL_AVAILABLE:
+                raise ImportError("The 'matplotlib' engine requires `matplotlib`. Please run: pip install matplotlib")
+            use_engine = 'matplotlib'
         else:
-            return final_output
+            raise ValueError(f"Unknown engine: '{engine}'. Choose from 'auto', 'graphviz', 'matplotlib'.")
 
-    @property
-    def steps(self) -> List[Dict[str, Any]]:
-        """Returns a list of all defined steps in the pipeline."""
-        return list(self._steps.values())
+        if use_engine is None:
+            raise ImportError(
+                "No visualization engine available. Please install `matplotlib` or `pydot` (and Graphviz)."
+            )
 
-    def __repr__(self) -> str:
-        num_inputs = len(self._input_nodes)
-        num_tasks = len(self._steps) - num_inputs
-        return f"<FuzzyPipeline with {num_inputs} inputs and {num_tasks} tasks>"
+        # Dispatch to the appropriate rendering method
+        if use_engine == 'graphviz':
+            return self._visualize_graphviz(nx_graph, filename, format, show_contracts)
+        else: # 'matplotlib'
+            return self._visualize_matplotlib(nx_graph, filename, show_contracts)

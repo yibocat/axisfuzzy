@@ -23,9 +23,15 @@ class AnalysisComponent(ABC):
     It enforces a consistent design pattern where tools are instantiated
     objects rather than standalone functions, promoting better state
     management and code organization.
+
+    Notes
+    -----
+    As of Phase 3.B, this class is no longer abstract. The `run` method
+    is provided with a basic implementation to allow classes with their own
+    `run` signature (like `FuzzyPipeline`) to inherit without conflict.
+    Subclasses are still expected to provide a meaningful `run` method.
     """
 
-    @abstractmethod
     def run(self, *args, **kwargs):
         """
         The main execution method for the analysis component.
@@ -45,5 +51,12 @@ class AnalysisComponent(ABC):
         -------
         Any
             The output of the analysis, which can vary based on the tool.
+
+        Raises
+        ------
+        NotImplementedError
+            If the subclass does not implement its own run method.
         """
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement the 'run' method."
+        )

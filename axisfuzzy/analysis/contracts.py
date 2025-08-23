@@ -39,10 +39,12 @@ try:
     _PANDAS_AVAILABLE = True
 except ImportError:
     _PANDAS_AVAILABLE = False
+
     # Create placeholder types when pandas is not available
 
     class _MockDataFrame:
         pass
+
 
     class _MockSeries:
         pass
@@ -51,16 +53,34 @@ except ImportError:
     pd = type('MockPandas', (), {'DataFrame': _MockDataFrame, 'Series': _MockSeries})()
     np = type('MockNumpy', (), {'ndarray': object})()
 
-
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from axisfuzzy.core import Fuzznum, Fuzzarray
     from .dataframe import FuzzyDataFrame
 
-
 # ===================================================================
 # 1. Type Aliases for Static Analysis & Code Hinting
 # ===================================================================
+
+PipelineResult: TypeAlias = Dict[str, Any]
+"""
+Type alias for the result of a nested pipeline execution.
+
+Represents a dictionary of outputs from a sub-pipeline that has multiple
+terminal nodes.
+
+Examples
+--------
+
+.. code-block:: python
+
+    # Result from a sub-pipeline with two final outputs
+    result: PipelineResult = {
+        'final_scores': np.array([0.8, 0.9]),
+        'final_ranking': ['Alt_B', 'Alt_A']
+    }
+"""
 
 CrispTable: TypeAlias = "pd.DataFrame"
 """
@@ -83,7 +103,6 @@ Examples
         'Service': [6, 8, 9]
     }, index=['Alt_A', 'Alt_B', 'Alt_C'])
 """
-
 
 FuzzyTable: TypeAlias = "FuzzyDataFrame"
 """
@@ -110,7 +129,6 @@ Examples
         'Service': service_fuzzarray   # Fuzzarray with fuzzy service values
     })
 """
-
 
 WeightVector: TypeAlias = Union["np.ndarray", "pd.Series"]
 """
@@ -155,7 +173,6 @@ Examples
         index=['Car_A', 'Car_B', 'Car_C'])
 """
 
-
 FuzzyNumber: TypeAlias = "Fuzznum"
 """
 Type alias for a single fuzzy number.
@@ -164,7 +181,6 @@ Represents an individual fuzzy number instance, typically used for
 scalar fuzzy operations or as building blocks for fuzzy arrays.
 """
 
-
 FuzzyArray: TypeAlias = "Fuzzarray"
 """
 Type alias for fuzzy array data.
@@ -172,7 +188,6 @@ Type alias for fuzzy array data.
 Represents high-performance arrays of fuzzy numbers, used for vectorized
 fuzzy computations.
 """
-
 
 RankingResult: TypeAlias = Union["pd.Series", List[str], List[int]]
 """
@@ -194,7 +209,6 @@ Examples
         index=['Car_A', 'Car_B', 'Car_C'])
 """
 
-
 ThreeWayResult: TypeAlias = Dict[str, List[str]]
 """
 Type alias for three-way decision results.
@@ -212,7 +226,6 @@ Examples
         'reject': []
     }
 """
-
 
 PairwiseMatrix: TypeAlias = "pd.DataFrame"
 """
@@ -234,6 +247,75 @@ Examples
     columns=['Price', 'Quality', 'Service'])
 """
 
+NumericValue: TypeAlias = Union[int, float]
+"""
+Type alias for a single numeric value.
+
+Examples
+--------
+.. code-block:: python
+
+    threshold: NumericValue = 0.5
+    count: NumericValue = 10
+"""
+
+CriteriaList: TypeAlias = List[str]
+"""
+Type alias for criterion names.
+
+Examples
+--------
+.. code-block:: python
+
+    criteria: CriteriaList = ['Cost', 'Quality', 'Delivery_Time']
+"""
+
+AlternativeList: TypeAlias = List[str]
+"""
+Type alias for alternative names.
+
+Examples
+--------
+.. code-block:: python
+
+    alternatives: AlternativeList = ['Supplier_A', 'Supplier_B', 'Supplier_C']
+"""
+
+NormalizedWeights: TypeAlias = Union["np.ndarray", "pd.Series"]
+"""
+Type alias for normalized criterion weights (sum to 1.0).
+
+Examples
+--------
+.. code-block:: python
+
+    weights: NormalizedWeights = np.array([0.3, 0.4, 0.3])  # sum = 1.0
+"""
+
+Matrix: TypeAlias = Union["np.ndarray", "pd.DataFrame"]
+"""
+Type alias for general numeric matrices.
+
+Examples
+--------
+.. code-block:: python
+
+    correlation_matrix: Matrix = np.array([[1.0, 0.8], [0.8, 1.0]])
+"""
+
+StatisticsDict: TypeAlias = Dict[str, Union[float, int]]
+"""
+Type alias for statistical summaries.
+
+Examples
+--------
+.. code-block:: python
+
+    stats: StatisticsDict = {
+        'mean': 0.75, 'std': 0.12, 'min': 0.45, 'max': 0.95, 'count': 100
+    }
+"""
+
 
 # ===================================================================
 # 2. Validator Interface Definition
@@ -247,6 +329,7 @@ class ContractValidator(ABC):
     validator implementations must provide. This ensures that the registry
     and pipeline engine can handle any registered contract polymorphically.
     """
+
     @abstractmethod
     def validate(self, obj: Any) -> bool:
         """
@@ -372,6 +455,7 @@ def register_contract(name: str) -> Callable:
         def is_positive(obj):
             return isinstance(obj, (int, float)) and obj > 0
     """
+
     def decorator(validator_cls_or_func: Union[Type[ContractValidator], Callable[[Any], bool]]):
         if isinstance(validator_cls_or_func, type) and issubclass(validator_cls_or_func, ContractValidator):
             validator_instance = validator_cls_or_func()
@@ -379,6 +463,7 @@ def register_contract(name: str) -> Callable:
             class FunctionalValidator(ContractValidator):
                 def validate(self, obj: Any) -> bool:
                     return validator_cls_or_func(obj)
+
             validator_instance = FunctionalValidator()
         else:
             raise TypeError(
@@ -388,6 +473,7 @@ def register_contract(name: str) -> Callable:
 
         _contract_registry.register(name, validator_instance)
         return validator_cls_or_func
+
     return decorator
 
 
@@ -422,10 +508,16 @@ def validate(contract_name: str, obj: Any) -> bool:
 # 5. Built-in Contract Implementations
 # ===================================================================
 
+@register_contract('PipelineResult')
+def _is_pipeline_result(obj: Any) -> bool:
+    """Validates if an object is a dictionary, suitable for pipeline results."""
+    return isinstance(obj, dict)
+
 
 @register_contract('CrispTable')
 class _CrispTableValidator(ContractValidator):
     """Validates that an object is a numeric pandas DataFrame."""
+
     def validate(self, obj: Any) -> bool:
         if not _PANDAS_AVAILABLE:
             return False
@@ -439,6 +531,7 @@ class _CrispTableValidator(ContractValidator):
 @register_contract('FuzzyTable')
 class _FuzzyTableValidator(ContractValidator):
     """Validates that an object is a pandas DataFrame of Fuzznum objects."""
+
     def validate(self, obj: Any) -> bool:
         # Lazy import to avoid circular dependencies at the module level.
         from .dataframe import FuzzyDataFrame
@@ -449,9 +542,10 @@ class _FuzzyTableValidator(ContractValidator):
 @register_contract('WeightVector')
 class _WeightVectorValidator(ContractValidator):
     """Validates that an object is a 1D numpy array or a pandas Series."""
+
     def validate(self, obj: Any) -> bool:
         return (isinstance(obj, np.ndarray) and obj.ndim == 1) or \
-               isinstance(obj, pd.Series)
+            isinstance(obj, pd.Series)
 
 
 # Register ScoreVector using the same validator as WeightVector for DRY principle
@@ -475,6 +569,7 @@ def _is_fuzzarray(obj: Any) -> bool:
 @register_contract('RankingResult')
 class _RankingResultValidator(ContractValidator):
     """Validates that an object represents a ranking result."""
+
     def validate(self, obj: Any) -> bool:
         if isinstance(obj, pd.Series):
             return True
@@ -500,11 +595,73 @@ def _is_threeway_result(obj: Any) -> bool:
 @register_contract('PairwiseMatrix')
 class _PairwiseMatrixValidator(ContractValidator):
     """Validates that an object is a square pandas DataFrame."""
+
     def validate(self, obj: Any) -> bool:
         if not isinstance(obj, pd.DataFrame):
             return False
         # Must be a square matrix
         return obj.shape[0] == obj.shape[1]
+
+
+@register_contract('NumericValue')
+def _is_numeric_value(obj: Any) -> bool:
+    """Validates if an object is a single numeric value."""
+    return isinstance(obj, (int, float)) and not isinstance(obj, bool)
+
+
+@register_contract('CriteriaList')
+def _is_criteria_list(obj: Any) -> bool:
+    """Validates if an object is a list of criterion names."""
+    return (isinstance(obj, list) and
+            all(isinstance(item, str) for item in obj))
+
+
+@register_contract('AlternativeList')
+def _is_alternative_list(obj: Any) -> bool:
+    """Validates if an object is a list of alternative names."""
+    return (isinstance(obj, list) and
+            all(isinstance(item, str) for item in obj))
+
+
+@register_contract('NormalizedWeights')
+class _NormalizedWeightsValidator(ContractValidator):
+    """Validates normalized weights (sum to 1.0 within tolerance)."""
+
+    def validate(self, obj: Any) -> bool:
+        if not ((isinstance(obj, np.ndarray) and obj.ndim == 1) or isinstance(obj, pd.Series)):
+            return False
+
+        if len(obj) == 0:
+            return False
+
+        # Check if all values are non-negative
+        if np.any(obj < 0):
+            return False
+
+        # Check if sum is approximately 1.0 (within tolerance)
+        return np.isclose(np.sum(obj), 1.0, atol=1e-6)
+
+
+@register_contract('Matrix')
+class _MatrixValidator(ContractValidator):
+    """Validates that an object is a 2D numeric matrix."""
+
+    def validate(self, obj: Any) -> bool:
+        if isinstance(obj, np.ndarray):
+            return obj.ndim == 2 and np.issubdtype(obj.dtype, np.number)
+        elif isinstance(obj, pd.DataFrame):
+            if obj.empty:
+                return True
+            return all(pd.api.types.is_numeric_dtype(dtype) for dtype in obj.dtypes)
+        return False
+
+
+@register_contract('StatisticsDict')
+def _is_statistics_dict(obj: Any) -> bool:
+    """Validates if an object is a statistics dictionary."""
+    if not isinstance(obj, dict):
+        return False
+    return all(isinstance(v, (int, float)) for v in obj.values())
 
 
 # ===================================================================
@@ -550,6 +707,7 @@ def contract(inputs: Dict[str, str], outputs: Dict[str, str]) -> Callable:
                 # ... implementation ...
                 return {'scores': some_scores}
     """
+
     def decorator(method: Callable) -> Callable:
         # We simply attach the metadata directly to the function object.
         # This is a standard and robust way to add metadata in Python.
@@ -558,4 +716,5 @@ def contract(inputs: Dict[str, str], outputs: Dict[str, str]) -> Callable:
         # We also add a marker to easily identify methods with contracts.
         setattr(method, '_is_contract_method', True)
         return method
+
     return decorator
