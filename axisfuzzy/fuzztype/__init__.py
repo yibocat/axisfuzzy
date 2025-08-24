@@ -11,7 +11,7 @@ Fuzztype Package Initializer.
 This module dynamically discovers and imports all available fuzzy number type
 subpackages within this directory (e.g., 'qrofs', 'ivfs').
 
-This ensures that all mtype-specific components (strategies, backends,
+This ensures that all mtype-specific _components (strategies, backends,
 operations, extensions, etc.) are automatically registered with their respective
 systems when the `axisfuzzy` library is imported. This makes the entire
 architecture pluggable.
@@ -29,7 +29,7 @@ for module_name in os.listdir(os.path.dirname(__file__)):
             '__pycache__' not in module_name and
             os.path.exists(os.path.join(module_path, '__init__.py'))):
         # The import triggers the __init__.py within the subpackage (e.g., qrofs),
-        # which in turn should import its own components to register them.
+        # which in turn should import its owncomponents to register them.
         importlib.import_module(f'.{module_name}', __name__)
 
 # This package is primarily for loading and does not export any symbols itself.

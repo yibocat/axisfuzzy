@@ -37,3 +37,5 @@ def _import_pandas():
 # 这样用户必须显式地从子模块导入，例如:
 # from axisfuzzy.analysis.pipeline import FuzzyPipeline
 
+# TODO: 怎么设置一下为可选依赖？ 当开发者导入 axisfuzzy 的时候不导入 pandas,
+#  只有当 from axisfuzzy import analysis 的时候才导入 pandas
