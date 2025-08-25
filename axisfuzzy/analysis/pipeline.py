@@ -641,7 +641,7 @@ class FuzzyPipeline(AnalysisComponent):
 
         Returns
         -------
-        Any or tuple[Any, dict[str, Any]]
+        result: Any or tuple[Any, dict[str, Any]]
             The final output(s) of the pipeline. If `return_intermediate` is
             ``True``, a tuple containing the output and a dictionary of all
             intermediate step results is returned.

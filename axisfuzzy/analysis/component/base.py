@@ -8,7 +8,7 @@
 """
 Defines the base class for all analysis components in AxisFuzzy.
 """
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class AnalysisComponent(ABC):
@@ -59,4 +59,22 @@ class AnalysisComponent(ABC):
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement the 'run' method."
+        )
+
+    @abstractmethod
+    def get_config(self) -> dict:
+        """
+        Returns the configuration of the component.
+
+        A component's configuration is a dictionary of parameters
+        that were used to initialize it. This is essential for
+        model serialization.
+
+        Returns
+        -------
+        dict
+            A JSON-serializable dictionary of configuration parameters.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement the 'get_config' method."
         )

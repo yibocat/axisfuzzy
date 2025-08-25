@@ -51,6 +51,10 @@ class ToolNormalization(AnalysisComponent):
         self.method = method
         self.axis = axis
 
+    def get_config(self) -> dict:
+        """Returns the component's configuration."""
+        return {'method': self.method, 'axis': self.axis}
+
     @contract
     def run(self, data: ContractCrispTable) -> ContractCrispTable:
         """
@@ -122,6 +126,10 @@ class ToolWeightNormalization(AnalysisComponent):
     def __init__(self, ensure_positive: bool = True):
         self.ensure_positive = ensure_positive
 
+    def get_config(self) -> dict:
+        """Returns the component's configuration."""
+        return {'ensure_positive': self.ensure_positive}
+
     @contract
     def run(self, weights: ContractWeightVector) -> ContractNormalizedWeights:
         """
@@ -174,6 +182,10 @@ class ToolStatistics(AnalysisComponent):
     def __init__(self, axis: int = 1):
         self.axis = axis
 
+    def get_config(self) -> dict:
+        """Returns the component's configuration."""
+        return {'axis': self.axis}
+
     @contract
     def run(self, data: ContractCrispTable) -> ContractStatisticsDict:
         """
@@ -219,6 +231,10 @@ class ToolSimpleAggregation(AnalysisComponent):
         self.operation = operation
         self.axis = axis
 
+    def get_config(self) -> dict:
+        """Returns the component's configuration."""
+        return {'operation': self.operation, 'axis': self.axis}
+
     @contract
     def run(self, data: ContractCrispTable) -> ContractWeightVector:
         """
@@ -258,6 +274,15 @@ class ToolFuzzification(AnalysisComponent):
         if not isinstance(fuzzifier, Fuzzifier):
             raise TypeError("fuzzifier must be an instance of 'Fuzzifier'.")
         self.fuzzifier = fuzzifier
+
+    def get_config(self):
+        """Returns the component's configuration."""
+        # TODO: 关于模糊化器的配置序列化,
+        #  其 fuzzifier 参数不是 JSON 可序列化的。我们需要一个更高级的策略，
+        #  例如序列化 Fuzzifier 的配置。这是一个更复杂的主题，我们可以暂时约定
+        #  ToolFuzzification 不支持序列化，或在 get_config 中抛出
+        #  NotImplementedError，并在后续版本中解决。
+        return NotImplementedError
 
     @contract
     def run(self, data: ContractCrispTable) -> ContractFuzzyTable:
