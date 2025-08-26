@@ -78,7 +78,6 @@ class FuzzarrayBackend(ABC):
     """
 
     def __init__(self, shape: Tuple[int, ...], q: Optional[int] = None, **kwargs):
-        self.mtype = get_config().DEFAULT_MTYPE or 'unknown'
         self.shape = shape
         self.size = int(np.prod(shape))
         self.q = q if q is not None else get_config().DEFAULT_Q
