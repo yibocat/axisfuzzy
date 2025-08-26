@@ -17,15 +17,8 @@ The main components are:
 """
 
 from .sequential import Sequential
+from .model import Model
 from . import layers
 
-__all__ = ["Sequential", "layers"]
-
-
-# TODO: 三个主要问题:
-#  1. 目前仅支持 单输入 -> 单输出,我们还要让其能够'单输入 -> 多输出','多输入 -> 单输出','多输入 -> 多输出'
-#  2. 目前仅支持 线性流程, 通过多输出和多初入, 构建非线性计算分析流程
-#  3. 需要改进支持管道嵌套功能
-#  4. 需要支持更多的模糊数据类型, 关键在于模糊化. 现在有一个 bug 是我们设置模糊化只能为 qrofn. qrohfn 会报错.
-
+__all__ = ["Sequential", "layers", "Model"]
 

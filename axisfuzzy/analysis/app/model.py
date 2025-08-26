@@ -184,47 +184,14 @@ class Model(AnalysisComponent, ABC):
             raise RuntimeError("Model has not been built yet. Call .build() before visualizing.")
         return self.pipeline.visualize(**kwargs)
 
-    def summary(self, line_length: int = 90, positions: list = None):
+    def summary(self):
         """
         打印模型的摘要，基于构建后的 FuzzyPipeline 结构。
-
-        Parameters
-        ----------
-        line_length : int, default 65
-            表格的总宽度。
-        positions : list, optional
-            各列的相对位置，格式为 [name_width, input_width, output_width]。
-            如果为 None，将自动计算合适的列宽。
         """
         if not self.built:
             raise RuntimeError("Model has not been built yet. Call .build() first.")
 
-        # 计算列宽
-        if positions is None:
-            # 自动计算：根据 line_length 自动分配列宽
-            # 预留分隔符空间（通常每列后有1-2个空格）
-            available_width = line_length - 4  # 预留一些边距
-            name_width = int(available_width * 0.5)  # 名称列占50%
-            input_width = int(available_width * 0.25)  # 输入契约列占25%
-            output_width = available_width - name_width - input_width  # 输出契约列占剩余
-        else:
-            if len(positions) != 3:
-                raise ValueError("positions must contain exactly 3 elements: [name_width, input_width, output_width]")
-            name_width, input_width, output_width = positions
-            # 验证宽度是否合理
-            total_width = name_width + input_width + output_width + 4  # 加上分隔符空间
-            if total_width > line_length:
-                print(f"Warning: Column widths ({total_width}) exceed line_length ({line_length})")
-
-        # 生成表格头部
-        title = f'Model: "{self.name}"'
-        print(title)
-        print("=" * line_length)
-
-        # 表头
-        header = f"{'Layer (type)':<{name_width}} {'Input Contracts':<{input_width}} {'Output Contracts':<{output_width}}"
-        print(header)
-        print("=" * line_length)
+        table_content = []
 
         # 获取执行顺序（包括输入节点）
         full_order = self._pipeline._build_execution_order()
@@ -238,72 +205,75 @@ class Model(AnalysisComponent, ABC):
 
             if step_meta.is_input_node:
                 # 显示输入节点
-                input_name = None
-                for name, sid in self._pipeline.input_nodes.items():
-                    if sid == step_id:
-                        input_name = name
-                        break
+                input_name = next((name for name, sid in self._pipeline.input_nodes.items() if sid == step_id), None)
 
                 output_contract = list(step_meta.output_contracts.values())[0]
                 layer_display = f"Input: {input_name}"
-
-                # 截断过长的文本
-                layer_display = self._truncate_text(layer_display, name_width)
-                input_display = self._truncate_text("-", input_width)
-                output_display = self._truncate_text(output_contract.name, output_width)
-
-                print(f"{layer_display:<{name_width}} {input_display:<{input_width}} {output_display:<{output_width}}")
+                input_display = "-"
+                output_display = output_contract.name
+                table_content.append((layer_display, input_display, output_display))
 
             else:
                 # 显示计算节点
                 display_name = step_meta.display_name
-
-                # 获取输入契约（从依赖关系推断）
-                if step_meta.input_contracts:
-                    input_contracts_display = ", ".join([c.name for c in step_meta.input_contracts.values()])
-                else:
-                    input_contracts_display = "None"
-
-                # 获取输出契约
-                if step_meta.output_contracts:
-                    output_contracts_display = ", ".join([c.name for c in step_meta.output_contracts.values()])
-                else:
-                    output_contracts_display = "None"
+                input_contracts_display = ", ".join(
+                    [c.name for c in step_meta.input_contracts.values()]) if step_meta.input_contracts else "None"
+                output_contracts_display = ", ".join(
+                    [c.name for c in step_meta.output_contracts.values()]) if step_meta.output_contracts else "None"
 
                 # 检查是否是嵌套管道
                 if self._is_nested_pipeline_step(step_meta):
                     # 这是一个嵌套管道步骤
                     nested_models_count += 1
-
-                    # 截断文本并显示主层
-                    layer_display = self._truncate_text(display_name, name_width)
-                    input_display = self._truncate_text(input_contracts_display, input_width)
-                    output_display = self._truncate_text(output_contracts_display, output_width)
-
-                    print(f"{layer_display:<{name_width}} {input_display:<{input_width}} {output_display:<{output_width}}")
+                    table_content.append((display_name, input_contracts_display, output_contracts_display))
 
                     # 显示嵌套管道的内部结构
                     nested_model = self._find_nested_model_by_name(display_name)
                     if nested_model:
-                        nested_sub_layers = self._print_nested_components(
-                            nested_model, name_width, input_width, output_width
-                        )
+                        nested_rows, nested_sub_layers = self._get_nested_components_data(nested_model)
+                        table_content.extend(nested_rows)
                         sub_layers_count += nested_sub_layers
                 else:
                     # 普通组件
                     component_name = self._extract_component_name(display_name)
-
-                    # 截断文本并显示
-                    layer_display = self._truncate_text(component_name, name_width)
-                    input_display = self._truncate_text(input_contracts_display, input_width)
-                    output_display = self._truncate_text(output_contracts_display, output_width)
-
-                    print(f"{layer_display:<{name_width}} {input_display:<{input_width}} {output_display:<{output_width}}")
+                    table_content.append((component_name, input_contracts_display, output_contracts_display))
 
                 total_layers += 1
 
-        # 表格尾部
+        # 计算列宽
+        if not table_content:
+            name_width = len('Layer (type)')
+            input_width = len('Input Contracts')
+            output_width = len('Output Contracts')
+        else:
+            name_width = max(len(row[0]) for row in table_content)
+            input_width = max(len(row[1]) for row in table_content)
+            output_width = max(len(row[2]) for row in table_content)
+
+        # 确保表头也能被容纳
+        name_width = max(name_width, len('Layer (type)'))
+        input_width = max(input_width, len('Input Contracts'))
+        output_width = max(output_width, len('Output Contracts'))
+
+        line_length = name_width + input_width + output_width + 20  # 2 spaces between columns
+
+        # 生成表格头部
+        title = f'Model: "{self.name}"'
+        print(title)
         print("=" * line_length)
+
+        # 表头
+        header = f"{'Layer (type)':<{name_width + 10}}{'Input Contracts':<{input_width + 10}}{'Output Contracts':<{output_width}}"
+        print(header)
+        print("-" * line_length)
+
+        # 打印内容
+        for row in table_content:
+            layer_display, input_display, output_display = row
+            print(f"{layer_display:<{name_width + 10}}{input_display:<{input_width + 10}}{output_display:<{output_width}}")
+
+        # 表格尾部
+        print("-" * line_length)
         if nested_models_count > 0:
             summary_text = f"Total layers: {total_layers} (including {nested_models_count} nested model(s) with {sub_layers_count} sub-layers)"
         else:
@@ -366,15 +336,17 @@ class Model(AnalysisComponent, ABC):
             component_name = display_name
         return component_name
 
-    def _print_nested_components(self, nested_model, name_width: int, input_width: int, output_width: int) -> int:
+    def _get_nested_components_data(self, nested_model) -> tuple[list[tuple[str, str, str]], int]:
         """
-        打印嵌套模型的组件信息。
+        收集嵌套模型的组件信息。
 
         Returns
         -------
-        int
-            嵌套组件的数量
+        tuple[list[tuple[str, str, str]], int]
+            一个元组，包含一个行数据列表和嵌套组件的数量。
+            每个行数据是一个 (layer_display, input_contracts, output_contracts) 的元组。
         """
+        nested_rows = []
         nested_order = nested_model._pipeline._build_execution_order()
         nested_sub_layers = 0
 
@@ -382,8 +354,10 @@ class Model(AnalysisComponent, ABC):
             nested_step_meta = nested_model._pipeline.get_step_info(nested_step_id)
             if not nested_step_meta.is_input_node:
                 nested_display_name = nested_step_meta.display_name
-                nested_input_contracts = ", ".join([c.name for c in nested_step_meta.input_contracts.values()]) if nested_step_meta.input_contracts else "None"
-                nested_output_contracts = ", ".join([c.name for c in nested_step_meta.output_contracts.values()]) if nested_step_meta.output_contracts else "None"
+                nested_input_contracts = ", ".join(
+                    [c.name for c in nested_step_meta.input_contracts.values()]) if nested_step_meta.input_contracts else "None"
+                nested_output_contracts = ", ".join(
+                    [c.name for c in nested_step_meta.output_contracts.values()]) if nested_step_meta.output_contracts else "None"
 
                 # 提取组件类名
                 component_name = self._extract_component_name(nested_display_name)
@@ -391,12 +365,7 @@ class Model(AnalysisComponent, ABC):
                 # 添加树形前缀
                 nested_layer_display = f"  └─ {component_name}"
 
-                # 截断文本
-                layer_display = self._truncate_text(nested_layer_display, name_width)
-                input_display = self._truncate_text(nested_input_contracts, input_width)
-                output_display = self._truncate_text(nested_output_contracts, output_width)
-
-                print(f"{layer_display:<{name_width}} {input_display:<{input_width}} {output_display:<{output_width}}")
+                nested_rows.append((nested_layer_display, nested_input_contracts, nested_output_contracts))
                 nested_sub_layers += 1
 
-        return nested_sub_layers
+        return nested_rows, nested_sub_layers

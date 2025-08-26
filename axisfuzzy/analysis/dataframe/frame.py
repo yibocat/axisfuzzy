@@ -38,6 +38,9 @@ class FuzzyDataFrame:
         `RangeIndex` if no indexing information part of input data and no index provided.
     columns : pd.Index or list-like, optional Column labels to use for resulting frame. Will
         default to keys of the data dictionary if not provided.
+    mtype : str, optional
+        The fuzzy data type for the arrays. If not provided, it will be inferred
+        from the data.
 
     Attributes
     ----------
@@ -47,12 +50,15 @@ class FuzzyDataFrame:
         The column labels of the FuzzyDataFrame.
     shape : tuple[int, int]
         A tuple representing the dimensionality of the FuzzyDataFrame.
+    mtype : str
+        The fuzzy data type of the arrays in the DataFrame.
     """
 
     def __init__(self,
                  data: Optional[Dict[str, 'Fuzzarray']] = None,
                  index: Optional[Union[pd.Index, List, np.ndarray]] = None,
-                 columns: Optional[Union[pd.Index, List, str]] = None):
+                 columns: Optional[Union[pd.Index, List, str]] = None,
+                 mtype: Optional[str] = None):
 
         from axisfuzzy.core import Fuzzarray
         if data is None:
@@ -64,6 +70,8 @@ class FuzzyDataFrame:
                 index = data.index.copy()
             if columns is None:
                 columns = data.columns.copy()
+            if mtype is None:
+                mtype = data.mtype
             data = {col: data[col].copy() for col in columns}
 
         self._data: Dict[str, Fuzzarray] = data
@@ -90,6 +98,18 @@ class FuzzyDataFrame:
         if len(self._data) > 0:
             if any(len(arr) != len(self._index) for arr in self._data.values()):
                 raise ValueError("All Fuzzarray columns must be of the same length.")
+
+        # Set mtype, infer if not provided
+        if mtype:
+            self._mtype = mtype
+        elif self._data:
+            # Infer from the first column and ensure consistency
+            first_mtype = next(iter(self._data.values())).mtype
+            if any(col.mtype != first_mtype for col in self._data.values()):
+                raise TypeError("All Fuzzarray columns must have the same mtype.")
+            self._mtype = first_mtype
+        else:
+            self._mtype = None
 
     def _validate_data(self):
         """Internal validation of the data dictionary."""
@@ -131,12 +151,17 @@ class FuzzyDataFrame:
             crisp_column_data = df[col_name].values
             fuzzy_data[col_name] = fuzzifier(crisp_column_data)
 
-        return cls(data=fuzzy_data, index=df.index, columns=df.columns)
+        return cls(data=fuzzy_data, index=df.index, columns=df.columns, mtype=fuzzifier.mtype)
 
     @property
     def shape(self) -> tuple[int, int]:
         """Return a tuple representing the dimensionality of the FuzzyDataFrame."""
         return len(self._index), len(self._columns)
+
+    @property
+    def mtype(self) -> Optional[str]:
+        """The fuzzy data type of the FuzzyDataFrame."""
+        return self._mtype
 
     @property
     def index(self) -> pd.Index:
@@ -183,6 +208,7 @@ class FuzzyDataFrame:
         value : Fuzzarray
             The Fuzzarray to be set as the column.
         """
+        from axisfuzzy.core import Fuzzarray
         if not isinstance(value, Fuzzarray):
             raise TypeError("Value must be a Fuzzarray.")
         if len(value) != len(self):
