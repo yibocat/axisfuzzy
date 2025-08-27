@@ -4,16 +4,19 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
+import importlib
 import inspect
+import json
 from abc import ABC, abstractmethod
 
 from collections import OrderedDict
-from typing import Any, get_type_hints, Dict, List
+from pathlib import Path
+from typing import Any, get_type_hints, Dict, Union
 
 # 导入组件模块, 契约系统, 管道 DAG 引擎
 from ..component import AnalysisComponent
 from ..contracts import Contract
-from ..pipeline import FuzzyPipeline, StepOutput, StepMetadata
+from ..pipeline import FuzzyPipeline
 
 
 class Model(AnalysisComponent, ABC):
@@ -30,6 +33,25 @@ class Model(AnalysisComponent, ABC):
         self._pipeline: FuzzyPipeline | None = None
         self._modules = OrderedDict()
         self.built = False  # 增加一个状态标志
+
+    @abstractmethod
+    def get_config(self) -> Dict[str, Any]:
+        """
+        Returns the serializable configuration of the model.
+
+        When implementing a custom `Model`, you must override this method.
+        The returned dictionary should contain the arguments needed to
+        re-create the model instance via its `__init__` method.
+
+        For example, if your model's `__init__` is `def __init__(self, num_layers, activation):`,
+        then `get_config` should return `{'num_layers': self.num_layers, 'activation': self.activation}`.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the model's configuration.
+        """
+        raise NotImplementedError("Custom Models must implement the 'get_config' method.")
 
     @property
     def pipeline(self) -> FuzzyPipeline:
@@ -369,3 +391,137 @@ class Model(AnalysisComponent, ABC):
                 nested_sub_layers += 1
 
         return nested_rows, nested_sub_layers
+
+    def save(self, filepath: Union[str, Path]):
+        """
+        将模型架构和配置保存到 JSON 文件。
+
+        此方法仅序列化重建模型所需的最小信息：
+        - 模型的类路径，用于动态加载。
+        - 模型的初始化参数 (`get_config()`)。
+        - 所有子模块的配置（递归）。
+
+        Parameters
+        ----------
+        filepath : Union[str, Path]
+            保存模型配置的 JSON 文件路径。
+        """
+        filepath = Path(filepath)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        model_data = self._serialize()
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(model_data, f, indent=2, ensure_ascii=False)
+
+        print(f"Model '{self.name}' configuration saved to: {filepath}")
+
+    def _serialize(self) -> Dict[str, Any]:
+        """
+        递归地将模型及其子模块序列化为字典。
+
+        Returns
+        -------
+        Dict[str, Any]
+            包含模型重建所需信息的字典。
+        """
+        # 序列化当前模型
+        data = {
+            'class_path': f"{self.__class__.__module__}.{self.__class__.__name__}",
+            'config': self.get_config(),
+            'modules': {}
+        }
+
+        # 递归序列化所有子模块
+        for name, module in self._modules.items():
+            if module is None:
+                continue  # None 值不需要保存，加载时会自动处理
+
+            if isinstance(module, Model):
+                # 嵌套模型，递归调用
+                data['modules'][name] = module._serialize()
+            elif isinstance(module, AnalysisComponent):
+                # 普通组件
+                data['modules'][name] = {
+                    'class_path': f"{module.__class__.__module__}.{module.__class__.__name__}",
+                    'config': module.get_config()
+                }
+            else:
+                # 如果有非 AnalysisComponent 的模块，可以选择忽略或报错
+                print(f"Warning: Skipping non-serializable module '{name}' of type {type(module).__name__}.")
+
+        return data
+
+    @classmethod
+    def load(cls, filepath: Union[str, Path]) -> 'Model':
+        """
+        从 JSON 配置文件加载模型。
+
+        加载后，模型处于未构建状态，需要手动调用 `.build()` 方法。
+
+        Parameters
+        ----------
+        filepath : Union[str, Path]
+            模型配置文件的路径。
+
+        Returns
+        -------
+        Model
+            加载并实例化的模型。
+        """
+        filepath = Path(filepath)
+        if not filepath.exists():
+            raise FileNotFoundError(f"Model file not found: {filepath}")
+
+        with open(filepath, 'r', encoding='utf-8') as f:
+            model_data = json.load(f)
+
+        model_instance = cls._deserialize(model_data)
+        print(f"Model loaded from: {filepath}. Please call .build() before use.")
+        return model_instance
+
+    @staticmethod
+    def _deserialize(data: Dict[str, Any]) -> 'Model':
+        """
+        根据序列化字典递归地重建模型实例。
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            包含模型信息的字典。
+
+        Returns
+        -------
+        Model
+            重建的模型实例。
+        """
+        # 动态导入主模型类
+        class_path = data['class_path']
+        try:
+            module_path, class_name = class_path.rsplit('.', 1)
+            module = importlib.import_module(module_path)
+            model_class = getattr(module, class_name)
+        except (ImportError, AttributeError) as e:
+            raise ImportError(f"Failed to import model class '{class_path}': {e}")
+
+        # 实例化主模型
+        instance = model_class(**data['config'])
+
+        # 递归反序列化并设置子模块
+        for name, module_data in data.get('modules', {}).items():
+            if 'modules' in module_data:  # 这是一个嵌套模型
+                sub_module = Model._deserialize(module_data)
+            else:  # 这是一个普通组件
+                sub_class_path = module_data['class_path']
+                try:
+                    sub_module_path, sub_class_name = sub_class_path.rsplit('.', 1)
+                    sub_module_obj = importlib.import_module(sub_module_path)
+                    sub_class = getattr(sub_module_obj, sub_class_name)
+                    sub_module = sub_class(**module_data['config'])
+                except (ImportError, AttributeError) as e:
+                    raise ImportError(f"Failed to import submodule class '{sub_class_path}': {e}")
+
+            # 使用 setattr 会触发 __setattr__，自动将其添加到 _modules 中
+            setattr(instance, name, sub_module)
+
+        return instance

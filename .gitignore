@@ -16,3 +16,7 @@ docs/build/
 
 /.vscode/
 /.trae/
+/doc/.obsidian/
+/doc/.smtcmp_json_db/
+/doc/.smtcmp_vector_db.tar.gz
+/doc/copilot-custom-prompts/
