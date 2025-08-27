@@ -4,7 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
-from typing import Union, Optional, Any, List
+from typing import Union, Optional, Any, List, Dict
 
 import numpy as np
 
@@ -16,11 +16,17 @@ from .strategy import FuzzificationStrategy
 
 class Fuzzifier:
 
+    _init_mf: Union[MembershipFunction, str]
+    _init_mtype: Optional[str]
+    _init_method: Optional[str]
+    _init_kwargs: Dict[str, Any]
+
     mtype: str
     method: str
     strategy: FuzzificationStrategy
     mf_cls: type[MembershipFunction]
-    mf_params_list: List
+    provided_mf_instance: Optional[MembershipFunction]
+    mf_params_list: List[Dict[str, Any]]
 
     def __init__(self,
                  mf: Union[MembershipFunction, str],
@@ -31,6 +37,9 @@ class Fuzzifier:
     def __call__(self,
                  x: Union[float, int, list, np.ndarray]) -> Fuzznum | Fuzzarray: ...
     def __repr__(self): ...
+    def get_config(self) -> Dict[str, Any]: ...
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> 'Fuzzifier': ...
     def plot(self,
              x_range: tuple = ...,
              num_points: int = ...,

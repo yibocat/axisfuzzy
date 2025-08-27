@@ -1,0 +1,43 @@
+{
+  "class_path": "__main__.ComplexAnalysisModel",
+  "config": {},
+  "modules": {
+    "data_normalizer": {
+      "class_path": "axisfuzzy.analysis.component.basic.ToolNormalization",
+      "config": {
+        "method": "min_max",
+        "axis": 0
+      }
+    },
+    "weight_normalizer": {
+      "class_path": "axisfuzzy.analysis.component.basic.ToolWeightNormalization",
+      "config": {
+        "ensure_positive": true
+      }
+    },
+    "fuzzifier": {
+      "class_path": "axisfuzzy.analysis.component.basic.ToolFuzzification",
+      "config": {
+        "fuzzifier": {
+          "mf": "gaussmf",
+          "mtype": "qrohfn",
+          "method": null,
+          "pi": 0.2,
+          "mf_params": [
+            {
+              "sigma": 0.15,
+              "c": 0.5
+            }
+          ]
+        }
+      }
+    },
+    "aggregator": {
+      "class_path": "axisfuzzy.analysis.component.basic.ToolSimpleAggregation",
+      "config": {
+        "operation": "mean",
+        "axis": 1
+      }
+    }
+  }
+}

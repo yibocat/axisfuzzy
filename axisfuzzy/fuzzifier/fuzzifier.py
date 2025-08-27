@@ -37,6 +37,13 @@ class Fuzzifier:
         method : 策略方法名
         kwargs : 包含 'mf_params' 与策略参数
         """
+        # --- 保存原始构造参数，这对于序列化至关重要 ---
+        self._init_mf = mf
+        self._init_mtype = mtype
+        self._init_method = method
+        self._init_kwargs = kwargs.copy()   # 必须复制
+        # --- 序列化所需信息结束 ---
+
         # 1. 确定策略类
         self.mtype = mtype or get_config().DEFAULT_MTYPE
         registry = get_registry_fuzzify()
@@ -83,6 +90,40 @@ class Fuzzifier:
                 f"mtype='{self.mtype}', "
                 f"mf='{self.mf_cls.__name__}', "
                 f"params={self.mf_params_list})")
+
+    def get_config(self) -> Dict[str, Any]:
+        """
+        返回一个可序列化的配置字典，用于重建 Fuzzifier。
+
+        此方法返回重建实例所需的所有构造参数。
+        """
+        # 隶属函数总是以字符串形式保存，以确保可移植性
+        if isinstance(self._init_mf, str):
+            mf_name = self._init_mf
+        else:
+            mf_name = self._init_mf.__class__.__name__
+
+        config = {
+            'mf': mf_name,
+            'mtype': self._init_mtype,
+            'method': self._init_method,
+        }
+        # 将 mf_params 和其他策略参数合并
+        config.update(self._init_kwargs)
+        return config
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> 'Fuzzifier':
+        """
+        从配置字典重建 Fuzzifier 实例。
+
+        Args:
+            config (dict): 由 get_config 方法生成的配置字典。
+
+        Returns:
+            Fuzzifier: 重建的 Fuzzifier 实例。
+        """
+        return cls(**config)
 
     def plot(self,
              x_range: tuple = (0, 1),

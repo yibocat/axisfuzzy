@@ -12,6 +12,8 @@ This module provides simple, reusable components for common data operations
 that are frequently needed in fuzzy analysis pipelines.
 This version is refactored to use the new type-annotation-driven contract system.
 """
+from typing import Union
+
 import numpy as np
 import pandas as pd
 
@@ -270,19 +272,24 @@ class ToolFuzzification(AnalysisComponent):
         promotes separation of concerns, where the fuzzification logic is
         defined once and then passed to this pipeline component.
     """
-    def __init__(self, fuzzifier: Fuzzifier):
-        if not isinstance(fuzzifier, Fuzzifier):
-            raise TypeError("fuzzifier must be an instance of 'Fuzzifier'.")
-        self.fuzzifier = fuzzifier
+    def __init__(self, fuzzifier: Union[Fuzzifier, dict]):
+
+        if isinstance(fuzzifier, Fuzzifier):
+            self.fuzzifier = fuzzifier
+        elif isinstance(fuzzifier, dict):
+            self.fuzzifier = Fuzzifier.from_config(fuzzifier)
+        else:
+            raise TypeError(
+                f"fuzzifier must be an instance of 'Fuzzifier' or a config dict. "
+                f"Got '{type(fuzzifier)}'."
+            )
 
     def get_config(self):
-        """Returns the component's configuration."""
-        # TODO: 关于模糊化器的配置序列化,
-        #  其 fuzzifier 参数不是 JSON 可序列化的。我们需要一个更高级的策略，
-        #  例如序列化 Fuzzifier 的配置。这是一个更复杂的主题，我们可以暂时约定
-        #  ToolFuzzification 不支持序列化，或在 get_config 中抛出
-        #  NotImplementedError，并在后续版本中解决。
-        return NotImplementedError
+        """
+        Returns the component's configuration by requesting it from the inner Fuzzifier.
+        """
+        # 职责清晰：ToolFuzzification 只负责向 Fuzzifier 请求其配置
+        return {'fuzzifier': self.fuzzifier.get_config()}
 
     @contract
     def run(self, data: ContractCrispTable) -> ContractFuzzyTable:
