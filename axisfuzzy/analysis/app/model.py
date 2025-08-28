@@ -176,7 +176,7 @@ class Model(AnalysisComponent, ABC):
         self.built = True
         print(f"--- FuzzyPipeline for '{self.name}' built successfully. ---\n")
 
-    def run(self, *args, **kwargs) -> Any:
+    def run(self, *args, return_intermediate: bool = False, **kwargs) -> Any:
         """
         【第三步】: 执行实际计算。
         """
@@ -189,12 +189,13 @@ class Model(AnalysisComponent, ABC):
         if 'self' in input_names:
             input_names.remove('self')
 
+        # 处理输入数据
         if len(input_names) == 1 and len(args) == 1 and not kwargs:
             initial_data = args[0]
         else:
             initial_data = {**dict(zip(input_names, args)), **kwargs}
 
-        return self.pipeline.run(initial_data)
+        return self.pipeline.run(initial_data, return_intermediate=return_intermediate)
 
     def __call__(self, *args, **kwargs) -> Any:
         """调用模型实例等同于执行 run 方法。"""

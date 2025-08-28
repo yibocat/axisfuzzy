@@ -12,6 +12,7 @@ This module provides the `.fuzzy` accessor on pandas DataFrames, serving as the
 primary user-facing entry point for the entire fuzzy analysis toolkit.
 """
 
+import inspect
 from typing import TYPE_CHECKING, List, Dict, Any, Union, Tuple, Optional
 
 from axisfuzzy.fuzzifier import Fuzzifier
@@ -25,6 +26,7 @@ except ImportError:
 if TYPE_CHECKING:
     from .pipeline import FuzzyPipeline
     from .dataframe import FuzzyDataFrame
+    from .app.model import Model
 
 
 @pd.api.extensions.register_dataframe_accessor("fuzzy")
@@ -37,7 +39,7 @@ class FuzzyAccessor:
     into their standard data analysis workflows.
 
     It serves as a facade, providing convenient entry points to the more
-    complex underlying components like `FuzzyDataFrame` and `FuzzyPipeline`.
+    complex underlying components like `FuzzyDataFrame`, `FuzzyPipeline`, and `Model`.
 
     Parameters
     ----------
@@ -106,61 +108,129 @@ class FuzzyAccessor:
         return FuzzyDataFrame.from_pandas(self._df, fuzzifier)
 
     def run(self,
-            pipeline: 'FuzzyPipeline',
-            return_intermediate: bool = False
+            executable: Union['FuzzyPipeline', 'Model'],
+            return_intermediate: bool = False,
+            **kwargs
             ) -> Union[Dict[str, Any], Tuple[Dict[str, Any], Dict[str, Any]]]:
         """
-        Executes a fuzzy analysis pipeline using the bound DataFrame as initial data.
+        Executes a fuzzy analysis pipeline or model using the bound DataFrame as initial data.
 
         This is the main entry point for running a pre-defined `FuzzyPipeline`
-        graph. The accessor automatically injects the bound DataFrame as the
-        initial data handle named 'init_data'.
+        graph or a high-level `Model`. The accessor automatically injects the bound
+        DataFrame as input data, and other inputs can be provided as keyword arguments.
+
+        For a `FuzzyPipeline` or `Model`:
+        - If there is one input, the DataFrame is passed to it.
+        - If there are multiple inputs, the DataFrame is passed to the input named
+          'init_data' (preferred) or 'data'.
+        - Other required inputs must be provided as keyword arguments (`**kwargs`).
+        - For a `Model`, if it's not built, it will be built automatically.
 
         Parameters
         ----------
-        pipeline : FuzzyPipeline
-            A `FuzzyPipeline` instance that defines the analysis workflow.
+        executable : FuzzyPipeline or Model
+            A `FuzzyPipeline` or `Model` instance to execute.
         return_intermediate : bool, default False
-            If True, the pipeline will return the final results and a dictionary
-            of all intermediate states. Otherwise, it returns only the final results.
+            If True, returns both final and intermediate results.
+        **kwargs :
+            Additional keyword arguments to be passed as inputs to the model or pipeline.
 
         Returns
         -------
         dict[str, Any] or tuple[dict, dict]
-            The result of the pipeline execution.
+            The result of the execution.
+
+        Raises
+        ------
+        ValueError
+            If input injection is ambiguous or a required input is missing.
         """
         # Lazy import to avoid circular dependencies
         from .pipeline import FuzzyPipeline
+        from .app.model import Model
 
-        if not isinstance(pipeline, FuzzyPipeline):
+        if isinstance(executable, Model):
+            model = executable
+            if not model.built:
+                model.build()
+
+            sig = inspect.signature(model.forward)
+            input_names = [p.name for p in sig.parameters.values() if p.name != 'self']
+
+            run_kwargs = kwargs.copy()
+
+            if len(input_names) == 1:
+                df_input_name = input_names[0]
+                if df_input_name in run_kwargs:
+                    raise ValueError(
+                        f"Ambiguous input: '{df_input_name}' was provided via both the "
+                        f"DataFrame accessor and keyword arguments."
+                    )
+                run_kwargs[df_input_name] = self._df
+            else:  # multiple inputs
+                # By convention, inject DataFrame into 'init_data' or 'data'
+                if 'init_data' in input_names:
+                    df_input_name = 'init_data'
+                elif 'data' in input_names:
+                    df_input_name = 'data'
+                else:
+                    raise ValueError(
+                        f"The model's 'forward' method has multiple inputs ({input_names}), "
+                        f"but no 'init_data' or 'data' input was found to inject the DataFrame. "
+                        f"Please name one of your inputs 'init_data' or 'data'."
+                    )
+
+                if df_input_name in run_kwargs:
+                    raise ValueError(
+                        f"Ambiguous input: '{df_input_name}' was provided via both the "
+                        f"DataFrame accessor and keyword arguments."
+                    )
+
+                run_kwargs[df_input_name] = self._df
+
+            return model.run(return_intermediate=return_intermediate, **run_kwargs)
+
+        elif isinstance(executable, FuzzyPipeline):
+            pipeline = executable
+            input_names = list(pipeline._input_nodes.keys())
+            num_inputs = len(input_names)
+
+            initial_data = kwargs.copy()
+
+            if num_inputs == 0:
+                if kwargs:
+                    raise ValueError("The pipeline has no defined inputs, but keyword arguments were provided.")
+            elif num_inputs == 1:
+                df_input_name = input_names[0]
+                if df_input_name in initial_data:
+                    raise ValueError(
+                        f"Ambiguous input: '{df_input_name}' was provided via both the "
+                        f"DataFrame accessor and keyword arguments."
+                    )
+                initial_data[df_input_name] = self._df
+            else:  # num_inputs > 1
+                if 'init_data' in input_names:
+                    df_input_name = 'init_data'
+                elif 'data' in input_names:
+                    df_input_name = 'data'
+                else:
+                    raise ValueError(
+                        f"The pipeline has multiple inputs ({input_names}), but no 'init_data' "
+                        f"or 'data' input was found to inject the DataFrame. "
+                        f"Please name one of your inputs 'init_data' or 'data'."
+                    )
+
+                if df_input_name in initial_data:
+                    raise ValueError(
+                        f"Ambiguous input: '{df_input_name}' was provided via both the "
+                        f"DataFrame accessor and keyword arguments."
+                    )
+
+                initial_data[df_input_name] = self._df
+
+            return pipeline.run(initial_data, return_intermediate)
+
+        else:
             raise TypeError(
-                f"Expected a FuzzyPipeline object, but got {type(pipeline).__name__}."
+                f"Expected a FuzzyPipeline or Model object, but got {type(executable).__name__}."
             )
-
-        initial_data: Dict[str, Any]
-
-        num_inputs = len(pipeline._input_nodes)
-
-        if num_inputs == 0:
-            # 如果 Pipeline 没有定义任何输入，但用户尝试用 df 运行它，这是个错误
-            raise ValueError("The pipeline has no defined inputs, "
-                             "but is being run with a DataFrame.")
-
-        elif num_inputs == 1:
-            # 如果只有一个输入节点，自动将 df 注入，无需关心其名称
-            # 获取那个唯一的输入节点的名称
-            input_name = list(pipeline._input_nodes.keys())[0]
-            initial_data = {input_name: self._df}
-
-        else:   # num_inputs > 1
-            # 如果有多个输入节点，则遵循约定：必须有一个名为 'init_data' 的节点
-            if 'init_data' not in pipeline._input_nodes:
-                raise ValueError(
-                    f"The pipeline has multiple inputs ({list(pipeline._input_nodes.keys())}), "
-                    "but no default 'init_data' input was found to inject the DataFrame into. "
-                    "Please name one of your inputs 'init_data'."
-                )
-            initial_data = {'init_data': self._df}
-
-        return pipeline.run(initial_data, return_intermediate)
-
