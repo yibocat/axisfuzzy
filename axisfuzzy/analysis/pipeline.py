@@ -157,6 +157,27 @@ class ExecutionState:
         self.current_index = current_index
         self.latest_step_id = latest_step_id
 
+    def __repr__(self) -> str:
+        """Provides a developer-friendly representation of the execution state."""
+        pipeline_name = self.pipeline.name
+        total_steps = len(self.execution_order)
+        current_step_num = self.current_index
+
+        if self.is_complete():
+            status = f"completed (step {current_step_num}/{total_steps})"
+            next_step_info = "-- "
+        else:
+            status = f"step {current_step_num}/{total_steps}"
+            next_step_id = self.execution_order[self.current_index]
+            next_step_info = f"'{self.pipeline.get_step_info(next_step_id).display_name}'"
+
+        last_step_info = f"'{self.pipeline.get_step_info(self.latest_step_id).display_name}'" if self.latest_step_id else "-- "
+
+        return (
+            f"<ExecutionState for '{pipeline_name}' "
+            f"({status}, next: {next_step_info}, last: {last_step_info})>"
+        )
+
     @property
     def latest_result(self) -> Any:
         """The result of the most recently executed step."""
@@ -220,7 +241,6 @@ class ExecutionState:
             current_state = current_state.run_next()
         return current_state
 
-
 class FuzzyPipelineIterator:
     """
     An iterator for step-by-step execution of a FuzzyPipeline.
@@ -278,11 +298,16 @@ class FuzzyPipelineIterator:
         return {
             'step_id': self.current_state.latest_step_id,
             'step_name': step_meta.display_name,
-            'step_index': self.current_state.current_index - 1,
+            'step_index': self.current_state.current_index,
             'total_steps': self.total_steps,
             'result': self.current_state.latest_result,
-            'execution_time': end_time - start_time
+            'execution_time(ms)': round((end_time - start_time) * 1e3, 5)
         }
+    
+    @property
+    def result(self) -> Any:
+        """The result of the pipeline execution."""
+        return self.current_state.latest_result
 
 
 class FuzzyPipeline(AnalysisComponent):

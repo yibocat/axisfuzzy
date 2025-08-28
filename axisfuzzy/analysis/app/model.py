@@ -16,7 +16,7 @@ from typing import Any, get_type_hints, Dict, Union
 # 导入组件模块, 契约系统, 管道 DAG 引擎
 from ..component import AnalysisComponent
 from ..contracts import Contract
-from ..pipeline import FuzzyPipeline
+from ..pipeline import FuzzyPipeline, FuzzyPipelineIterator, ExecutionState
 
 
 class Model(AnalysisComponent, ABC):
@@ -196,6 +196,48 @@ class Model(AnalysisComponent, ABC):
             initial_data = {**dict(zip(input_names, args)), **kwargs}
 
         return self.pipeline.run(initial_data, return_intermediate=return_intermediate)
+    
+    def step_by_step(self, *args, **kwargs) -> 'FuzzyPipelineIterator':
+        """
+        【第四步（可选）】: 创建一个迭代器用于单步执行。
+
+        此方法返回一个迭代器，允许您逐步执行模型的计算图，
+        从而可以观察每个中间步骤的结果。这对于调试或创建交互式分析非常有用。
+
+        在使用此方法前，必须先调用 `.build()`。
+
+        Parameters
+        ----------
+        *args
+            传递给模型 `forward` 方法的位置参数。
+        **kwargs
+            传递给模型 `forward` 方法的关键字参数。
+
+        Returns
+        -------
+        FuzzyPipelineIterator
+            一个迭代器，每次迭代都会执行图中的一个步骤。
+
+        Raises
+        ------
+        RuntimeError
+            如果模型尚未构建。
+        """
+        if not self.built:
+            raise RuntimeError("Model has not been built yet. Call .build() before using step_by_step.")
+
+        # 此输入处理逻辑与 `run` 方法一致
+        sig = inspect.signature(self.forward)
+        input_names = list(sig.parameters.keys())
+        if 'self' in input_names:
+            input_names.remove('self')
+
+        if len(input_names) == 1 and len(args) == 1 and not kwargs:
+            initial_data = args[0]
+        else:
+            initial_data = {**dict(zip(input_names, args)), **kwargs}
+
+        return self.pipeline.step_by_step(initial_data)
 
     def __call__(self, *args, **kwargs) -> Any:
         """调用模型实例等同于执行 run 方法。"""
