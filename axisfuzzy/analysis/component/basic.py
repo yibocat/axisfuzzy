@@ -12,6 +12,7 @@ This module provides simple, reusable components for common data operations
 that are frequently needed in fuzzy analysis pipelines.
 This version is refactored to use the new type-annotation-driven contract system.
 """
+
 from typing import Union
 
 import numpy as np

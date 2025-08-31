@@ -4,6 +4,7 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
+
 import importlib
 import inspect
 import json
@@ -16,7 +17,7 @@ from typing import Any, get_type_hints, Dict, Union
 # 导入组件模块, 契约系统, 管道 DAG 引擎
 from ..component import AnalysisComponent
 from ..contracts import Contract
-from ..pipeline import FuzzyPipeline, FuzzyPipelineIterator, ExecutionState
+from ..pipeline import FuzzyPipeline, FuzzyPipelineIterator
 
 
 class Model(AnalysisComponent, ABC):

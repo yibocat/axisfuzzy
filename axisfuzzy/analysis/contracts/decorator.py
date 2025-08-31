@@ -10,7 +10,7 @@ Defines the v2 @contract decorator, which infers contracts from type hints.
 """
 
 import inspect
-from typing import get_type_hints, Dict, Any, get_origin, get_args, Union
+from typing import get_type_hints, Dict, get_origin, get_args, Union
 
 from .base import Contract
 

@@ -14,9 +14,9 @@ from typing import Dict, Any, List, Union, Optional, TYPE_CHECKING
 import pandas as pd
 import numpy as np
 
-if TYPE_CHECKING:
-    from axisfuzzy.core import Fuzzarray
-    from axisfuzzy.fuzzifier import Fuzzifier
+
+from axisfuzzy.core import Fuzzarray
+from axisfuzzy.fuzzifier import Fuzzifier
 
 
 class FuzzyDataFrame:

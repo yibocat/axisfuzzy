@@ -13,20 +13,17 @@ primary user-facing entry point for the entire fuzzy analysis toolkit.
 """
 
 import inspect
-from typing import TYPE_CHECKING, List, Dict, Any, Union, Tuple, Optional
+from typing import TYPE_CHECKING, Dict, Any, Union, Tuple, Optional
 
 from axisfuzzy.fuzzifier import Fuzzifier
 
 # Lazy import for optional dependency
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
+import pandas as pd
 
-if TYPE_CHECKING:
-    from .pipeline import FuzzyPipeline
-    from .dataframe import FuzzyDataFrame
-    from .app.model import Model
+
+from .pipeline import FuzzyPipeline
+from .dataframe import FuzzyDataFrame
+from .app.model import Model
 
 
 @pd.api.extensions.register_dataframe_accessor("fuzzy")

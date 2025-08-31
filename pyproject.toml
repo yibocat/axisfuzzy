@@ -1,20 +1,33 @@
 [project]
 name = "axisfuzzy"
 version = "0.0.1"
-description = "Add your description here"
+description = "A high-performance Python library for fuzzy number and fuzzy array computations"
 requires-python = ">=3.12"
+# Core dependencies: Keep it lightweight, including only the essential dependencies for fuzzy computation.
 dependencies = [
-    "notebook>=7.4.5",
-    "numpy>=2.2.6",
-    "matplotlib>=3.10.5",
-    "pytest>=8.4.1",
-    "numba>=0.61.2",
+    "numpy>=2.2.6",      # 核心数值计算
+    "numba>=0.61.2",     # 高性能编译
+]
+
+# Optional dependencies: grouped by functional modules
+[project.optional-dependencies]
+# Analysis and visualization dependencies
+analysis = [
     "pandas>=2.3.2",
     "pandas-stubs==2.3.0.250703",
-    "myst-parser>=4.0.1",
-    "sphinx-copybutton>=0.5.2",
-    "sphinx-design>=0.6.1",
-    "sphinx-autodoc-typehints>=3.2.0",
-    "sphinx-tabs>=3.4.7",
-    "pydata-sphinx-theme>=0.16.1",
+    "matplotlib>=3.10.5",
+    "networkx>=3.0",
+    "pydot>=1.4.0",
+]
+
+# Development and testing dependencies
+dev = [
+    "pytest>=8.4.1",
+    "notebook>=7.4.5",
+    "jupyter>=1.0.0",
+]
+
+# Full user installation: includes analysis features
+all = [
+    "axisfuzzy[analysis]",
 ]

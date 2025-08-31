@@ -16,9 +16,7 @@ The main components are:
 - Sequential: A linear workflow builder for simple analysis chains
 """
 
-from .sequential import Sequential
 from .model import Model
-from . import layers
 
-__all__ = ["Sequential", "layers", "Model"]
+__all__ = ["Model"]
 

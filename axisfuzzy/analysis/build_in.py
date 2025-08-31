@@ -6,16 +6,15 @@
 #  Software: AxisFuzzy
 from typing import Any
 
-# --- Optional Dependencies ---
-try:
-    import pandas as pd
-    import numpy as np
 
-    _PANDAS_AVAILABLE = True
-except ImportError:
-    pd = None
-    np = None
-    _PANDAS_AVAILABLE = False
+import pandas as pd
+import numpy as np
+
+    # _PANDAS_AVAILABLE = True
+# except ImportError:
+#     pd = None
+#     np = None
+#     _PANDAS_AVAILABLE = False
 
 # --- Local Imports ---
 from .contracts import Contract
@@ -26,15 +25,15 @@ from axisfuzzy.analysis.dataframe import FuzzyDataFrame
 
 # --- Helper Validators ---
 def _is_pandas_df(obj: Any) -> bool:
-    return _PANDAS_AVAILABLE and isinstance(obj, pd.DataFrame)
+    return isinstance(obj, pd.DataFrame)
 
 
 def _is_pandas_series(obj: Any) -> bool:
-    return _PANDAS_AVAILABLE and isinstance(obj, pd.Series)
+    return isinstance(obj, pd.Series)
 
 
 def _is_numpy_array(obj: Any) -> bool:
-    return _PANDAS_AVAILABLE and isinstance(obj, np.ndarray)
+    return isinstance(obj, np.ndarray)
 
 
 # --- Base Contracts ---
