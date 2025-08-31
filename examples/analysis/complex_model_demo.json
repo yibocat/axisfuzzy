@@ -20,7 +20,7 @@
       "config": {
         "fuzzifier": {
           "mf": "gaussmf",
-          "mtype": "qrohfn",
+          "mtype": "qrofn",
           "method": null,
           "pi": 0.2,
           "mf_params": [
@@ -38,6 +38,10 @@
         "operation": "mean",
         "axis": 1
       }
+    },
+    "_pipeline": {
+      "class_path": "axisfuzzy.analysis.pipeline.FuzzyPipeline",
+      "config": {}
     }
   }
 }

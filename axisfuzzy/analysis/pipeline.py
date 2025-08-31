@@ -48,7 +48,7 @@ except ImportError:
     _IPYTHON_AVAILABLE = False
 
 # --- Local Imports ---
-from ._components.base import AnalysisComponent
+from .component import AnalysisComponent
 from .contracts import Contract
 from .build_in import ContractAny
 
@@ -241,6 +241,7 @@ class ExecutionState:
             current_state = current_state.run_next()
         return current_state
 
+
 class FuzzyPipelineIterator:
     """
     An iterator for step-by-step execution of a FuzzyPipeline.
@@ -391,6 +392,9 @@ class FuzzyPipeline(AnalysisComponent):
 
     def __str__(self) -> str:
         return self.__repr__()
+
+    def get_config(self) -> dict:
+        return {}
 
     # --- Fluent API Methods ---
 
