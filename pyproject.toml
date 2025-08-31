@@ -1,3 +1,11 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["axisfuzzy*"]
+exclude = ["todo*", "assets*", "notebook*", "test*", "tests*", "doc*", "docs*", "examples*"]
+
 [project]
 name = "axisfuzzy"
 version = "0.0.1"
