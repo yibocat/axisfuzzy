@@ -60,7 +60,6 @@ from typing import Optional, Callable, Union, Tuple, Any
 from abc import ABC, abstractmethod
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from ..config import get_config
 
@@ -1239,6 +1238,14 @@ class OperationTNorm:
 
     def plot_t_norm_surface(self, resolution: int = 50):
         """绘制 T-范数和 T-余范数的 3D 表面图"""
+        try:
+            from matplotlib import pyplot as plt
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for plotting. "
+                "Install it with: pip install matplotlib or uv add --optional analysis matplotlib"
+            )
+        
         eps = get_config().DEFAULT_EPSILON
         x = np.linspace(eps, 1.0 - eps, resolution)
         y = np.linspace(eps, 1.0 - eps, resolution)

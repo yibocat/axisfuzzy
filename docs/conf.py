@@ -60,6 +60,7 @@ extensions = [
     'sphinx.ext.mathjax',     # 使用 MathJax 渲染数学公式
     'sphinx.ext.autosummary', # 为 API 文档生成摘要表格
     'sphinx_tabs.tabs',       # 添加标签页功能
+    'pydata_sphinx_theme',    # PyData Sphinx 主题扩展
 ]
 
 # 包含模板的路径，相对于此目录。
@@ -123,8 +124,8 @@ copybutton_prompt_is_regexp = True
 # 与文档的 HTML 输出相关的设置。
 
 # 用于 HTML 和 HTML Help 页面的主题。
-# 'pydata_sphinx_theme' 是一个流行、现代且高度可定制的主题。
-# 其他主题选项（例如 "shibuya", "furo", "sphinx_book_theme"）已注释掉作为示例，您可以根据喜好选择。
+# 其他主题选项（例如 "furo", "pydata_sphinx_theme", "shibuya"）可以在依赖稳定后尝试
+# 使用 pydata_sphinx_theme 主题，提供现代化的文档界面
 html_theme = 'pydata_sphinx_theme'
 
 # 包含自定义静态文件（例如 CSS、JavaScript）的路径。

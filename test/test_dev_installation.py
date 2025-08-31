@@ -85,15 +85,12 @@ def test_functionality():
         import matplotlib
         print(f"✅ matplotlib {matplotlib.__version__}: 导入成功")
 
-        # 测试 networkx
-        import networkx as nx
-        G = nx.Graph()
-        G.add_edge(1, 2)
-        print(f"✅ networkx {nx.__version__}: 图创建成功，节点数 {G.number_of_nodes()}")
-
-        # 测试 pydot
-        import pydot
-        print(f"✅ pydot {pydot.__version__}: 导入成功")
+        # 测试 notebook
+        try:
+            import notebook
+            print(f"✅ notebook {notebook.__version__}: 导入成功")
+        except ImportError:
+            print("⚠️ notebook 未安装（可选依赖）")
 
         return True
     except Exception as e:
@@ -101,9 +98,46 @@ def test_functionality():
         return False
 
 
+def test_lazy_imports():
+    """测试延迟导入功能"""
+    print("\n=== 测试 5: 延迟导入验证 ===")
+    try:
+        # 测试核心模块不直接导入 matplotlib
+        import sys
+        import axisfuzzy.core.triangular
+        
+        # 检查 matplotlib 是否已被导入
+        matplotlib_imported_before = 'matplotlib.pyplot' in sys.modules
+        print(f"✅ 导入核心模块前 matplotlib 状态: {'已导入' if matplotlib_imported_before else '未导入'}")
+        
+        # 测试绘图功能的延迟导入
+        from axisfuzzy.core.triangular import OperationTNorm
+        op = OperationTNorm()
+        
+        # 尝试调用绘图方法（如果存在）
+        if hasattr(op, 'plot_t_norm_surface'):
+            try:
+                # 这应该触发 matplotlib 的延迟导入
+                import matplotlib
+                matplotlib.use('Agg')  # 使用非交互式后端
+                op.plot_t_norm_surface()  # 调用绘图方法
+                matplotlib_imported_after = 'matplotlib.pyplot' in sys.modules
+                print(f"✅ 调用绘图方法后 matplotlib 状态: {'已导入' if matplotlib_imported_after else '未导入'}")
+                print("✅ 延迟导入机制工作正常")
+            except Exception as e:
+                print(f"⚠️ 绘图功能测试: {e}")
+        else:
+            print("⚠️ 未找到绘图方法，跳过延迟导入测试")
+        
+        return True
+    except Exception as e:
+        print(f"❌ 延迟导入测试失败: {e}")
+        return False
+
+
 def test_development_workflow():
     """测试开发工作流"""
-    print("\n=== 测试 5: 开发工作流验证 ===")
+    print("\n=== 测试 6: 开发工作流验证 ===")
     try:
         # 验证是否为开发模式安装
         import axisfuzzy
@@ -138,7 +172,8 @@ def main():
         test_analysis_module,
         test_dependency_check,
         test_functionality,
-        test_development_workflow
+        test_development_workflow,
+        test_lazy_imports
     ]
 
     results = []

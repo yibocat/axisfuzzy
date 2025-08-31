@@ -8,7 +8,6 @@
 # fuzzifier.py
 from typing import Union, Optional, Any, List, Dict
 import numpy as np
-from matplotlib import pyplot as plt
 
 from .registry import get_registry_fuzzify
 from ..config import get_config
@@ -137,6 +136,14 @@ class Fuzzifier:
             num_points (int): 采样点个数
             show (bool): 是否立即显示图像
         """
+        try:
+            from matplotlib import pyplot as plt
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for plotting. "
+                "Install it with: pip install matplotlib or uv add --optional analysis matplotlib"
+            )
+        
         x = np.linspace(x_range[0], x_range[1], num_points)
 
         plt.figure(figsize=(8, 5))

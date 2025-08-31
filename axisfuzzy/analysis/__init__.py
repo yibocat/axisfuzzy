@@ -84,7 +84,10 @@ def check_analysis_dependencies():
 # 这样用户必须显式地从子模块导入，例如:
 # from axisfuzzy.analysis.pipeline import FuzzyPipeline
 
+from .app import Model
+
 __all__ = [
     "app",
+    "Model",
     "check_analysis_dependencies",
 ]

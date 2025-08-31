@@ -56,7 +56,6 @@ import warnings
 from typing import Optional, Callable, Union
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from axisfuzzy.config import get_config
 
@@ -1355,6 +1354,14 @@ class OperationTNorm:
                               Higher resolution results in a smoother surface but
                               longer computation time.
         """
+        try:
+            from matplotlib import pyplot as plt
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for plotting. "
+                "Install it with: pip install matplotlib or uv add --optional analysis matplotlib"
+            )
+        
         # Generate ranges for a and b, avoiding boundary values that might cause
         # calculation issues (e.g., log(0) or division by 0).
         x = np.linspace(get_config().DEFAULT_EPSILON, 1.0 - get_config().DEFAULT_EPSILON, resolution)

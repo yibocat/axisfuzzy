@@ -13,8 +13,8 @@ description = "A high-performance Python library for fuzzy number and fuzzy arra
 requires-python = ">=3.12"
 # Core dependencies: Keep it lightweight, including only the essential dependencies for fuzzy computation.
 dependencies = [
-    "numpy>=2.2.6",      # 核心数值计算
-    "numba>=0.61.2",     # 高性能编译
+    "numpy>=2.2.6", # 核心数值计算
+    "numba>=0.61.2",
 ]
 
 # Optional dependencies: grouped by functional modules
@@ -35,7 +35,23 @@ dev = [
     "jupyter>=1.0.0",
 ]
 
+# Documentation dependencies
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-copybutton>=0.5.0",
+    "sphinx-design>=0.5.0",
+    "sphinx-autodoc-typehints>=3.0",
+    "sphinx-tabs>=3.4.0",
+    "myst-parser>=2.0.0",
+    "babel>=2.14.0",
+    "pydata-sphinx-theme>=0.16.1",
+]
+
 # Full user installation: includes analysis features
+# 完整安装：包含所有功能
 all = [
     "axisfuzzy[analysis]",
+    "axisfuzzy[dev]",
+    "axisfuzzy[docs]",
 ]
