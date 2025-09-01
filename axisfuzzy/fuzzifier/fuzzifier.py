@@ -6,8 +6,9 @@
 #  Software: AxisFuzzy
 
 # fuzzifier.py
-from typing import Union, Optional, Any, List, Dict
+from typing import Union, Optional, Any, List, Dict, Type
 import numpy as np
+import inspect
 
 from .registry import get_registry_fuzzify
 from ..config import get_config
@@ -24,7 +25,7 @@ class Fuzzifier:
     """
 
     def __init__(self,
-                 mf: Union[MembershipFunction, str],
+                 mf: Union[MembershipFunction, Type[MembershipFunction], str],
                  mtype: Optional[str] = None,
                  method: Optional[str] = None,
                  **kwargs: Any):
@@ -57,17 +58,28 @@ class Fuzzifier:
 
         # 2. 确定隶属函数类
         if isinstance(mf, MembershipFunction):
+            # 传入的是隶属函数实例
             self.mf_cls = mf.__class__
             self.provided_mf_instance = mf
+        elif inspect.isclass(mf) and issubclass(mf, MembershipFunction):
+            # 传入的是隶属函数类
+            self.mf_cls = mf
+            self.provided_mf_instance = None
         else:
+            # 传入的是字符串名称或别名
             self.mf_cls = get_mf_class(mf)
             self.provided_mf_instance = None
 
         # 3. 提取并标准化 mf_params
         if "mf_params" not in kwargs:
-            raise ValueError("Fuzzifier requires 'mf_params' argument (dict or list of dicts).")
+            # 如果传入的是隶属函数实例且未提供 mf_params，则自动从实例中提取参数
+            if isinstance(mf, MembershipFunction):
+                mf_params = mf.get_parameters()
+            else:
+                raise ValueError("Fuzzifier requires 'mf_params' argument (dict or list of dicts) when not using a MembershipFunction instance.")
+        else:
+            mf_params = kwargs.pop("mf_params")
 
-        mf_params = kwargs.pop("mf_params")
         if isinstance(mf_params, dict):
             mf_params_list = [mf_params]
         elif isinstance(mf_params, list) and all(isinstance(d, dict) for d in mf_params):

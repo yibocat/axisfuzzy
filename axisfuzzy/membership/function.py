@@ -214,8 +214,6 @@ References
 ----------
 - Zadeh, L.A. (1965). "Fuzzy sets". Information and Control, 8(3), 338-353.
 - MATLAB Fuzzy Logic Toolbox documentation for function definitions
-- Klir, G.J. & Yuan, B. (1995). "Fuzzy Sets and Fuzzy Logic: Theory and Applications"
-- Pedrycz, W. & Gomide, F. (2007). "Fuzzy Systems Engineering: Toward Human-Centric Computing"
 """
 
 import numpy as np
