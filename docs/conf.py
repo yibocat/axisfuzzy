@@ -22,21 +22,17 @@ author = 'yibocat'
 # 'release' 是完整的版本字符串（例如：'1.2.3b1'）。
 # 'version' 是简化的主版本.次版本（例如：'1.2'）。
 # 这段逻辑尝试从包本身导入版本，如果失败，则回退到从 pyproject.toml 读取。
+
+# 如果直接导入失败（例如，在初始文档构建期间或开发环境中），
+# 尝试从 pyproject.toml 文件中读取版本。
+pyproject_path = os.path.join(os.path.abspath('..'), 'pyproject.toml')
 try:
-    # 尝试直接从包中导入版本。
-    # 如果包已安装或在 Python 路径中，这是首选方法。
-    from axisfuzzy.version import __version__ as release
-except ImportError:
-    # 如果直接导入失败（例如，在初始文档构建期间或开发环境中），
-    # 尝试从 pyproject.toml 文件中读取版本。
-    pyproject_path = os.path.join(os.path.abspath('..'), 'pyproject.toml')
-    try:
-        with open(pyproject_path, 'rb') as f:
-            data = tomllib.load(f)
-            release = data['project']['version']
-    except Exception:
-        # 如果所有其他方法都失败，则回退到默认版本。
-        release = '0.0.0'
+    with open(pyproject_path, 'rb') as f:
+        data = tomllib.load(f)
+        release = data['project']['version']
+except Exception:
+    # 如果所有其他方法都失败，则回退到默认版本。
+    release = '0.0.0'
 
 # 'version' 变量只包含主版本和次版本号（例如 '1.2'）。
 version = '.'.join(release.split('.')[:2])
