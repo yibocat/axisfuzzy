@@ -10,7 +10,7 @@ exclude = ["todo*", "assets*", "notebook*", "test*", "tests*", "doc*", "docs*", 
 name = "axisfuzzy"
 version = "0.0.1"
 description = "A high-performance Python library for fuzzy number and fuzzy array computations"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 # Core dependencies: Keep it lightweight, including only the essential dependencies for fuzzy computation.
 dependencies = [
     "numpy>=2.2.6", # 核心数值计算

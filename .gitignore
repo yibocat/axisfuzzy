@@ -15,7 +15,7 @@ dist/
 *.whl
 *.tar.gz
 /notebook/
-/.github/
+#/.github/
 /doc/todo/
 docs/_build/
 docs/build/

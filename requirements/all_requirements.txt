@@ -1,0 +1,25 @@
+# Full installation dependencies
+# 完整安装依赖：包含所有功能模块的依赖包
+
+# Core dependencies
+numpy>=2.2.6
+numba>=0.61.2
+
+# Analysis and visualization
+pandas>=2.3.2
+matplotlib>=3.10.5
+networkx>=3.0
+pydot>=1.4.0
+
+# Development and testing
+pytest>=8.4.1
+notebook>=7.4.5
+
+# Documentation
+sphinx>=7.0.0
+sphinx-copybutton>=0.5.0
+sphinx-design>=0.5.0
+sphinx-autodoc-typehints>=3.0
+sphinx-tabs>=3.4.0
+myst-parser>=2.0.0
+pydata-sphinx-theme>=0.16.1

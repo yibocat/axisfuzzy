@@ -1,0 +1,7 @@
+# Analysis and visualization dependencies
+# 分析和可视化依赖：用于数据分析、图形绘制和网络分析
+pandas>=2.3.2
+pandas-stubs==2.3.0.250703
+matplotlib>=3.10.5
+networkx>=3.0
+pydot>=1.4.0

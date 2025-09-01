@@ -1,0 +1,4 @@
+# Development and testing dependencies
+# 开发和测试依赖：用于单元测试、代码质量检查和交互式开发
+pytest>=8.4.1
+notebook>=7.4.5

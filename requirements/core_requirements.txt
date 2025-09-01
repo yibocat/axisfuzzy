@@ -1,0 +1,4 @@
+# Core dependencies for AxisFuzzy
+# 核心依赖：模糊计算的基础库
+numpy>=2.2.6
+numba>=0.61.2
