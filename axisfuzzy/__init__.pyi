@@ -61,8 +61,9 @@ from .membership import (
     get_mf_class as get_mf_class
 )
 
-# 2. 将 `random` 声明为一个可导入的模块。
+# 2. 声明为一个可导入的模块。
 from . import random as random
+from . import analysis as analysis
 
 # 3. 从 `mixin/__init__.pyi` 中导入所有将被注入的顶层函数的签名。
 from .mixin import (

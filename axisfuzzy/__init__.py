@@ -23,6 +23,8 @@ from . import mixin
 from . import random
 from . import fuzztype  # 确保所有 mtype 实现被加载
 
+from . import analysis
+
 # 2. 从子模块中显式导入需要提升到顶层命名空间的公共 API。
 from .config import (
     get_config_manager,
@@ -104,6 +106,8 @@ _static_api = [
     'get_registry_mixin'
     # random (as a module)
     'random',
+    # analysis (as a module)
+    'analysis'
 ]
 
 # 从 mixin 系统获取动态函数名
