@@ -117,7 +117,7 @@ class Fuzznum:
 
     __array_priority__ = 1.0
     _INTERNAL_ATTRS = {
-        'mtype',
+        # 'mtype',
         '_initialized',
         '_strategy_instance',
         '_bound_strategy_methods',
@@ -276,13 +276,13 @@ class Fuzznum:
 
     def __setattr__(self, name: str, value: Any) -> None:
 
+        if name == 'mtype':
+            raise AttributeError(f"Cannot modify immutable attribute '{name}' of Fuzznum instance.")
+
         if (name in Fuzznum._INTERNAL_ATTRS or
                 name.startswith('_') or not self._is_initialized()):
             object.__setattr__(self, name, value)
             return
-
-        if name == 'mtype':
-            raise AttributeError(f"Cannot modify immutable attribute '{name}' of Fuzznum instance.")
 
         try:
             strategy_attributes = object.__getattribute__(self, '_bound_strategy_attributes')
@@ -751,7 +751,7 @@ class Fuzznum:
         if 'mtype' not in data:
             raise ValueError("The dictionary must contain the 'mtype' key.")
 
-        instance = cls(data['mtype'])
+        instance = cls(data['mtype'], data['attributes'].get('q') if 'attributes' in data else None)
 
         if 'attributes' in data:
             for attr_name, value in data['attributes'].items():
@@ -769,7 +769,7 @@ class Fuzznum:
         if 'mtype' not in state:
             raise ValueError("Invalid state for Fuzznum: 'mtype' key is missing.")
 
-        self.__init__(mtype=state['mtype'], q=state.get('q', 1))
+        self.__init__(mtype=state['mtype'])
 
         if 'attributes' in state:
             for attr_name, value in state['attributes'].items():

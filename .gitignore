@@ -27,3 +27,4 @@ docs/build/
 /doc/.smtcmp_json_db/
 /doc/.smtcmp_vector_db.tar.gz
 /doc/copilot-custom-prompts/
+/.cursor/

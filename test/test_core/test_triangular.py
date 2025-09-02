@@ -241,8 +241,44 @@ class TestNormCorrectness:
             return a * b, a + b - a * b
         elif norm_type == 'lukasiewicz':
             return max(0, a + b - 1), min(1, a + b)
+        elif norm_type == 'einstein':
+            t = (a * b) / (1 + (1 - a) * (1 - b))
+            s = (a + b) / (1 + a * b)
+            return t, s
+        elif norm_type == 'hamacher':
+            gamma = params.get('hamacher_param', 1.0)
+            t = (a * b) / (gamma + (1 - gamma) * (a + b - a * b))
+            s = (a + b - (2 - gamma) * a * b) / (1 - (1 - gamma) * a * b)
+            return t, s
+        elif norm_type == 'yager':
+            p = params.get('yager_param', 1.0)
+            t = max(0.0, 1.0 - ((1 - a) ** p + (1 - b) ** p) ** (1.0 / p))
+            s = min(1.0, (a ** p + b ** p) ** (1.0 / p))
+            return t, s
+        elif norm_type == 'frank':
+            s_param = params.get('frank_param', np.e)
+            if s_param > 0 and s_param != 1:
+                val_a = np.power(s_param, a) - 1
+                val_b = np.power(s_param, b) - 1
+                arg_t = 1 + (val_a * val_b) / (s_param - 1)
+                t = 0.0 if arg_t <= 0 else np.log(arg_t) / np.log(s_param)
+
+                val_1_a = np.power(s_param, 1 - a) - 1
+                val_1_b = np.power(s_param, 1 - b) - 1
+                arg_s = 1 + (val_1_a * val_1_b) / (s_param - 1)
+                s = 1.0 if arg_s <= 0 else 1 - np.log(arg_s) / np.log(s_param)
+                return float(t), float(s)
         elif norm_type == 'minimum':
             return min(a, b), max(a, b)
+        elif norm_type == 'drastic':
+            eps = 1e-12
+            t = a if abs(b - 1.0) < eps else (b if abs(a - 1.0) < eps else 0.0)
+            s = a if abs(b - 0.0) < eps else (b if abs(a - 0.0) < eps else 1.0)
+            return t, s
+        elif norm_type == 'nilpotent':
+            t = min(a, b) if a + b > 1 else 0.0
+            s = max(a, b) if a + b < 1 else 1.0
+            return t, s
         # Add more specific cases as needed
         return None, None
 
@@ -1218,6 +1254,53 @@ class TestPerformance:
         # Final result should be scalar
         assert np.isscalar(result3) or result3.shape == ()
         assert 0 <= result3 <= 1
+
+    def test_large_array_throughput_optional(self, monkeypatch):
+        """Optional larger array run for throughput sanity; gated by env AXISFUZZY_RUN_PERF."""
+        import os
+        run_perf = os.getenv('AXISFUZZY_RUN_PERF', '0') == '1'
+        if not run_perf:
+            pytest.skip("Skip large throughput test unless AXISFUZZY_RUN_PERF=1")
+
+        norm = OperationTNorm(norm_type='algebraic')
+        size = int(os.getenv('AXISFUZZY_PERF_SIZE', '200000'))
+        rng = np.random.default_rng(0)
+        a = rng.random(size)
+        b = rng.random(size)
+
+        t = norm.t_norm(a, b)
+        s = norm.t_conorm(a, b)
+        assert t.shape == (size,)
+        assert s.shape == (size,)
+        assert np.all((0 <= t) & (t <= 1))
+        assert np.all((0 <= s) & (s <= 1))
+
+
+class TestConcurrency:
+    """Threaded usage should be consistent with serial computation."""
+
+    def test_thread_safety_of_operations(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        norm = OperationTNorm(norm_type='algebraic', q=2)
+        rng = np.random.default_rng(42)
+        pairs = [(float(rng.random()), float(rng.random())) for _ in range(2000)]
+
+        def worker(pair):
+            a, b = pair
+            return norm.t_norm(a, b), norm.t_conorm(a, b)
+
+        # Parallel
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            parallel_results = list(ex.map(worker, pairs))
+
+        # Serial
+        serial_results = [worker(p) for p in pairs]
+
+        # Compare
+        for (t1, s1), (t2, s2) in zip(parallel_results, serial_results):
+            assert TestHelpers.compare_arrays(t1, t2, atol=1e-12)
+            assert TestHelpers.compare_arrays(s1, s2, atol=1e-12)
 
 
 # Edge case and error handling tests
