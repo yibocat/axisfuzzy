@@ -53,7 +53,7 @@ import axisfuzzy as fuzz
 ```
 
 ### 创建模糊数
-```
+```python
 a = fuzz.fuzznum((0.5, 0.3))
 b = fuzz.fuzznum((0.3, 0.4))
 

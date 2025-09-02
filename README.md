@@ -53,7 +53,7 @@ import axisfuzzy as fuzz
 ```
 
 ### Create fuzzy numbers
-```
+```python
 a = fuzz.fuzznum((0.5, 0.3))
 b = fuzz.fuzznum((0.3, 0.4))
 
