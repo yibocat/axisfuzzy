@@ -1037,9 +1037,12 @@ class TestSpecialCases:
 
         for a, b in test_pairs:
             t_pos = norm_pos.t_norm(a, b)
-            t_neg = norm_neg.t_norm(a, b)
+            # 抑制负参数时的预期 RuntimeWarning
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                t_neg = norm_neg.t_norm(a, b)
+                s_neg = norm_neg.t_conorm(a, b)
             s_pos = norm_pos.t_conorm(a, b)
-            s_neg = norm_neg.t_conorm(a, b)
 
             # Both should produce valid results in [0,1]
             assert 0 <= t_pos <= 1, f"Schweizer-Sklar positive p out of bounds: T({a},{b})={t_pos}"

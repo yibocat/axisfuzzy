@@ -8,7 +8,7 @@ exclude = ["todo*", "assets*", "notebook*", "test*", "tests*", "doc*", "docs*", 
 
 [project]
 name = "axisfuzzy"
-version = "0.0.1"
+version = "0.1.0"
 description = "A high-performance Python library for fuzzy number and fuzzy array computations"
 requires-python = ">=3.13"
 # Core dependencies: Keep it lightweight, including only the essential dependencies for fuzzy computation.
