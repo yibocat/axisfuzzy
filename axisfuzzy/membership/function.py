@@ -272,7 +272,12 @@ class SigmoidMF(MembershipFunction):
 
     def compute(self, x: np.ndarray) -> np.ndarray:
         """Compute sigmoid membership values."""
-        return 1 / (1 + np.exp(-self.k * (x - self.c)))
+        # 数值稳定性处理：限制指数参数范围以避免溢出
+        z = -self.k * (x - self.c)
+        # 当 z > 500 时，exp(z) 会溢出，此时 sigmoid 接近 0
+        # 当 z < -500 时，exp(-z) 会溢出，此时 sigmoid 接近 1
+        z = np.clip(z, -500, 500)
+        return 1 / (1 + np.exp(z))
 
     def set_parameters(self, **kwargs):
         if 'k' in kwargs:

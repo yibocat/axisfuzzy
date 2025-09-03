@@ -456,5 +456,7 @@ class MembershipFunction(ABC):
         plt.ylabel('Membership Degree')
         plt.title(f'{self.name} Membership Function')
         plt.grid(True)
-        plt.legend()
+        # 只有当 name 存在且不以下划线开头时才显示图例
+        if hasattr(self, 'name') and self.name and not self.name.startswith('_'):
+            plt.legend()
         plt.show()
