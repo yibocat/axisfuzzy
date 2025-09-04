@@ -1,0 +1,35 @@
+name: Publish Python Package to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger the workflow on version tags like v0.1.0
+
+jobs:
+  build-and-publish:
+    name: Build and publish Python distributions to PyPI
+    runs-on: ubuntu-latest
+    # Use trusted publishing, which is more secure than API tokens.
+    # Make sure you have configured this on PyPI for your project.
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        # Twine is not needed because pypa/gh-action-pypi-publish handles it.
+        run: python -m pip install --upgrade build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # The action will automatically use OIDC (Trusted Publishing) for authentication.
