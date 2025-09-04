@@ -65,6 +65,8 @@ from .membership import (
 from . import random as random
 from . import analysis as analysis
 
+from .version import __version__ as __version__
+
 # 3. 从 `mixin/__init__.pyi` 中导入所有将被注入的顶层函数的签名。
 from .mixin import (
     get_registry_mixin as get_registry_mixin,

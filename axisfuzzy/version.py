@@ -7,20 +7,20 @@
 
 import os
 import tomllib
+from importlib.metadata import version, PackageNotFoundError
 
 
-# 从pyproject.toml文件中获取版本号
-# TODO: 这段代码问题很大, 不应该从外部获取版本号.
-def get_version():
-    """
-    Retrieve the version from the pyproject.toml file.
-
-    `from axisfuzzy.version import __version__`
-    """
+try:
+    # This will work when the package is installed (the standard way).
+    __version__ = version("axisfuzzy")
+except PackageNotFoundError:
+    # Fallback for development mode when the package is not installed.
+    # This reads the version directly from pyproject.toml.
     pyproject_path = os.path.join(os.path.dirname(__file__), '..', 'pyproject.toml')
-    with open(pyproject_path, 'rb') as f:
-        data = tomllib.load(f)
-    return data['project']['version']
-
-
-__version__ = get_version()
+    try:
+        with open(pyproject_path, 'rb') as f:
+            data = tomllib.load(f)
+        __version__ = data['project']['version']
+    except FileNotFoundError:
+        # If pyproject.toml is not found, we can't determine the version.
+        __version__ = "unknown"

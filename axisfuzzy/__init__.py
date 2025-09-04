@@ -25,7 +25,9 @@ from . import fuzztype  # 确保所有 mtype 实现被加载
 
 from . import analysis
 
-# 2. 从子模块中显式导入需要提升到顶层命名空间的公共 API。
+from .version import __version__
+
+# 2. 从子模块中显式导入需要提升到顶层命名空间的公共 API。API。
 from .config import (
     get_config_manager,
     get_config,
@@ -76,6 +78,7 @@ _static_api = [
     'load_config_file',
     'save_config_file',
     'reset_config',
+    '__version__',
     # core
     'FuzznumStrategy',
     'FuzzarrayBackend',

@@ -160,8 +160,34 @@ class Fuzzarray:
                                   **kwargs) -> Tuple[FuzzarrayBackend, str, int]:
 
         registry = get_registry_fuzztype()
-        mtype = mtype or get_config().DEFAULT_MTYPE
-        q = q if q is not None else get_config().DEFAULT_Q
+
+        if mtype is None:
+            if data is not None:
+                if isinstance(data, Union[Fuzznum, Fuzzarray]):
+                    mtype = data.mtype
+                if isinstance(data, Union[np.ndarray, list, tuple]):
+                    if isinstance(data[0], Fuzznum):
+                        mtype = data[0].mtype
+                    else:
+                        mtype = np.random.choice(data).mtype
+            else:
+                mtype = get_config().DEFAULT_MTYPE
+        else:
+            mtype = mtype.lower()
+
+        if q is None:
+            if data is not None:
+                if isinstance(data, Union[Fuzznum, Fuzzarray]):
+                    q = data.q
+                if isinstance(data, Union[np.ndarray, list, tuple]):
+                    if isinstance(data[0], Fuzznum):
+                        q = data[0].q
+                    else:
+                        q = np.random.choice(data).q
+            else:
+                q = get_config().DEFAULT_Q
+        else:
+            q = int(q)
 
         backend_cls = registry.get_backend(mtype)
         if backend_cls is None:
