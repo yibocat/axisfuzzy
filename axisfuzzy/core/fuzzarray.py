@@ -165,12 +165,10 @@ class Fuzzarray:
             if data is not None:
                 if isinstance(data, Union[Fuzznum, Fuzzarray]):
                     mtype = data.mtype
-                if isinstance(data, Union[np.ndarray, list, tuple]):
-                    if isinstance(data[0], Fuzznum):
-                        mtype = data[0].mtype
-                    else:
-                        data = np.asarray(data)
-                        mtype = data.flatten()[0].mtype
+                elif isinstance(data, Union[np.ndarray, list, tuple]):
+                    data_array = np.asarray(data)
+                    if data_array.size > 0:
+                        mtype = data_array.flatten()[0].mtype
             else:
                 mtype = get_config().DEFAULT_MTYPE
         else:
@@ -180,12 +178,10 @@ class Fuzzarray:
             if data is not None:
                 if isinstance(data, Union[Fuzznum, Fuzzarray]):
                     q = data.q
-                if isinstance(data, Union[np.ndarray, list, tuple]):
-                    if isinstance(data[0], Fuzznum):
-                        q = data[0].q
-                    else:
-                        data = np.asarray(data)
-                        q = data.flatten()[0].q
+                elif isinstance(data, Union[np.ndarray, list, tuple]):
+                    data_array = np.asarray(data)
+                    if data_array.size > 0:
+                        q = data_array.flatten()[0].q
             else:
                 q = get_config().DEFAULT_Q
         else:

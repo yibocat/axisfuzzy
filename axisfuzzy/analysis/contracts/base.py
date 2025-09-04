@@ -57,7 +57,7 @@ class Contract:
             )
 
         if not callable(validator):
-            raise TypeError(f"The validator '{validator.__name__}' must be a callable function.")
+            raise TypeError("Validator must be callable")
 
         if parent and not isinstance(parent, Contract):
             raise TypeError(f"The 'parent' must be another Contract instance.")

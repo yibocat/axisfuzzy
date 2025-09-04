@@ -281,7 +281,7 @@ class FuzzyPipelineIterator:
             - 'step_index': The current step index (0-based).
             - 'total_steps': Total number of executable steps.
             - 'result': The output of the step.
-            - 'execution_time': Time taken to execute this step (in seconds).
+            - 'execution_time': Time taken to execute this step (in milliseconds).
 
         Raises
         ------
@@ -303,7 +303,7 @@ class FuzzyPipelineIterator:
             'step_index': self.current_state.current_index,
             'total_steps': self.total_steps,
             'result': self.current_state.latest_result,
-            'execution_time(ms)': round((end_time - start_time) * 1e3, 5)
+            'execution_time': round((end_time - start_time) * 1e3, 5)
         }
     
     @property
@@ -675,7 +675,15 @@ class FuzzyPipeline(AnalysisComponent):
             The final output(s) of the pipeline. If `return_intermediate` is
             ``True``, a tuple containing the output and a dictionary of all
             intermediate step results is returned.
+            
+        Raises
+        ------
+        ValueError
+            If the pipeline is empty (has no executable steps).
         """
+        # Check if pipeline is empty (no executable steps)
+        if not self.steps or all(step.is_input_node for step in self.steps):
+            raise ValueError("Cannot execute an empty pipeline with no executable steps.")
 
         initial_state = self.start_execution(initial_data)
         final_state = initial_state.run_all()

@@ -42,7 +42,7 @@ TEST_MODULES = {
     ],
     'dependencies': ['test_dependencies'],
     'docs': ['test_docs'],
-    'analysis': ['test_analysis']  # 为未来扩展预留
+    'analysis': ['test_analysis']  # 分析模块测试
 }
 
 # 测试优先级定义
@@ -230,7 +230,7 @@ def run_docs_tests(verbose: bool = True,
 
 def run_analysis_tests(verbose: bool = True,
                       extra_args: Optional[List[str]] = None) -> bool:
-    """运行分析模块测试（未来扩展）
+    """运行分析模块测试
     
     Args:
         verbose: 是否显示详细输出
@@ -240,7 +240,7 @@ def run_analysis_tests(verbose: bool = True,
         测试是否全部通过
     """
     print("\n📈 开始运行分析模块测试...")
-    print("这些测试验证 AxisFuzzy 的分析功能")
+    print("这些测试验证 AxisFuzzy 的模糊数据分析功能")
     
     # 检查分析测试目录是否存在
     analysis_dir = TEST_DIR / 'test_analysis'
@@ -253,14 +253,16 @@ def run_analysis_tests(verbose: bool = True,
     
     if result['success']:
         print(f"\n✅ 分析测试通过 (耗时: {result['duration']:.2f}s)")
+        print("包含组件测试、契约测试、依赖测试、管道测试、模型测试等")
     else:
         print(f"\n❌ 分析测试失败 (耗时: {result['duration']:.2f}s)")
+        print("请检查分析模块的实现和测试配置")
     
     return result['success']
 
 
 def run_all_tests(include_docs: bool = False,
-                 include_analysis: bool = False,
+                 include_analysis: bool = True,
                  verbose: bool = True,
                  extra_args: Optional[List[str]] = None) -> bool:
     """运行所有测试
@@ -382,6 +384,7 @@ try:
     from . import test_membership
     from . import test_mixin
     from . import test_random
+    from . import test_analysis
 except ImportError as e:
     print(f"警告: 无法导入某些测试模块: {e}")
 
