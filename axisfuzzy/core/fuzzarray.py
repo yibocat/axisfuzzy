@@ -154,10 +154,10 @@ class Fuzzarray:
 
     def _build_backend_from_data(self,
                                  data: Optional[Union[np.ndarray, list, tuple, Fuzznum, "Fuzzarray"]],
-                                  shape: Optional[Tuple[int, ...]],
-                                  mtype: Optional[str],
-                                  q: Optional[int],
-                                  **kwargs) -> Tuple[FuzzarrayBackend, str, int]:
+                                 shape: Optional[Tuple[int, ...]],
+                                 mtype: Optional[str],
+                                 q: Optional[int],
+                                 **kwargs) -> Tuple[FuzzarrayBackend, str, int]:
 
         registry = get_registry_fuzztype()
 
@@ -169,7 +169,8 @@ class Fuzzarray:
                     if isinstance(data[0], Fuzznum):
                         mtype = data[0].mtype
                     else:
-                        mtype = np.random.choice(data).mtype
+                        data = np.asarray(data)
+                        mtype = data.flatten()[0].mtype
             else:
                 mtype = get_config().DEFAULT_MTYPE
         else:
@@ -183,7 +184,8 @@ class Fuzzarray:
                     if isinstance(data[0], Fuzznum):
                         q = data[0].q
                     else:
-                        q = np.random.choice(data).q
+                        data = np.asarray(data)
+                        q = data.flatten()[0].q
             else:
                 q = get_config().DEFAULT_Q
         else:
