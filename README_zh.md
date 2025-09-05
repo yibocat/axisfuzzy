@@ -38,24 +38,39 @@ AxisFuzzy 由多个核心子系统构建：
 
 ## 🚀 快速开始
 
-AxisFuzzy 目前处于开发阶段，尚未发布至 PyPI。安装方法：
+AxisFuzzy 已发布至 PyPI，可通过 pip 直接安装：
+
+```bash
+# 基础安装（仅核心功能）
+pip install axisfuzzy
+
+# 完整安装（包含所有分析功能）
+pip install axisfuzzy[all]
+
+# 仅安装分析功能
+pip install axisfuzzy[analysis]
+```
+
+### 从源码安装
+如需最新开发版本，可从 GitHub 安装：
 
 ```bash
 git clone https://github.com/YourName/AxisFuzzy.git
 cd AxisFuzzy
+pip install -e .
 ```
 
 以下是 AxisFuzzy 的简单用法示例：
 
 ### 导入 `axisfuzzy`
 ```python
-import axisfuzzy as fuzz
+import axisfuzzy as af
 ```
 
 ### 创建模糊数
 ```python
-a = fuzz.fuzznum((0.5, 0.3))
-b = fuzz.fuzznum((0.3, 0.4))
+a = af.fuzznum((0.5, 0.3))
+b = af.fuzznum((0.3, 0.4))
 
 result = a + b
 print(result)  # <0.65, 0.12>
@@ -63,7 +78,7 @@ print(result)  # <0.65, 0.12>
 
 ### 随机生成一个模糊数（类似 NumPy 的 API）
 ```python
-rand_fuzz = fuzz.random.rand()
+rand_fuzz = af.random.rand()
 print(rand_fuzz)  # <0.1247, 0.5132>
 ```
 
@@ -98,16 +113,17 @@ AxisFuzzy 采用模块化依赖体系，用户可根据需求选择仅安装核�
 ### 完整安装
 包含上述所有功能。详见 `requirements/all_requirements.txt`，或使用 `pyproject.toml` 的 `all` 额外依赖组。
 
-### 推荐安装方式
-```bash
-# 仅核心依赖
-pip install -r requirements/core_requirements.txt
+### 安装选项说明
 
-# 分析功能
-pip install -r requirements/analysis_requirements.txt
-```
+- **基础安装** (`pip install axisfuzzy`)：仅包含核心模糊计算功能，依赖 `numpy` 和 `numba`
+- **分析功能** (`pip install axisfuzzy[analysis]`)：额外包含 `pandas`、`matplotlib`、`networkx`、`pydot` 等分析和可视化库
+- **完整安装** (`pip install axisfuzzy[all]`)：包含所有功能和依赖
 
-> **建议**：强烈推荐在虚拟环境（如 `venv` 或 `conda`）中进行依赖管理。
+> **建议**：强烈推荐在虚拟环境（如 `venv` 或 `conda`）中进行安装和依赖管理。
+
+### 延迟导入机制
+
+AxisFuzzy 采用智能的延迟导入机制，即使缺少可选依赖也能正常使用核心功能。分析模块中的组件（如 `FuzzyDataFrame`、`FuzzyPipeline` 等）会在首次使用时自动检查并导入所需依赖，提供更好的用户体验。
 
 ---
 

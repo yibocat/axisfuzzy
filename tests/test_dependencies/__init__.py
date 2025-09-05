@@ -18,11 +18,13 @@
 # 导入所有测试模块，使其可以被测试发现机制找到
 from . import test_core_dependencies
 from . import test_optional_dependencies
+from . import test_lazy_import
 
 # 定义模块的公共接口
 __all__ = [
     'test_core_dependencies',
-    'test_optional_dependencies'
+    'test_optional_dependencies',
+    'test_lazy_import'
 ]
 
 # 测试模块元信息

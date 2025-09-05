@@ -15,8 +15,17 @@ including dependency management and lazy loading mechanisms.
 from typing import Dict, Any, List, Optional, Union
 from types import ModuleType
 
-# 导入子模块
-from . import app as app
+# 核心分析组件的类型声明
+from .app.model import Model as Model
+from .dataframe.frame import FuzzyDataFrame as FuzzyDataFrame
+from .pipeline import FuzzyPipeline as FuzzyPipeline
+
+# 契约系统的类型声明
+from .contracts.base import Contract as Contract
+from .contracts.decorator import contract as contract
+
+# 组件基类的类型声明
+from .component.base import AnalysisComponent as AnalysisComponent
 
 # 依赖检查函数的类型声明
 def check_analysis_dependencies() -> Dict[str, Dict[str, Union[bool, str, None]]]:
@@ -31,30 +40,7 @@ def check_analysis_dependencies() -> Dict[str, Dict[str, Union[bool, str, None]]
     """
     ...
 
-# 内部依赖导入函数（不在 __all__ 中，但提供类型声明以支持内部使用）
-def _import_dependency(dep_key: str) -> ModuleType:
-    """
-    延迟导入指定的依赖包并缓存结果。
-    
-    Parameters
-    ----------
-    dep_key : str
-        依赖包的键名
-        
-    Returns
-    -------
-    ModuleType
-        导入的模块对象
-        
-    Raises
-    ------
-    ImportError
-        当依赖包未安装时抛出
-    ValueError
-        当请求的依赖包未在支持列表中时抛出
-    """
-    ...
-
+# 内部函数的类型声明（不在 __all__ 中，但提供类型声明以支持内部使用）
 def _check_graphviz_installation() -> bool:
     """
     检查系统是否安装了 Graphviz。
@@ -65,6 +51,13 @@ def _check_graphviz_installation() -> bool:
         如果 Graphviz 可用返回 True，否则返回 False
     """
     ...
+
+# 延迟导入函数的类型声明
+def _lazy_import_model() -> type[Model]: ...
+def _lazy_import_fuzzy_dataframe() -> type[FuzzyDataFrame]: ...
+def _lazy_import_fuzzy_pipeline() -> type[FuzzyPipeline]: ...
+def _lazy_import_contracts() -> tuple[type[Contract], type[contract]]: ...
+def _lazy_import_component() -> type[AnalysisComponent]: ...
 
 # 声明 __all__ 列表的类型
 __all__: List[str]

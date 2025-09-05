@@ -38,24 +38,39 @@ AxisFuzzy is built around several core subsystems:
 
 ## 🚀 Quick Start
 
-AxisFuzzy is currently in development and not yet released on PyPI. To install:
+AxisFuzzy is now available on PyPI and can be installed directly with pip:
+
+```bash
+# Basic installation (core functionality only)
+pip install axisfuzzy
+
+# Full installation (includes all analysis features)
+pip install axisfuzzy[all]
+
+# Analysis features only
+pip install axisfuzzy[analysis]
+```
+
+### Install from Source
+For the latest development version, install from GitHub:
 
 ```bash
 git clone https://github.com/YourName/AxisFuzzy.git
 cd AxisFuzzy
+pip install -e .
 ```
 
 Here are some simple examples to get started with AxisFuzzy:
 
 ### Import `axisfuzzy`
 ```python
-import axisfuzzy as fuzz
+import axisfuzzy as af
 ```
 
 ### Create fuzzy numbers
 ```python
-a = fuzz.fuzznum((0.5, 0.3))
-b = fuzz.fuzznum((0.3, 0.4))
+a = af.fuzznum((0.5, 0.3))
+b = af.fuzznum((0.3, 0.4))
 
 result = a + b
 print(result)  # <0.65, 0.12>
@@ -63,7 +78,7 @@ print(result)  # <0.65, 0.12>
 
 ### Random fuzzy number generation (similar to NumPy API)
 ```python
-rand_fuzz = fuzz.random.rand()
+rand_fuzz = af.random.rand()
 print(rand_fuzz)  # <0.1247, 0.5132>
 ```
 
@@ -95,16 +110,17 @@ AxisFuzzy uses a modular dependency system. You can install only the core, or ad
 - `networkx` (>=3.0): Network analysis
 - `pydot` (>=1.4.0): Graph visualization
 
-### Recommended Installation
-```bash
-# Core only
-pip install -r requirements/core_requirements.txt
+### Installation Options
 
-# Analysis features
-pip install -r requirements/analysis_requirements.txt
-```
+- **Basic installation** (`pip install axisfuzzy`): Core fuzzy computation functionality only, requires `numpy` and `numba`
+- **Analysis features** (`pip install axisfuzzy[analysis]`): Includes additional libraries like `pandas`, `matplotlib`, `networkx`, `pydot` for analysis and visualization
+- **Full installation** (`pip install axisfuzzy[all]`): All features and dependencies included
 
-> **Note:** It is strongly recommended to use a virtual environment (e.g., `venv` or `conda`) for dependency management.
+> **Note:** It is strongly recommended to use a virtual environment (e.g., `venv` or `conda`) for installation and dependency management.
+
+### Lazy Import Mechanism
+
+AxisFuzzy uses an intelligent lazy import system that allows core functionality to work even when optional dependencies are missing. Analysis module components (like `FuzzyDataFrame`, `FuzzyPipeline`, etc.) automatically check and import required dependencies when first used, providing a better user experience.
 
 ---
 
