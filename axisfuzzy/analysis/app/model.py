@@ -5,6 +5,8 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 
+from __future__ import annotations
+
 import importlib
 import inspect
 import json

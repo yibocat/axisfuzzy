@@ -26,27 +26,52 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Tuple, Union, Optional, Callable
 
-# --- Dependency Check ---
-try:
-    import networkx as nx
-    _NX_AVAILABLE = True
-except ImportError:
-    _NX_AVAILABLE = False
-try:
-    import pydot
-    _PYDOT_AVAILABLE = True
-except ImportError:
-    _PYDOT_AVAILABLE = False
-try:
-    import matplotlib.pyplot as plt
-    _MPL_AVAILABLE = True
-except ImportError:
-    _MPL_AVAILABLE = False
-try:
-    from IPython.display import Image
-    _IPYTHON_AVAILABLE = True
-except ImportError:
-    _IPYTHON_AVAILABLE = False
+# --- Lazy Import Dependencies ---
+_PIPELINE_DEPENDENCIES = {
+    'networkx': 'networkx',
+    'pydot': 'pydot', 
+    'matplotlib': 'matplotlib.pyplot',
+    'ipython': 'IPython.display'
+}
+
+_dependency_cache = {}
+
+def _import_pipeline_dependency(dep_key: str):
+    """延迟导入 pipeline 依赖包并缓存结果。"""
+    if dep_key in _dependency_cache:
+        return _dependency_cache[dep_key]
+    
+    if dep_key not in _PIPELINE_DEPENDENCIES:
+        raise ValueError(f"Unknown dependency: {dep_key}")
+    
+    module_path = _PIPELINE_DEPENDENCIES[dep_key]
+    try:
+        if dep_key == 'matplotlib':
+            import matplotlib.pyplot as plt
+            _dependency_cache[dep_key] = plt
+            return plt
+        elif dep_key == 'ipython':
+            from IPython.display import Image
+            _dependency_cache[dep_key] = Image
+            return Image
+        else:
+            import importlib
+            module = importlib.import_module(module_path)
+            _dependency_cache[dep_key] = module
+            return module
+    except ImportError as e:
+        raise ImportError(
+            f"Optional dependency '{module_path}' is not installed. "
+            f"Please install it to use this functionality: pip install {dep_key}"
+        ) from e
+
+def _check_pipeline_dependency(dep_key: str) -> bool:
+    """检查 pipeline 依赖是否可用。"""
+    try:
+        _import_pipeline_dependency(dep_key)
+        return True
+    except ImportError:
+        return False
 
 # --- Local Imports ---
 from .component import AnalysisComponent
@@ -765,8 +790,7 @@ class FuzzyPipeline(AnalysisComponent):
 
     def _to_networkx(self) -> 'nx.DiGraph':
         """Converts the internal pipeline structure to a NetworkX DiGraph."""
-        if not _NX_AVAILABLE:
-            raise ImportError("networkx is required for visualization.")
+        nx = _import_pipeline_dependency('networkx')
         g = nx.DiGraph(name=self.name)
         for sid, meta in self._steps.items():
             node_type = 'input' if meta.is_input_node else ('pipeline' if isinstance(meta.callable_tool, FuzzyPipeline) else 'component')
@@ -808,13 +832,11 @@ class FuzzyPipeline(AnalysisComponent):
         nx_graph = self._to_networkx()
         use_engine = engine
         if use_engine == 'auto':
-            use_engine = 'graphviz' if _PYDOT_AVAILABLE else 'matplotlib'
+            use_engine = 'graphviz' if _check_pipeline_dependency('pydot') else 'matplotlib'
 
         if use_engine == 'graphviz':
-            if not _PYDOT_AVAILABLE: raise ImportError("pydot and graphviz are required for 'graphviz' engine.")
             return self._visualize_graphviz(nx_graph, filename, output_format, show_contracts, styles)
         elif use_engine == 'matplotlib':
-            if not _MPL_AVAILABLE: raise ImportError("matplotlib is required for 'matplotlib' engine.")
             return self._visualize_matplotlib(nx_graph, filename, show_contracts, styles)
         else:
             raise ValueError(f"Unknown engine: '{use_engine}'. Please choose 'auto', 'graphviz', or 'matplotlib'.")
@@ -833,6 +855,7 @@ class FuzzyPipeline(AnalysisComponent):
         }
         styles = {**default_styles, **(custom_styles or {})}
 
+        pydot = _import_pipeline_dependency('pydot')
         dot = pydot.Dot(graph_type='digraph', rankdir='TB', label=f'Pipeline: {self.name}', fontsize=20, labelloc='t')
         for nid, attrs in g.nodes(data=True):
             node_style = styles.get(attrs['node_type'], {})
@@ -846,15 +869,18 @@ class FuzzyPipeline(AnalysisComponent):
                 dot.write(filename, format=fmt)
                 print(f"Pipeline visualization saved to '{filename}'")
                 return None
-            elif _IPYTHON_AVAILABLE:
+            elif _check_pipeline_dependency('ipython'):
+                Image = _import_pipeline_dependency('ipython')
                 return Image(dot.create(format=fmt))
             else:
                 temp_file = f"pipeline_view_{uuid.uuid4().hex[:6]}.{fmt}"
                 dot.write(temp_file, format=fmt)
                 print(f"Not in an IPython environment. Visualization saved to '{temp_file}'")
                 return None
-        except pydot.DotExecutableNotFoundError:
-            raise ImportError("Graphviz executable not found. Please install Graphviz and ensure it is in your system's PATH.")
+        except Exception as e:
+            if 'dot' in str(e).lower() or 'graphviz' in str(e).lower():
+                raise ImportError("Graphviz executable not found. Please install Graphviz and ensure it is in your system's PATH.") from e
+            raise
 
     def _visualize_matplotlib(self,
                               g: 'nx.DiGraph',
@@ -867,6 +893,9 @@ class FuzzyPipeline(AnalysisComponent):
         color_map = {**default_colors, **(custom_styles or {})}
         node_colors = [color_map.get(g.nodes[n]['node_type'], '#BDBDBD') for n in g.nodes]
 
+        plt = _import_pipeline_dependency('matplotlib')
+        nx = _import_pipeline_dependency('networkx')
+        
         plt.figure(figsize=(12, 8))
         pos = nx.spring_layout(g, seed=42, k=0.8)
 

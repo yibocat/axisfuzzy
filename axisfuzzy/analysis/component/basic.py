@@ -12,11 +12,19 @@ This module provides simple, reusable components for common data operations
 that are frequently needed in fuzzy analysis pipelines.
 This version is refactored to use the new type-annotation-driven contract system.
 """
-
+from __future__ import annotations
 from typing import Union
 
-import numpy as np
-import pandas as pd
+# 延迟导入策略：避免在模块级别直接导入可选依赖
+# 这样可以确保核心包安装时不会因为缺少可选依赖而导致导入错误
+try:
+    import numpy as np
+    import pandas as pd
+    _PANDAS_AVAILABLE = True
+except ImportError:
+    np = None
+    pd = None
+    _PANDAS_AVAILABLE = False
 
 from axisfuzzy.fuzzifier import Fuzzifier
 
@@ -75,6 +83,12 @@ class ToolNormalization(AnalysisComponent):
         ContractCrispTable
             The normalized DataFrame.
         """
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas is not installed. ToolNormalization requires pandas. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
+        
         # The implementation logic remains the same.
         normalized_data = data.copy().astype(float)
 
@@ -148,6 +162,12 @@ class ToolWeightNormalization(AnalysisComponent):
         ContractNormalizedWeights
             The normalized weights, guaranteed to sum to 1.0.
         """
+        if not _PANDAS_AVAILABLE or np is None:
+            raise ImportError(
+                "numpy is not installed. ToolWeightNormalization requires numpy. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
+        
         if isinstance(weights, pd.Series):
             weights_array = weights.values
             return_series = True
@@ -204,6 +224,12 @@ class ToolStatistics(AnalysisComponent):
         ContractStatisticsDict
             A dictionary containing statistical summaries.
         """
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas is not installed. ToolStatistics requires pandas. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
+        
         values = data.values.flatten()
         stats = {
             'mean': float(np.mean(values)),
@@ -253,6 +279,12 @@ class ToolSimpleAggregation(AnalysisComponent):
         ContractWeightVector
             A pandas Series or numpy array of aggregated values.
         """
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas is not installed. ToolSimpleAggregation requires pandas. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
+        
         agg_func = getattr(data, self.operation)
         result = agg_func(axis=self.axis)
         return result

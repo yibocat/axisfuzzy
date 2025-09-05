@@ -23,7 +23,8 @@ from . import mixin
 from . import random
 from . import fuzztype  # 确保所有 mtype 实现被加载
 
-from . import analysis
+# analysis 模块使用延迟导入策略，避免在核心包导入时因缺少可选依赖而导致错误
+# from . import analysis  # 移除直接导入
 
 from .version import __version__
 
@@ -110,7 +111,7 @@ _static_api = [
     # random (as a module)
     'random',
     # analysis (as a module)
-    'analysis'
+    # 'analysis'  # 移除直接导入，改为延迟导入
 ]
 
 # 从 mixin 系统获取动态函数名
@@ -127,6 +128,25 @@ apply_extensions()
 apply_mixins(globals())
 
 # 5. 清理命名空间
+# 延迟导入 analysis 模块的实现
+def __getattr__(name: str):
+    """延迟导入机制，用于处理可选依赖模块。"""
+    if name == "analysis":
+        try:
+            # 使用 importlib 避免递归导入
+            import importlib
+            analysis_module = importlib.import_module('.analysis', package='axisfuzzy')
+            # 将模块缓存到全局命名空间中，避免重复导入
+            globals()[name] = analysis_module
+            return analysis_module
+        except ImportError as e:
+            raise ImportError(
+                f"Cannot import '{name}' module. This module requires optional dependencies. "
+                f"Please install with: pip install 'axisfuzzy[analysis]'. "
+                f"Original error: {e}"
+            ) from e
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
 del _static_api
 del _mixin_funcs
 del _extension_funcs
