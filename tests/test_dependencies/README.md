@@ -7,8 +7,10 @@
 ```
 test_dependencies/
 ├── README.md                      # 本文档
+├── __init__.py                    # 测试套件初始化
 ├── test_core_dependencies.py      # 核心依赖测试
-└── test_optional_dependencies.py  # 可选依赖测试
+├── test_optional_dependencies.py  # 可选依赖测试
+└── test_lazy_import.py            # 延迟导入功能测试
 ```
 
 ## 🎯 测试目标
@@ -43,6 +45,24 @@ test_dependencies/
 #### Docs 组
 - **sphinx** 及相关扩展: 文档生成工具链
 
+### 延迟导入功能测试 (`test_lazy_import.py`)
+
+测试 AxisFuzzy 的延迟导入机制，确保：
+
+- **延迟导入机制**: 验证组件按需加载的正确性
+- **错误处理**: 测试依赖缺失时的优雅降级
+- **缓存机制**: 验证导入缓存的有效性
+- **IDE 支持**: 确保类型检查和代码补全正常工作
+- **集成测试**: 验证各模块间的协同工作
+
+**测试内容：**
+- analysis 模块的延迟导入验证
+- 各个组件（Model, FuzzyDataFrame, FuzzyPipeline 等）的延迟加载
+- pandas 访问器的自动注册机制
+- 契约系统和组件基类的集成测试
+- 依赖检查功能的完整性验证
+- 缓存机制和性能优化验证
+
 ## 🚀 运行测试
 
 ### 运行所有依赖测试
@@ -60,6 +80,9 @@ pytest tests/test_dependencies/test_core_dependencies.py -v
 
 # 只测试可选依赖
 pytest tests/test_dependencies/test_optional_dependencies.py -v
+
+# 只测试延迟导入功能
+pytest tests/test_dependencies/test_lazy_import.py -v
 ```
 
 ### 运行特定依赖组测试
@@ -73,6 +96,18 @@ pytest tests/test_dependencies/test_optional_dependencies.py::TestDevDependencie
 
 # 只测试文档依赖
 pytest tests/test_dependencies/test_optional_dependencies.py::TestDocsDependencies -v
+
+# 只测试延迟导入机制
+pytest tests/test_dependencies/test_lazy_import.py::TestLazyImportMechanism -v
+
+# 只测试延迟导入错误处理
+pytest tests/test_dependencies/test_lazy_import.py::TestLazyImportErrorHandling -v
+
+# 只测试延迟导入缓存机制
+pytest tests/test_dependencies/test_lazy_import.py::TestLazyImportCaching -v
+
+# 只测试延迟导入集成功能
+pytest tests/test_dependencies/test_lazy_import.py::TestLazyImportIntegration -v
 ```
 
 ## 📋 测试策略
@@ -86,6 +121,13 @@ pytest tests/test_dependencies/test_optional_dependencies.py::TestDocsDependenci
 - **宽松策略**: 未安装的可选依赖会跳过测试，不会导致失败
 - **功能验证**: 对已安装的依赖进行基本功能测试
 - **总结报告**: 生成依赖安装状态的详细报告
+
+### 延迟导入
+- **机制验证**: 确保延迟导入按预期工作，组件按需加载
+- **错误处理**: 验证依赖缺失时的优雅降级和错误提示
+- **性能优化**: 测试缓存机制，确保重复访问的性能
+- **IDE 兼容**: 验证类型检查和代码补全功能正常
+- **集成测试**: 确保各模块间的延迟导入协同工作
 
 ## 📊 测试输出说明
 
@@ -113,6 +155,27 @@ SKIPPED [1] pandas 未安装，跳过测试
 SKIPPED [1] matplotlib 未安装，跳过测试
 ```
 
+### 延迟导入测试输出示例
+
+```
+=== 延迟导入功能测试总结 ===
+✅ analysis 模块延迟导入成功
+✅ analysis 模块导出列表验证通过
+✅ Model 延迟导入成功: <class 'axisfuzzy.analysis.app.model.Model'>
+✅ FuzzyDataFrame 延迟导入成功: <class 'axisfuzzy.analysis.dataframe.frame.FuzzyDataFrame'>
+✅ FuzzyPipeline 延迟导入成功: <class 'axisfuzzy.analysis.pipeline.FuzzyPipeline'>
+✅ Contract 延迟导入成功: <class 'axisfuzzy.analysis.contracts.base.Contract'>
+✅ AnalysisComponent 延迟导入成功: <class 'axisfuzzy.analysis.component.base.AnalysisComponent'>
+✅ contract 装饰器延迟导入成功: <function contract at 0x...>
+✅ 依赖检查功能正常
+✅ pandas 访问器自动注册成功
+✅ FuzzyAccessor 正确地未被导出
+✅ 延迟导入缓存机制正常
+✅ 契约系统集成测试通过
+
+🎉 延迟导入功能测试完成！
+```
+
 ## 🔧 故障排除
 
 ### 核心依赖问题
@@ -132,6 +195,37 @@ SKIPPED [1] matplotlib 未安装，跳过测试
 3. **升级到最新版本**:
    ```bash
    pip install --upgrade numpy numba
+   ```
+
+### 延迟导入问题
+
+如果延迟导入测试失败：
+
+1. **检查模块结构**:
+   ```bash
+   # 确认关键文件存在
+   ls -la axisfuzzy/analysis/__init__.py
+   ls -la axisfuzzy/analysis/__init__.pyi
+   ls -la axisfuzzy/analysis/pipeline.py
+   ```
+
+2. **验证类型存根**:
+   ```bash
+   # 检查类型存根文件的语法
+   python -c "import axisfuzzy.analysis; print('类型存根正常')"
+   ```
+
+3. **测试基本导入**:
+   ```bash
+   # 测试基本延迟导入功能
+   python -c "import axisfuzzy; print(axisfuzzy.analysis.Model)"
+   ```
+
+4. **清理缓存**:
+   ```bash
+   # 清理 Python 缓存
+   find . -name "__pycache__" -type d -exec rm -rf {} +
+   find . -name "*.pyc" -delete
    ```
 
 ### 可选依赖问题
@@ -183,7 +277,9 @@ SKIPPED [1] matplotlib 未安装，跳过测试
 
 1. **核心依赖测试**: 必须通过，否则构建失败
 2. **可选依赖测试**: 可以部分跳过，但需要记录状态
-3. **定期更新**: 定期检查依赖版本更新
+3. **延迟导入测试**: 必须通过，确保架构完整性
+4. **定期更新**: 定期检查依赖版本更新
+5. **缓存清理**: 在测试前清理 Python 缓存以避免干扰
 
 ## 📈 扩展测试
 

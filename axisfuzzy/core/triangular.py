@@ -1243,7 +1243,7 @@ class OperationTNorm:
         except ImportError:
             raise ImportError(
                 "matplotlib is required for plotting. "
-                "Install it with: pip install matplotlib or uv add --optional analysis matplotlib"
+                "Install it with: 'pip install matplotlib' or 'uv add --optional analysis matplotlib'"
             )
         
         eps = get_config().DEFAULT_EPSILON

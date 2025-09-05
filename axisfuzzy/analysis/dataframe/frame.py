@@ -5,14 +5,25 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 
+from __future__ import annotations
+
 """
 Defines the FuzzyDataFrame, a high-performance, labeled, two-dimensional
 fuzzy data structure.
 """
 
 from typing import Dict, Any, List, Union, Optional, TYPE_CHECKING
-import pandas as pd
-import numpy as np
+
+# 延迟导入策略：避免在模块级别直接导入可选依赖
+# 这样可以确保核心包安装时不会因为缺少可选依赖而导致导入错误
+try:
+    import pandas as pd
+    import numpy as np
+    _PANDAS_AVAILABLE = True
+except ImportError:
+    pd = None
+    np = None
+    _PANDAS_AVAILABLE = False
 
 
 from axisfuzzy.core import Fuzzarray
@@ -59,6 +70,12 @@ class FuzzyDataFrame:
                  index: Optional[Union[pd.Index, List, np.ndarray]] = None,
                  columns: Optional[Union[pd.Index, List, str]] = None,
                  mtype: Optional[str] = None):
+
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas is not installed. FuzzyDataFrame requires pandas. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
 
         from axisfuzzy.core import Fuzzarray
         if data is None:
@@ -141,6 +158,12 @@ class FuzzyDataFrame:
         FuzzyDataFrame
             A new instance populated with Fuzzarray columns.
         """
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas is not installed. FuzzyDataFrame requires pandas. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
+        
         from axisfuzzy.fuzzifier import Fuzzifier
         # Already imported or use TYPE_CHECKING guard
         if not isinstance(fuzzifier, Fuzzifier):
@@ -166,11 +189,21 @@ class FuzzyDataFrame:
     @property
     def index(self) -> pd.Index:
         """The row labels of the FuzzyDataFrame."""
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas is not installed. FuzzyDataFrame requires pandas. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
         return self._index
 
     @property
     def columns(self) -> pd.Index:
         """The column labels of the FuzzyDataFrame."""
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas is not installed. FuzzyDataFrame requires pandas. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
         return self._columns
 
     def __len__(self) -> int:
