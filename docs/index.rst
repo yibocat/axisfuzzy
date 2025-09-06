@@ -1,7 +1,5 @@
 .. AxisFuzzy documentation master file
 
-:html_theme.sidebar_secondary.remove:
-
 ===============
 AxisFuzzy
 ===============
@@ -30,7 +28,7 @@ Quick Start
    .. tab-item:: Basic Example
 
       .. code-block:: python
-
+         
          import axisfuzzy as af
 
          # Create fuzzy numbers
@@ -103,6 +101,15 @@ Navigation
 
          Complete API documentation with detailed function and class references
 
+      .. grid-item-card:: Extension Systems
+         :class-card: nav-card
+         :link: extension/index
+         :link-type: doc
+
+         🚀
+
+         High-level extension modules for specific domains and applications
+
 .. raw:: html
 
    <div class="footer-spacing"></div>
@@ -114,3 +121,4 @@ Navigation
    user_guide/index
    development/index
    api/index
+   extension/index

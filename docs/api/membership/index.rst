@@ -1,5 +1,3 @@
-:html_theme.sidebar_secondary.remove:
-
 =================================
 membership(axisfuzzy.membership)
 =================================
@@ -17,9 +15,6 @@ with the fuzzification pipeline, the module also allows users to add custom
 membership functions that are discovered and instantiated by the factory.
 
 .. toctree::
-
-    :maxdepth: 1
-    :caption: Extension Modules
 
     base
     function
