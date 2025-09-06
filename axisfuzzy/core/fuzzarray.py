@@ -806,25 +806,30 @@ class Fuzzarray:
 # ================================= Factory function =================================
 
 # TODO: 这个工厂函数 fuzzarray 有点问题, 没有 backend 参数, 但 Fuzzarray 的构造函数需要 backend 参数.
-def fuzzarray(data,
+def fuzzarray(data=None,
+              backend: Optional[FuzzarrayBackend] = None,
               mtype: Optional[str] = None,
+              q: Optional[int] = None,
               shape: Optional[Tuple[int, ...]] = None,
-              copy: bool = True,
               **mtype_kwargs) -> Fuzzarray:
     """
     Factory function to create Fuzzarray instances.
 
     Parameters
     ----------
-    data : array-like or Fuzznum or None
-        Input data to populate the returned Fuzzarray.
+    data : array-like or Fuzznum or None, optional
+        Input data to populate the returned Fuzzarray. If ``backend`` is provided,
+        this argument is ignored.
+    backend : FuzzarrayBackend, optional
+        Pre-constructed backend instance. If provided, ``data`` is ignored and
+        the returned Fuzzarray directly wraps this backend.
     mtype : str, optional
-        Fuzztype name.
+        Membership type name (e.g. ``'qrofn'``). Required if ``data`` is None and
+        ``backend`` is not provided.
+    q : int, optional
+        q-rung parameter for q-rung based mtypes.
     shape : tuple of int, optional
         Desired shape when constructing from scalars or empty data.
-    copy : bool, optional
-        Reserved for API compatibility; current implementation forwards data
-        to Fuzzarray constructor which controls copying semantics.
     **mtype_kwargs : dict
         Additional mtype-specific parameters forwarded to Fuzzarray.
 
@@ -833,6 +838,12 @@ def fuzzarray(data,
     Fuzzarray
         New Fuzzarray instance constructed from the provided inputs.
 
+    Notes
+    -----
+    - If ``backend`` is provided, it is used directly and ``data`` is ignored.
+    - If ``data`` is provided, it is used to construct a new backend.
+    - If neither ``data`` nor ``backend`` is provided, an empty Fuzzarray is created.
+
     Examples
     --------
     .. code-block:: python
@@ -840,7 +851,15 @@ def fuzzarray(data,
         from axisfuzzy.core.fuzznums import fuzznum
         from axisfuzzy.core.fuzzarray import fuzzarray
 
+        # Create from data
         arr = fuzzarray([fuzznum(md=0.1, nmd=0.2), fuzznum(md=0.2, nmd=0.3)])
         print(arr)
+
+        # Create from backend (more efficient)
+        from axisfuzzy.core.backend import QROFNBackend
+        backend = QROFNBackend()
+        # Populate backend with data...
+        arr2 = fuzzarray(backend=backend)
+        print(arr2)
     """
-    return Fuzzarray(data=data, mtype=mtype, shape=shape, **mtype_kwargs)
+    return Fuzzarray(data=data, backend=backend, mtype=mtype, q=q, shape=shape, **mtype_kwargs)
