@@ -241,6 +241,9 @@ class FuzzarrayBackend(ABC):
         -----
         - Concrete subclasses should validate shapes and dtypes and may
           accept already-viewed arrays to avoid copies.
+        - Subclasses MUST implement fuzzy constraint validation for the
+          component arrays to ensure all elements satisfy the fuzzy number
+          constraints specific to their mtype.
 
         Examples
         --------

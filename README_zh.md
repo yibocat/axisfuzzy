@@ -55,7 +55,7 @@ pip install axisfuzzy[analysis]
 如需最新开发版本，可从 GitHub 安装：
 
 ```bash
-git clone https://github.com/YourName/AxisFuzzy.git
+git clone https://github.com/yibocat/AxisFuzzy.git
 cd AxisFuzzy
 pip install -e .
 ```

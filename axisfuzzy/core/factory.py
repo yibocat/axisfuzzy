@@ -184,7 +184,7 @@ def _create_from_raw_arrays(backend_cls, data, q, shape, **kwargs) -> Fuzzarray:
 
     if data_arr.shape[0] != expected_comps:
         raise ValueError(
-            f"Expected {expected_comps} component arrays for mtype '{backend_cls.mtype}', "
+            f"Expected {expected_comps} component arrays for mtype '{be_instance_for_meta.mtype}', "
             f"but got {data_arr.shape[0]}"
         )
 

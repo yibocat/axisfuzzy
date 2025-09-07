@@ -25,6 +25,17 @@ class QROFNBackend(FuzzarrayBackend):
 
     mtype = 'qrofn'
 
+    def __init__(self, shape: Tuple[int, ...], q: Optional[int] = None, **kwargs):
+        """
+        Initializes the QROFNBackend.
+
+        Args:
+            shape: The shape of the array.
+            q: The q-rung parameter.
+            **kwargs: Additional keyword arguments.
+        """
+        super().__init__(shape, q, **kwargs)
+
     @property
     def cmpnum(self) -> int:
         return 2
@@ -36,17 +47,6 @@ class QROFNBackend(FuzzarrayBackend):
     @property
     def dtype(self) -> np.dtype:
         return np.dtype(np.float64)
-
-    def __init__(self, shape: Tuple[int, ...], q: Optional[int] = None, **kwargs):
-        """
-        Initializes the QROFNBackend.
-
-        Args:
-            shape: The shape of the array.
-            q: The q-rung parameter.
-            **kwargs: Additional keyword arguments.
-        """
-        super().__init__(shape, q, **kwargs)
 
     def _initialize_arrays(self):
         """Initialize mds and nmds arrays for QROFN data."""
@@ -161,6 +161,48 @@ class QROFNBackend(FuzzarrayBackend):
         )
         return np.array(combined, dtype=object)
 
+    @staticmethod
+    def _validate_fuzzy_constraints_static(mds: np.ndarray, nmds: np.ndarray, q: int) -> None:
+        """
+        Static method for validating QROFN fuzzy constraints without creating backend instance.
+        
+        Parameters
+        ----------
+        mds : np.ndarray
+            Membership degrees array.
+        nmds : np.ndarray
+            Non-membership degrees array.
+        q : int
+            The q-rung parameter for constraint validation.
+            
+        Raises
+        ------
+        ValueError
+            If any elements violate the QROFN constraint md^q + nmd^q <= 1.
+        """
+        # Vectorized constraint check: md^q + nmd^q <= 1 + epsilon
+        from ...config import get_config
+        epsilon = get_config().DEFAULT_EPSILON
+        
+        # Use numpy broadcasting for efficient computation
+        sum_of_powers = np.power(mds, q) + np.power(nmds, q)
+        violations = sum_of_powers > (1.0 + epsilon)
+        
+        if np.any(violations):
+            # Find first violation for detailed error message
+            violation_indices = np.where(violations)
+            first_idx = tuple(idx[0] for idx in violation_indices)
+            
+            md_val = mds[first_idx]
+            nmd_val = nmds[first_idx]
+            sum_val = sum_of_powers[first_idx]
+            
+            raise ValueError(
+                f"QROFN constraint violation at index {first_idx}: "
+                f"md^q ({md_val}^{q}) + nmd^q ({nmd_val}^{q}) = {sum_val:.4f} > 1.0. "
+                f"(q: {q}, md: {md_val}, nmd: {nmd_val})"
+            )
+
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROFNBackend':
         """
@@ -178,6 +220,9 @@ class QROFNBackend(FuzzarrayBackend):
         if mds.shape != nmds.shape:
             raise ValueError(f"Shape mismatch: mds {mds.shape} vs nmds {nmds.shape}")
 
+        # Direct constraint validation without creating temporary backend
+        cls._validate_fuzzy_constraints_static(mds, nmds, q=q)
+        
         backend = cls(mds.shape, q, **kwargs)
         backend.mds = mds.copy()
         backend.nmds = nmds.copy()
