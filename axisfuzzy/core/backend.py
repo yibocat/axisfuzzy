@@ -298,6 +298,46 @@ class FuzzarrayBackend(ABC):
         """
         return len(self.shape)
 
+    # ================== Metadata for Validation and Introspection ==================
+    @property
+    @abstractmethod
+    def cmpnum(self) -> int:
+        """
+        Return the number of component arrays expected by this backend.
+
+        Returns
+        -------
+        int
+            The number of component arrays (e.g., 2 for q-ROFNs).
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def cmpnames(self) -> Tuple[str, ...]:
+        """
+        Return the names of the component arrays.
+
+        Returns
+        -------
+        Tuple[str, ...]
+            A tuple of component names, e.g., ('md', 'nmd').
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def dtype(self) -> np.dtype:
+        """
+        Return the expected numpy dtype for component arrays.
+
+        Returns
+        -------
+        np.dtype
+            The expected data type, e.g., np.float64.
+        """
+        pass
+
     # ================== Smart Display General Implementation ==================
 
     def format_elements(self, format_spec: str = "") -> np.ndarray:

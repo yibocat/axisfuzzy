@@ -40,8 +40,10 @@ from .config import (
 from .core import (
     FuzznumStrategy,
     FuzzarrayBackend,
-    Fuzznum, fuzznum,
-    Fuzzarray, fuzzarray,
+    Fuzznum,
+    Fuzzarray,
+    fuzzyset,
+    fuzzynum,
     operate,
     OperationTNorm,
     get_registry_fuzztype,
@@ -50,6 +52,10 @@ from .core import (
     register_backend,
     register_operation,
     register_fuzztype,
+
+    # will be deprecated
+    fuzznum,
+    fuzzarray,
 )
 from .extension import (
     get_registry_extension,
@@ -83,8 +89,10 @@ _static_api = [
     # core
     'FuzznumStrategy',
     'FuzzarrayBackend',
-    'Fuzznum', 'fuzznum',
-    'Fuzzarray', 'fuzzarray',
+    'Fuzznum',
+    'Fuzzarray',
+    'fuzzynum',
+    'fuzzyset',
     'operate',
     'OperationTNorm',
     'get_registry_fuzztype',
@@ -112,6 +120,10 @@ _static_api = [
     'random',
     # analysis (as a module)
     # 'analysis'  # 移除直接导入，改为延迟导入
+
+    # will be deprecated
+    'fuzznum',
+    'fuzzarray',
 ]
 
 # 从 mixin 系统获取动态函数名

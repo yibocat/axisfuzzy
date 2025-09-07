@@ -25,6 +25,18 @@ class QROFNBackend(FuzzarrayBackend):
 
     mtype = 'qrofn'
 
+    @property
+    def cmpnum(self) -> int:
+        return 2
+
+    @property
+    def cmpnames(self) -> Tuple[str, ...]:
+        return 'md', 'nmd'
+
+    @property
+    def dtype(self) -> np.dtype:
+        return np.dtype(np.float64)
+
     def __init__(self, shape: Tuple[int, ...], q: Optional[int] = None, **kwargs):
         """
         Initializes the QROFNBackend.
