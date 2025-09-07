@@ -805,7 +805,6 @@ class Fuzzarray:
 
 # ================================= Factory function =================================
 
-# TODO: 这个工厂函数 fuzzarray 有点问题, 没有 backend 参数, 但 Fuzzarray 的构造函数需要 backend 参数.
 def fuzzarray(data=None,
               backend: Optional[FuzzarrayBackend] = None,
               mtype: Optional[str] = None,
