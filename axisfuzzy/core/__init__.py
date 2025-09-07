@@ -11,6 +11,7 @@ from .dispatcher import operate
 
 from .fuzznums import Fuzznum, fuzznum
 from .fuzzarray import Fuzzarray, fuzzarray
+from .factory import fuzzynum, fuzzyset
 from .backend import FuzzarrayBackend
 
 from .operation import OperationMixin, get_registry_operation, register_operation
@@ -32,12 +33,16 @@ __all__ = [
     'OperationMixin',
     'OperationTNorm',
     'operate',
-    'fuzznum',
-    'fuzzarray',
+    'fuzzynum',
+    'fuzzyset',
     'get_registry_operation',
     'get_registry_fuzztype',
     'register_operation',
     'register_strategy',
     'register_backend',
     'register_fuzztype',
+
+    # Deprecated
+    'fuzznum',
+    'fuzzarray',
 ]

@@ -38,11 +38,18 @@ from .registry import (
     register_fuzztype as register_fuzztype,
 )
 
+from .factory import (
+    fuzzynum as fuzzynum,
+    fuzzyset as fuzzyset
+)
+
 __all__ = [
     'FuzznumStrategy',
     'FuzzarrayBackend',
-    'Fuzznum', 'fuzznum',
-    'Fuzzarray', 'fuzzarray',
+    'Fuzznum',
+    'Fuzzarray',
+    'fuzzyset',
+    'fuzzynum',
     'operate',
     'OperationMixin',
     'OperationTNorm',
@@ -53,4 +60,8 @@ __all__ = [
     'register_strategy',
     'register_backend',
     'register_fuzztype',
+
+    # deprecated
+    'fuzznum',
+    'fuzzarray',
 ]
