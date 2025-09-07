@@ -35,6 +35,18 @@ class QROHFNBackend(FuzzarrayBackend):
         """
         super().__init__(shape, q, **kwargs)
 
+    @property
+    def cmpnum(self) -> int:
+        return 2
+
+    @property
+    def cmpnames(self) -> Tuple[str, ...]:
+        return 'md', 'nmd'
+
+    @property
+    def dtype(self) -> np.dtype:
+        return np.dtype(object)
+
     def _initialize_arrays(self):
         """Initialize mds and nmds arrays for QROHFN data."""
 
@@ -83,6 +95,116 @@ class QROHFNBackend(FuzzarrayBackend):
         new_backend.nmds = self.nmds[key]
         return cast('QROHFNBackend', new_backend)
 
+    @staticmethod
+    def _validate_fuzzy_constraints_static(mds: np.ndarray, nmds: np.ndarray, q: int) -> None:
+        """
+        High-performance static method for validating QROHFN fuzzy constraints using vectorized operations.
+        
+        For QROHFN, the constraint is: max(md)^q + max(nmd)^q <= 1 for each hesitant set.
+        Additionally, all values must be >= 0.
+        
+        Parameters
+        ----------
+        mds : np.ndarray
+            Object array containing membership degree hesitant sets.
+        nmds : np.ndarray
+            Object array containing non-membership degree hesitant sets.
+        q : int
+            The q-rung parameter for constraint validation.
+            
+        Raises
+        ------
+        ValueError
+            If any elements violate the QROHFN constraints.
+        """
+        from ...config import get_config
+        epsilon = get_config().DEFAULT_EPSILON
+        
+        # Flatten arrays for efficient processing
+        mds_flat = mds.flatten()
+        nmds_flat = nmds.flatten()
+        
+        # Pre-allocate arrays for maximum values
+        max_mds = np.full(len(mds_flat), np.nan)
+        max_nmds = np.full(len(nmds_flat), np.nan)
+        min_mds = np.full(len(mds_flat), np.nan)
+        min_nmds = np.full(len(nmds_flat), np.nan)
+        
+        # Vectorized extraction of max and min values
+        for i, (md_hesitant, nmd_hesitant) in enumerate(zip(mds_flat, nmds_flat)):
+            if md_hesitant is not None and nmd_hesitant is not None:
+                # Convert to numpy arrays if needed
+                md_arr = np.asarray(md_hesitant, dtype=np.float64)
+                nmd_arr = np.asarray(nmd_hesitant, dtype=np.float64)
+                
+                # Ensure arrays are at least 1D
+                if md_arr.ndim == 0:
+                    md_arr = md_arr.reshape(1)
+                if nmd_arr.ndim == 0:
+                    nmd_arr = nmd_arr.reshape(1)
+                
+                # Check if arrays are non-empty
+                if len(md_arr) > 0 and len(nmd_arr) > 0:
+                    max_mds[i] = np.max(md_arr)
+                    max_nmds[i] = np.max(nmd_arr)
+                    min_mds[i] = np.min(md_arr)
+                    min_nmds[i] = np.min(nmd_arr)
+        
+        # Remove NaN values (elements that were None or empty)
+        valid_mask = ~(np.isnan(max_mds) | np.isnan(max_nmds))
+        if not np.any(valid_mask):
+            return  # No valid elements to check
+            
+        valid_max_mds = max_mds[valid_mask]
+        valid_max_nmds = max_nmds[valid_mask]
+        valid_min_mds = min_mds[valid_mask]
+        valid_min_nmds = min_nmds[valid_mask]
+        valid_indices = np.where(valid_mask)[0]
+        
+        # Vectorized constraint checks
+        # 1. Check non-negativity
+        negative_md_mask = valid_min_mds < -epsilon
+        negative_nmd_mask = valid_min_nmds < -epsilon
+        
+        if np.any(negative_md_mask):
+            first_negative_idx = valid_indices[np.where(negative_md_mask)[0][0]]
+            multi_idx = np.unravel_index(first_negative_idx, mds.shape)
+            raise ValueError(
+                f"QROHFN constraint violation at index {multi_idx}: "
+                f"Negative membership degree found: {valid_min_mds[np.where(negative_md_mask)[0][0]]}"
+            )
+            
+        if np.any(negative_nmd_mask):
+            first_negative_idx = valid_indices[np.where(negative_nmd_mask)[0][0]]
+            multi_idx = np.unravel_index(first_negative_idx, mds.shape)
+            raise ValueError(
+                f"QROHFN constraint violation at index {multi_idx}: "
+                f"Negative non-membership degree found: {valid_min_nmds[np.where(negative_nmd_mask)[0][0]]}"
+            )
+        
+        # 2. Vectorized fuzzy constraint check: max(md)^q + max(nmd)^q <= 1
+        sum_of_powers = np.power(valid_max_mds, q) + np.power(valid_max_nmds, q)
+        violations = sum_of_powers > (1.0 + epsilon)
+        
+        if np.any(violations):
+            # Find first violation for detailed error message
+            first_violation_idx = valid_indices[np.where(violations)[0][0]]
+            multi_idx = np.unravel_index(first_violation_idx, mds.shape)
+            
+            violation_pos = np.where(violations)[0][0]
+            max_md = valid_max_mds[violation_pos]
+            max_nmd = valid_max_nmds[violation_pos]
+            sum_val = sum_of_powers[violation_pos]
+            
+            md_hesitant = mds_flat[first_violation_idx]
+            nmd_hesitant = nmds_flat[first_violation_idx]
+            
+            raise ValueError(
+                f"QROHFN constraint violation at index {multi_idx}: "
+                f"max(md)^q ({max_md}^{q}) + max(nmd)^q ({max_nmd}^{q}) = {sum_val:.4f} > 1.0. "
+                f"(q: {q}, md: {md_hesitant}, nmd: {nmd_hesitant})"
+            )
+
     @classmethod
     def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs) -> 'QROHFNBackend':
         """
@@ -94,6 +216,9 @@ class QROHFNBackend(FuzzarrayBackend):
             raise TypeError(f"Input arrays for QROHFNBackend must have dtype=object. "
                             f"Got {mds.dtype} and {nmds.dtype}.")
 
+        # Direct constraint validation without creating temporary backend
+        cls._validate_fuzzy_constraints_static(mds, nmds, q=q)
+        
         backend = cls(shape=mds.shape, q=q, **kwargs)
         backend.mds = mds
         backend.nmds = nmds

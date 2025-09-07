@@ -241,6 +241,9 @@ class FuzzarrayBackend(ABC):
         -----
         - Concrete subclasses should validate shapes and dtypes and may
           accept already-viewed arrays to avoid copies.
+        - Subclasses MUST implement fuzzy constraint validation for the
+          component arrays to ensure all elements satisfy the fuzzy number
+          constraints specific to their mtype.
 
         Examples
         --------
@@ -297,6 +300,46 @@ class FuzzarrayBackend(ABC):
             The number of dimensions (len(shape)).
         """
         return len(self.shape)
+
+    # ================== Metadata for Validation and Introspection ==================
+    @property
+    @abstractmethod
+    def cmpnum(self) -> int:
+        """
+        Return the number of component arrays expected by this backend.
+
+        Returns
+        -------
+        int
+            The number of component arrays (e.g., 2 for q-ROFNs).
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def cmpnames(self) -> Tuple[str, ...]:
+        """
+        Return the names of the component arrays.
+
+        Returns
+        -------
+        Tuple[str, ...]
+            A tuple of component names, e.g., ('md', 'nmd').
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def dtype(self) -> np.dtype:
+        """
+        Return the expected numpy dtype for component arrays.
+
+        Returns
+        -------
+        np.dtype
+            The expected data type, e.g., np.float64.
+        """
+        pass
 
     # ================== Smart Display General Implementation ==================
 
