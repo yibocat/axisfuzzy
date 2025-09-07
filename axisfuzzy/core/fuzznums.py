@@ -811,7 +811,7 @@ class Fuzznum:
 # ================================= 工厂函数 =================================
 
 
-@deprecated
+@deprecated(message="Please use 'fuzzynum' instead.")
 def fuzznum(values: tuple = None,
             mtype: Optional[str] = None,
             q: Optional[int] = None,

@@ -155,11 +155,10 @@ def fuzzyset(
                 is_fuzznum_list = True
 
         if not is_fuzznum_list:
-            try:
-                return _create_from_raw_arrays(backend_cls, data, q, shape, **kwargs)
-            except (ValueError, TypeError):
-                # Fallback to standard Fuzzarray constructor if raw creation fails
-                pass
+            # Path 2: High-performance creation from raw arrays
+            # This path should only be used for structured raw data (arrays/lists of numbers)
+            # If it fails, it indicates the data format is incorrect for raw array creation
+            return _create_from_raw_arrays(backend_cls, data, q, shape, **kwargs)
 
     # Path 3: Standard creation from Fuzznum, Fuzzarray, or list of Fuzznums
     return Fuzzarray(data=data, mtype=mtype, q=q, shape=shape, **kwargs)

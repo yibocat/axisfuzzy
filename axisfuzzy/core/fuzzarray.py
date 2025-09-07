@@ -729,7 +729,7 @@ class Fuzzarray:
 
 # ================================= Factory function =================================
 
-@deprecated
+@deprecated(message="Please use 'fuzzyset' instead.")
 def fuzzarray(data,
               mtype: Optional[str] = None,
               shape: Optional[Tuple[int, ...]] = None,
