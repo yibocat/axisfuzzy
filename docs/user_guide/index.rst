@@ -8,13 +8,13 @@ User Guide
 
    core_data_structures
    .. fuzzy_operations
-      .. operation
-      .. triangular
+   ..    operation
+   ..    triangular
    .. fuzzifiers
    .. random
    .. fuzzy_mtype
-      .. fuzzy_type_qrofn
-      .. fuzzy_type_qrohfn
+   ..    fuzzy_type_qrofn
+   ..    fuzzy_type_qrohfn
    .. extension_mixin
    .. membership_functions
    .. config

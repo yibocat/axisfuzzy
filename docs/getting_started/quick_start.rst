@@ -12,11 +12,11 @@ The ``Fuzznum`` is the fundamental building block in ``axisfuzzy``, representing
  - q-rung orthopair fuzzy numbers (q-ROFNs, ``mtype='qrofn'``)
  - q-rung orthopair hesitant fuzzy numbers (q-ROHFNs, ``mtype='qrohfn'``)
 
-To create a fuzzy number, you can use the convenient factory function ``fuzznum``. Here is an example of how to create a q-ROFN:
+To create a fuzzy number, you can use the convenient factory function ``fuzzynum``. Here is an example of how to create a q-ROFN:
 
 .. code-block:: python
 
-    from axisfuzzy import fuzznum
+    from axisfuzzy import fuzzynum
 
     # Create a q-rung orthopair fuzzy number (q-ROFN) 
     #   and q-rung orthopair hesitant fuzzy number (q-ROHFN)
@@ -24,8 +24,8 @@ To create a fuzzy number, you can use the convenient factory function ``fuzznum`
     #   and the non-membership degree is 0.6 for q-ROFN
     # And q=1, the membership degrees are [0.6,0.7], 
     #   and the non-membership degrees are [0.2] for q-ROHFN
-    fn1 = fuzznum((0.8, 0.6), q=3)
-    fn2 = fuzznum(([0.6,0.7],[0.2]), mtype='qrohfn')
+    fn1 = fuzzynum((0.8, 0.6), q=3)
+    fn2 = fuzzynum(([0.6,0.7],[0.2]), mtype='qrohfn')
 
     print(fn1)
     # Output: <0.8,0.6>
@@ -42,23 +42,23 @@ Core Container: Fuzzarray
 
 The ``Fuzzarray`` is a container for ``Fuzznum`` objects, designed for efficient numerical computation. It is built upon ``numpy.ndarray``, which allows it to leverage the high-performance capabilities of NumPy for vectorized operations. ``Fuzzarray`` provides a convenient way to store and manipulate fuzzy numbers in a structured and efficient manner. Therefore, ``Fuzzarray`` can be regarded as a fuzzy set of ``Fuzznum``.
 
-Similar to ``fuzznum``, there is a corresponding factory function ``fuzzarray`` for creating fuzzy arrays. You can create a ``Fuzzarray`` from a list of data.
+Similar to ``fuzzynum``, there is a corresponding factory function ``fuzzyset`` for creating fuzzy arrays. You can create a ``Fuzzarray`` from a list of data.
 
 .. code-block:: python
 
-    from axisfuzzy import fuzzarray, fuzznum
+    from axisfuzzy import fuzzyset, fuzzynum
 
     # Create three Fuzznum with mtype is default qrofn and q is 1
     # As a list and create a Fuzzarray
-    fn1 = fuzznum((0.5,0.3))
-    fn2 = fuzznum((0.6,0.2))
-    fn3 = fuzznum((0.4,0.4))
+    fn1 = fuzzynum((0.5,0.3))
+    fn2 = fuzzynum((0.6,0.2))
+    fn3 = fuzzynum((0.4,0.4))
     
     f = [fn1, fn2, fn3]
     print(f)
     # [<0.5,0.3>,<0.6,0.2>,<0.4,0.4>]
 
-    fa = fuzzarray(f)
+    fa = fuzzyset(f)
     print(fa)
     # Fuzzarray([<0.5,0.3> <0.6,0.2> <0.4,0.4>], mtype='qrofn', q=1, shape=(3,))
 
@@ -73,11 +73,11 @@ Here are some examples of basic operations:
 
 .. code-block:: python
 
-    from axisfuzzy import fuzznum, fuzzarray
+    from axisfuzzy import fuzzynum, fuzzyset
 
     # Operations with Fuzznum
-    fn1 = fuzznum((0.8, 0.6), q=3)
-    fn2 = fuzznum((0.2, 0.5), q=3)
+    fn1 = fuzzynum((0.8, 0.6), q=3)
+    fn2 = fuzzynum((0.2, 0.5), q=3)
 
     # Addition
     add_result = fn1 + fn2
@@ -90,19 +90,19 @@ Here are some examples of basic operations:
     # Output: <0.16,0.6797>
 
     # Operations with Fuzzarray
-    fn11 = fuzznum((0.5,0.3))
-    fn12 = fuzznum((0.6,0.2))
-    fn13 = fuzznum((0.4,0.4))
+    fn11 = fuzzynum((0.5,0.3))
+    fn12 = fuzzynum((0.6,0.2))
+    fn13 = fuzzynum((0.4,0.4))
 
-    fn21 = fuzznum((0.2,0.6))
-    fn22 = fuzznum((0.4,0.5))
-    fn23 = fuzznum((0.3,0.7))
+    fn21 = fuzzynum((0.2,0.6))
+    fn22 = fuzzynum((0.4,0.5))
+    fn23 = fuzzynum((0.3,0.7))
     
     data1 = [fn11, fn12, fn13]
     data2 = [fn21, fn22, fn23]
 
-    fa1 = fuzzarray(data1)
-    fa2 = fuzzarray(data2)
+    fa1 = fuzzyset(data1)
+    fa2 = fuzzyset(data2)
 
     # Element-wise addition
     add_array_result = fa1 + fa2

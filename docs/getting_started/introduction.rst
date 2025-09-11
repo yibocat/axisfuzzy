@@ -34,7 +34,7 @@ independent development and extension without modifying the core library.
 
 *   **Elegant User Experience**: The library's API is designed to be intuitive and 
 familiar to users of established scientific computing packages like NumPy. Through 
-operator overloading, unified factory functions (e.g., ``fuzznum()``, ``fuzzarray()``), 
+operator overloading, unified factory functions (e.g., ``fuzzynum()``, ``fuzzyset()``), 
 and a consistent interface, AxisFuzzy provides a programming experience that feels native 
 to Python. This focus on usability allows users to concentrate on solving problems rather 
 than grappling with complex library mechanics.
@@ -106,7 +106,7 @@ Built upon the core infrastructure, the application layer contains high-level mo
 designed to solve specific, domain-oriented problems. These modules are distributed as 
 optional extensions, ensuring the core library remains lean.
 
-*   **Analysis System (``axisfuzzy.analysis``)**: This is the first of many planned 
+*   **Analysis System** (``axisfuzzy.analysis``): This is the first of many planned 
     application modules. Inspired by deep learning frameworks like PyTorch, it allows users to 
     construct complex data analysis workflows as reusable, composable models. By inheriting from 
     the ``Model`` class, users can define sophisticated data processing pipelines that are both 

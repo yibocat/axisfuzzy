@@ -146,7 +146,7 @@ Membership Functions
 --------------------
 
 What is a membership function?
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In simple terms, a membership function is a mathematical function that defines the degree to which an element belongs to a "fuzzy set." This "degree" is called the Degree of Membership and its value falls within the range [0, 1].
 

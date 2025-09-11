@@ -87,12 +87,12 @@ consistent user experience regardless of the complexity of the underlying fuzzy 
 Creating a Fuzznum
 ~~~~~~~~~~~~~~~~~~
 
-The recommended way to create a ``Fuzznum`` is via the ``axisfuzzy.fuzznum`` factory function. 
+The recommended way to create a ``Fuzznum`` is via the ``axisfuzzy.fuzzynum`` factory function. 
 This function looks up the appropriate ``FuzznumStrategy`` from the central registry 
 based on the ``mtype`` (membership type) you provide, instantiates it with your data, 
 and wraps it in a ``Fuzznum`` object.
 
-The ``axisfuzzy.fuzznum`` factory function provides two ways to create fuzzy numbers: 
+The ``axisfuzzy.fuzzynum`` factory function provides two ways to create fuzzy numbers: 
 one is to pass membership values in order within a tuple, and the other is to use keyword arguments.
 
 - **Tuple-Based Creation**: You can pass membership values in order as a tuple. 
@@ -103,7 +103,7 @@ one is to pass membership values in order within a tuple, and the other is to us
 .. note::
 
     Although a fuzzy number can be created through a class instance 
-    like ``Fuzznum(mtype='qrofn', q=1).create(md=0.5, nmd=0.2)``, the ``axisfuzzy.fuzznum`` factory 
+    like ``Fuzznum(mtype='qrofn', q=1).create(md=0.5, nmd=0.2)``, the ``axisfuzzy.fuzzynum`` factory 
     function is the recommended approach for creating ``Fuzznum`` objects. It ensures 
     that the correct ``FuzznumStrategy`` is instantiated and wrapped, and it handles validation and constraint checking logic.
 
@@ -112,7 +112,7 @@ and ``q=3``; we have three methods to create this fuzzy number.
 
 .. code-block:: python
 
-   from axisfuzzy.core import fuzznum, Fuzznum
+   from axisfuzzy.core import fuzzynum, Fuzznum
 
    # Create a q-Rung Orthopair Fuzzy Number (q-ROFN) with q=3
    # The factory finds the 'qrofn' strategy, instantiates it,
@@ -122,10 +122,10 @@ and ``q=3``; we have three methods to create this fuzzy number.
    my_fuzznum = Fuzznum(mtype='qrofn', q=3).create(md=0.8, nmd=0.1)
 
    # Method Two(Recommended)
-   my_fuzznum = fuzznum((0.8,0.1), q=3)
+   my_fuzznum = fuzzynum((0.8,0.1), q=3)
    
    # Method Three(Recommended)
-   my_fuzznum = fuzznum(md=0.8, nmd=0.1, q=3)
+   my_fuzznum = fuzzynum(md=0.8, nmd=0.1, q=3)
 
    # Accessing .md is proxied to the underlying QROFNStrategy
    print(my_fuzznum.md)
@@ -143,7 +143,7 @@ Suppose we want to create a q-ROHFN with ``md=[0.8,0.6]``, ``nmd=[0.1]``, and ``
 
 .. code-block:: python
 
-   from axisfuzzy.core import fuzznum, Fuzznum
+   from axisfuzzy.core import fuzzynum, Fuzznum
 
    # Create a q-Rung Orthopair Fuzzy Number (q-ROFN) with q=3
    # The factory finds the 'qrofn' strategy, instantiates it,
@@ -153,10 +153,10 @@ Suppose we want to create a q-ROHFN with ``md=[0.8,0.6]``, ``nmd=[0.1]``, and ``
    my_fuzznum = Fuzznum(mtype='qrohfn', q=3).create(md=[0.8, 0.6], nmd=[0.1])
 
    # Method Two(Recommended)
-   my_fuzznum = fuzznum(([0.8, 0.6], [0.1]), mtype='qrohfn', q=3)
+   my_fuzznum = fuzzynum(([0.8, 0.6], [0.1]), mtype='qrohfn', q=3)
    
    # Method Three(Recommended)
-   my_fuzznum = fuzznum(md=[0.8, 0.6], nmd=[0.1], mtype='qrohfn' q=3)
+   my_fuzznum = fuzzynum(md=[0.8, 0.6], nmd=[0.1], mtype='qrohfn' q=3)
 
    # Accessing .md is proxied to the underlying QROFNStrategy
    print(my_fuzznum.md)
@@ -176,9 +176,9 @@ Suppose we want to create a q-ROHFN with ``md=[0.8,0.6]``, ``nmd=[0.1]``, and ``
 
     .. code-block:: python
 
-        my_fuzznum = fuzznum((0.8, 0.1))
+        my_fuzznum = fuzzynum((0.8, 0.1))
         # or
-        my_fuzznum = fuzznum(md=0.8, nmd=0.1)
+        my_fuzznum = fuzzynum(md=0.8, nmd=0.1)
 
 Fuzzarray: High-Performance Fuzzy Computation Container
 -------------------------------------------------------
@@ -249,34 +249,37 @@ The advantages of SoA are immense:
   Operations on the arrays can be translated to highly optimized, 
   low-level C or Fortran code that leverages SIMD instructions.
 
-Creating a Fuzzarray: The Two Paths
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Creating a Fuzzarray: The Three Paths
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``Fuzzarray`` constructor is designed with two distinct initialization paths, 
-balancing user convenience with internal performance.
+The ``Fuzzarray`` constructor is designed with three distinct initialization paths, 
+balancing user convenience with internal performance. These paths are optimized for 
+different use cases: direct backend assignment for maximum performance, high-performance 
+raw array creation for efficient data processing, and user-friendly creation from 
+Fuzznum objects for convenience.
 
-The User-Friendly Path: Creating from Data
-++++++++++++++++++++++++++++++++++++++++++
+Path 1: The User-Friendly Path - Creating from Fuzznum Objects
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-This is the most common way for a user to create a ``Fuzzarray``. The ``axisfuzzy.fuzzarray`` 
+This is the most common way for a user to create a ``Fuzzarray``. The ``axisfuzzy.fuzzyset`` 
 factory function (which is an alias for the ``Fuzzarray`` class) is the primary entry point 
 for this path. You pass it an array-like object, such as a list of ``Fuzznum`` objects.
 
 .. code-block:: python
 
-   from axisfuzzy import fuzzarray, fuzznum
+   from axisfuzzy import fuzzyset, fuzzynum
 
    # Create a Fuzzarray from a list of Fuzznum objects
-   arr = fuzzarray([
-       fuzznum((0.8, 0.1), q=2),
-       fuzznum((0.6, 0.3), q=2)
+   arr = fuzzyset([
+       fuzzynum((0.8, 0.1), q=2),
+       fuzzynum((0.6, 0.3), q=2)
    ])
 
    print(arr)
-   # >>> Fuzzarray(mtype='qrofn', q=2, shape=(2,))
+   # >>> Fuzzarray([<0.8,0.1> <0.6,0.3>], mtype='qrofn', q=2, shape=(2,))
 
    # You can also create an empty array and fill it
-   arr = fuzzarray(fuzznum((0.6, 0.3), q=2), shape=(1000,))
+   arr = fuzzyset(fuzzynum((0.6, 0.3), q=2), shape=(1000,))
 
 When you use this path, the constructor performs several steps:
 
@@ -289,8 +292,64 @@ When you use this path, the constructor performs several steps:
 This path is convenient but involves overhead due to data inspection and iteration. 
 It is ideal for initial array creation from user data.
 
-The High-Performance Path: Creating from a Backend
-++++++++++++++++++++++++++++++++++++++++++++++++++
+Path 2: High-Performance Raw Array Creation
+++++++++++++++++++++++++++++++++++++++++++++
+
+The ``fuzzyset`` factory function provides a highly optimized path for creating 
+``Fuzzarray`` objects directly from raw NumPy arrays or nested lists. This path 
+is designed for scenarios where you have structured component data (e.g., membership 
+and non-membership degrees) and want to bypass the overhead of individual ``Fuzznum`` 
+object creation.
+
+.. code-block:: python
+
+   import numpy as np
+   from axisfuzzy import fuzzyset
+
+   # Create QROFN array from raw component arrays
+   # First array: membership degrees, Second array: non-membership degrees
+   md_values = np.array([0.8, 0.6, 0.7])
+   nmd_values = np.array([0.1, 0.3, 0.2])
+   raw_data = np.array([md_values, nmd_values])  # Shape: (2, 3)
+   
+   # High-performance creation (Path 2)
+   arr = fuzzyset(data=raw_data, mtype='qrofn', q=2)
+   print(arr)
+   # >>> Fuzzarray([<0.8,0.1> <0.6,0.3> <0.7,0.2>], mtype='qrofn', q=2, shape=(3,))
+
+   # For QROHFN with hesitant values
+   md_hesitant = np.array([[0.2,0.4], [0.5,0.2], [0.7,0.8,0.9]], dtype=object)
+   nmd_hesitant = np.array([[0.1], [0.1,0.2], [0.1, 0.05]], dtype=object)
+   hesitant_data = np.array([md_hesitant, nmd_hesitant]) # Shape: (2, 3)
+   
+   arr_hesitant = fuzzyset(data=hesitant_data, mtype='qrohfn', q=2)
+   print(arr_hesitant)
+   # >>> Fuzzarray([<[0.2, 0.4],[0.1]> <[0.2, 0.5],[0.1, 0.2]> <[0.7, 0.8, 0.9],[0.05, 0.1]>], 
+   #                mtype='qrohfn', q=2, shape=(3,))
+
+This path offers several advantages:
+
+- **Maximum Performance**: Bypasses individual ``Fuzznum`` object creation and directly 
+  constructs the backend from raw arrays.
+- **Memory Efficiency**: No intermediate object allocation, direct array-to-backend transfer.
+- **Batch Processing**: Ideal for processing large datasets or results from vectorized operations.
+- **Type Safety**: Automatic validation ensures the raw data conforms to the fuzzy type constraints.
+
+The ``fuzzyset`` function intelligently detects when the input data represents raw 
+component arrays versus a collection of ``Fuzznum`` objects, automatically selecting 
+the appropriate creation path for optimal performance.
+
+.. note::
+    When creating a ``Fuzzarray`` using Path 2, the array construction is critical. 
+    The shape of the numpy.ndarray passed to ``fuzzyset`` must comply with the backend 
+    contracts ``cmpnum``, ``cmpnames``, and ``dtype``. This means that ``data.shape[0]`` 
+    must equal ``cmpnum``, representing the names of membership degrees defined in ``cmpnames``.
+    The ``dtype`` specifies the array's data type - for special fuzzy sets like ``qrohfn``, 
+    it must be set to object to ensure correct representation. 
+    Notably, this method works with high-dimensional arrays as long as they satisfy the Backend's established contracts.
+
+Path 3: The High-Performance Path - Creating from a Backend
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 When performance is critical, especially during internal computations, 
 ``axisfuzzy`` uses a much faster method. A ``Fuzzarray`` can be instantiated directly 
@@ -426,6 +485,18 @@ While ``FuzznumStrategy`` manages individual numbers, ``FuzzarrayBackend`` is th
 enables high-speed computations on entire arrays of them. It is an abstract base class that 
 mandates a **Struct-of-Arrays (SoA)** architecture, a design choice that is fundamental to AxisFuzzy's performance.
 
+The backend is central to all three ``Fuzzarray`` creation paths:
+
+- **Path 1** (Fuzznum Creation): Traditional creation from ``Fuzznum`` objects, where the backend 
+  is populated through repeated calls to ``set_fuzznum_data``.
+- **Path 2** (Raw Array Creation): The factory function ``fuzzyset`` provides a highly optimized path for creating 
+  ``Fuzzarray`` objects directly from raw NumPy arrays, bypassing individual ``Fuzznum`` object creation for maximum efficiency.
+- **Path 3** (Backend Creation): Directly instantiates a ``Fuzzarray`` from a pre-constructed backend, 
+  offering O(1) performance for internal operations.
+
+This architecture ensures that regardless of the creation path, all ``Fuzzarray`` objects benefit 
+from the same high-performance SoA data layout and vectorized operations.
+
 The SoA Architecture
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -458,7 +529,7 @@ user-friendly array and the low-level, high-performance data store.
     ``index`` and reconstructs it into a single ``Fuzznum`` object for the user to inspect. 
     This is a "view" and should be a lightweight operation.
 
--   ``set_fuzznum_data(self, index, fuzznum)`` : The reverse of ``get_fuzznum_view``. 
+-   ``set_fuzznum_data(self, index, fuzzynum)`` : The reverse of ``get_fuzznum_view``. 
     It deconstructs a ``Fuzznum`` object and writes its components into the correct 
     positions in the backend's SoA arrays.
 
@@ -478,6 +549,7 @@ Implementation Examples
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 The difference in implementing these methods for scalar vs. set-based fuzzy numbers is illustrative.
+Each backend must implement essential contract properties and methods for proper integration.
 
 **QROFNBackend (Scalar Components)**
 
@@ -487,6 +559,18 @@ The difference in implementing these methods for scalar vs. set-based fuzzy numb
    @register_backend
    class QROFNBackend(FuzzarrayBackend):
        mtype = 'qrofn'
+
+       @property
+       def cmpnum(self) -> int:
+           return 2  # Two components: md and nmd
+
+       @property
+       def cmpnames(self) -> Tuple[str, ...]:
+           return 'md', 'nmd'  # Component names
+
+       @property
+       def dtype(self) -> np.dtype:
+           return np.dtype(np.float64)  # Scalar values
 
        def _initialize_arrays(self):
            self.mds = np.zeros(self.shape, dtype=np.float64)
@@ -501,9 +585,36 @@ The difference in implementing these methods for scalar vs. set-based fuzzy numb
            self.mds[index] = fuzznum.md
            self.nmds[index] = fuzznum.nmd
 
+       @classmethod
+       def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs):
+           """Create backend directly from component arrays with validation."""
+           cls._validate_fuzzy_constraints_static(mds, nmds, q=q)
+           backend = cls(mds.shape, q, **kwargs)
+           backend.mds = mds.copy()
+           backend.nmds = nmds.copy()
+           return backend
+
+**Contract Properties and High-Performance Integration**
+
+The contract properties (``cmpnum``, ``cmpnames``, ``dtype``) are essential for:
+
+- **Path 2 Integration**: The ``fuzzyset`` factory function uses these properties to validate 
+  raw array shapes and automatically select the appropriate backend type.
+- **Type Safety**: ``dtype`` ensures proper array allocation and prevents type mismatches 
+  during high-performance operations.
+- **Component Mapping**: ``cmpnames`` provides semantic meaning to array dimensions, 
+  enabling clear documentation and debugging.
+- **Validation Efficiency**: ``cmpnum`` allows fast shape validation without backend instantiation.
+
+The ``from_arrays`` class method is specifically designed for Path 2, providing:
+
+- **Direct Construction**: Bypasses individual ``Fuzznum`` object creation for maximum performance.
+- **Constraint Validation**: Uses static methods for efficient fuzzy logic constraint checking.
+- **Memory Optimization**: Minimizes array copying through careful memory management.
+
 **QROHFNBackend (Set Components)**
 
-Note the use of ``dtype=object`` and the need to handle arrays within arrays.
+Note the use of ``dtype=object`` for hesitant sets and enhanced constraint validation.
 
 .. code-block:: python
 
@@ -511,6 +622,18 @@ Note the use of ``dtype=object`` and the need to handle arrays within arrays.
    @register_backend
    class QROHFNBackend(FuzzarrayBackend):
        mtype = 'qrohfn'
+
+       @property
+       def cmpnum(self) -> int:
+           return 2  # Two components: md and nmd hesitant sets
+
+       @property
+       def cmpnames(self) -> Tuple[str, ...]:
+           return 'md', 'nmd'  # Component names
+
+       @property
+       def dtype(self) -> np.dtype:
+           return np.dtype(object)  # Object arrays for hesitant sets
 
        def _initialize_arrays(self):
            self.mds = np.empty(self.shape, dtype=object)
@@ -526,6 +649,16 @@ Note the use of ``dtype=object`` and the need to handle arrays within arrays.
            self.mds[index] = fuzznum.md
            self.nmds[index] = fuzznum.nmd
 
+       @classmethod
+       def from_arrays(cls, mds: np.ndarray, nmds: np.ndarray, q: int, **kwargs):
+           """Create backend from object arrays with enhanced validation."""
+           if mds.dtype != object or nmds.dtype != object:
+               raise TypeError(f"Input arrays must have dtype=object. Got {mds.dtype} and {nmds.dtype}.")
+           cls._validate_fuzzy_constraints_static(mds, nmds, q=q)
+           backend = cls(shape=mds.shape, q=q, **kwargs)
+           backend.mds = mds
+           backend.nmds = nmds
+           return backend
 
 Fuzzy Number Type Registry: The Central Hub for Extensibility
 -------------------------------------------------------------
@@ -550,7 +683,7 @@ The registry maintains two critical dictionaries:
 -   ``strategies``: Maps an ``mtype`` string (e.g., ``'qrofn'``) to its corresponding ``FuzznumStrategy`` class.
 -   ``backends``: Maps the same ``mtype`` to its corresponding ``FuzzarrayBackend`` class.
 
-When you create a fuzzy number or array, for instance, via ``fuzznum(mtype='qrofn', ...)``, 
+When you create a fuzzy number or array, for instance, via ``fuzzynum(mtype='qrofn', ...)``, 
 `AxisFuzzy` internally queries the registry using the provided ``mtype``. 
 It retrieves the appropriate ``QROFNStrategy`` and ``QROFNBackend`` classes to instantiate the objects, 
 ensuring the correct logic, constraints, and data structures are used.
@@ -797,9 +930,9 @@ FuzzarrayBackend Registration
            nmd_value = float(self.nmds[index])
            return Fuzznum(mtype=self.mtype, q=self.q).create(md=md_value, nmd=nmd_value)
 
-       def set_fuzznum_data(self, index: Any, fuzznum: 'Fuzznum'):
-           self.mds[index] = fuzznum.md
-           self.nmds[index] = fuzznum.nmd
+       def set_fuzznum_data(self, index: Any, fuzzynum: 'Fuzznum'):
+           self.mds[index] = fuzzynum.md
+           self.nmds[index] = fuzzynum.nmd
 
 4. Example 4: q-Rung Orthopair Hesitant Fuzzy Number (qrohfn) backend
    
@@ -823,10 +956,10 @@ FuzzarrayBackend Registration
            nmd_value = self.nmds[index]
            return Fuzznum(mtype=self.mtype, q=self.q).create(md=md_value, nmd=nmd_value)
 
-       def set_fuzznum_data(self, index: Any, fuzznum: 'Fuzznum'):
-           # The strategy's transformer ensures fuzznum.md and fuzznum.nmd are already ndarrays
-           self.mds[index] = fuzznum.md
-           self.nmds[index] = fuzznum.nmd
+       def set_fuzznum_data(self, index: Any, fuzzynum: 'Fuzznum'):
+           # The strategy's transformer ensures fuzzynum.md and fuzzynum.nmd are already ndarrays
+           self.mds[index] = fuzzynum.md
+           self.nmds[index] = fuzzynum.nmd
 
 The Lifecycle of a Computation: Effortless Performance
 ------------------------------------------------------
