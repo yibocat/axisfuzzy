@@ -9,7 +9,7 @@ User Guide
    core_data_structures
    fuzzy_operations
    membership_functions
-   fuzzifiers
+   fuzzifier
    .. random
    .. fuzzy_mtype
    ..    fuzzy_type_qrofn

@@ -50,6 +50,20 @@ for calculating the degree of membership for a given input value resides.
        """
        raise NotImplementedError
 
+.. note::
+
+   A key design principle in `axisfuzzy` is vectorization for performance. The `x`
+   parameter in the `compute` method is not limited to a single value or a 1D array;
+   it is designed to accept a NumPy ``ndarray`` of any shape. All built-in membership
+   functions are implemented to perform element-wise computations on the input array
+   `x`. This means you can pass a multi-dimensional array (e.g., a 2D matrix or a
+   3D tensor) and receive an array of the same shape, where each element is the
+   corresponding membership degree.
+
+This feature is crucial for performance when working with large datasets, such as
+images or time-series data, as it leverages NumPy's optimized C-backend for
+calculations, avoiding slow Python loops.
+
 The Callable Interface (``__call__``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
