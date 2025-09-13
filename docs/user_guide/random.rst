@@ -1,4 +1,4 @@
-.. _random:
+.. _get_random_generator:
 
 Random Generation System
 ========================

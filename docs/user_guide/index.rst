@@ -11,9 +11,9 @@ User Guide
    membership_functions
    fuzzifier
    random
-   .. fuzzy_mtype
+   extension_mixin
+   .. fuzzy_type
    ..    fuzzy_type_qrofn
    ..    fuzzy_type_qrohfn
-   .. extension_mixin
    .. config
 
