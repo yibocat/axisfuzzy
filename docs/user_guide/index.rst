@@ -10,7 +10,7 @@ User Guide
    fuzzy_operations
    membership_functions
    fuzzifier
-   .. random
+   random
    .. fuzzy_mtype
    ..    fuzzy_type_qrofn
    ..    fuzzy_type_qrohfn
