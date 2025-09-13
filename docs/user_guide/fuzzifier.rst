@@ -745,7 +745,7 @@ Let's say our pessimistic ``nmd`` is defined as :math:`(1 - md^q)^{1/q} + 0.1 * 
    from axisfuzzy.fuzzifier import FuzzificationStrategy, register_fuzzifier, Fuzzifier
 
    # Step 1 & 3: Define and Register the Strategy
-   @register_fuzzifier()
+   @register_fuzzifier
    class PessimisticQROFNStrategy(FuzzificationStrategy):
        """
        A pessimistic fuzzification strategy for Q-Rung Orthopair Fuzzy Numbers (QROFNs).
@@ -798,8 +798,9 @@ Let's say our pessimistic ``nmd`` is defined as :math:`(1 - md^q)^{1/q} + 0.1 * 
                return arr[()]
            return arr
 
-   # Now, let's use our new strategy
-   # ---------------------------------
+Now, let's use our new strategy
+
+.. code-block:: python
 
    # Create a Fuzzifier and specify our custom method
    pessimistic_fuzzifier = Fuzzifier(
@@ -827,6 +828,15 @@ Let's say our pessimistic ``nmd`` is defined as :math:`(1 - md^q)^{1/q} + 0.1 * 
    print(f"Default Strategy Output:     {default_result}")
    print(f"Pessimistic Strategy Output: {pessimistic_result}")
    print(f"\nNote how the 'pessimistic' result has a slightly higher non-membership degree (nmd).")
+
+output::
+
+   Crisp Input: 18.0
+
+   Default Strategy Output:     <0.8825,0.678>
+   Pessimistic Strategy Output: <0.8825,0.6788>
+
+   Note how the 'pessimistic' result has a slightly higher non-membership degree (nmd).
 
 By following this pattern, you can seamlessly extend `axisfuzzy` with powerful, domain-specific 
 fuzzification logic, making the system adaptable to virtually any research or application need.
