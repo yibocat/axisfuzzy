@@ -12,8 +12,6 @@ User Guide
    fuzzifier
    random
    extension_mixin
-   .. fuzzy_type
-   ..    fuzzy_type_qrofn
-   ..    fuzzy_type_qrohfn
-   .. config
+   config
+   fuzzy_type
 

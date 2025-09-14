@@ -1033,7 +1033,7 @@ This dispatcher is the "brain" that:
 - Inspects the types of the operands (``Fuzznum``, ``Fuzzarray``, scalar, etc.).
 - Determines the most efficient execution path based on a set of dispatch rules.
 - Delegates the actual computation to a specialized :py:class:`~.operation.OperationMixin` subclass 
-registered for that specific operation (e.g., 'add', 'mul') and fuzzy type (``mtype``).
+  registered for that specific operation (e.g., 'add', 'mul') and fuzzy type (``mtype``).
 
 This architecture ensures that the same high-level syntax (``+``, ``*``, ``>``) is consistently applied, 
 while the framework intelligently selects the best implementation, whether it's a simple scalar operation 

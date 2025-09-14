@@ -296,6 +296,7 @@ class MembershipFunction(ABC):
 
         Examples
         --------
+
         .. code-block:: python
 
             # For a triangular membership function
@@ -307,6 +308,7 @@ class MembershipFunction(ABC):
             mf = GaussianMF(sigma=1.0, c=0.0)
             params = mf.get_parameters()
             print(params)  # {'sigma': 1.0, 'c': 0.0}
+
         """
         return self.parameters
 
@@ -341,6 +343,7 @@ class MembershipFunction(ABC):
 
         Examples
         --------
+        
         .. code-block:: python
 
             # Update triangular function parameters
@@ -356,6 +359,7 @@ class MembershipFunction(ABC):
                 mf.set_parameters(sigma=-1.0)  # Negative sigma
             except ValueError as e:
                 print(f"Error: {e}")
+
         """
         pass
 

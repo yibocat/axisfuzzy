@@ -28,7 +28,7 @@ Where:
 - :math:`\mu_A(x)` is the membership degree of element :math:`x` in fuzzy set :math:`A`, representing the degree of :math:`x` belonging to :math:`A`.
 
 Relationship with `AxisFuzzy`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In the simplest case, if you have an exact numerical array (e.g., numpy.ndarray ) and use ``Fuzzifier`` to fuzzify it, you are actually creating a classical fuzzy set.
 
 .. code-block:: python
@@ -94,10 +94,11 @@ Where :math:`q` is a non-negative integer.
 
 - When :math:`q=1`, it is an intuitionistic fuzzy set (IFS).
 - When :math:`q=2`, it is called a Pythagorean fuzzy set (PFS), with the constraint :math:`\mu(x)^2 + \nu(x)^2 ≤ 1` .
+
 As q increases, the range of :math:`(\mu, \nu)` pairs that satisfy the conditions also expands, enabling q-ROFS to describe a broader range of uncertainties, which classical IFS cannot achieve.
 
 Hesitant Fuzzy Sets(HFS)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 In decision-making, experts may give multiple possible values for the membership degree of an element, rather than a single value. For example, for the height 178cm, expert A thinks the membership degree is 0.6, and expert B thinks it is 0.7.
 
 Hesitant fuzzy set allows the membership degree of an element to be a set of values in [0, 1]. h_A(x) = {0.6, 0.7}
@@ -131,7 +132,7 @@ The advanced extended fuzzy number types that the future `AxisFuzzy` plans to su
  - Hesitant fuzzy sets (HFS, when ``mtype='hfs'``)
 
 Fuzzarray(Fuzzy number array, fuzzy sets)
-------------------------
+-----------------------------------------
 
 A ``Fuzzarray`` is a homogeneous array of ``Fuzznum`` objects. It is designed to be a high-performance data structure for vectorized operations on fuzzy numbers, similar to NumPy arrays. In `AxisFuzzy`, ``Fuzzarray`` is used as a collection of fuzzy numbers and supports vectorized operations, thereby improving computational efficiency.
 
@@ -153,6 +154,7 @@ In simple terms, a membership function is a mathematical function that defines t
 - A membership degree of 0 means the element is completely not a member of the fuzzy set.
 - A membership degree of 1 means the element is completely a member of the fuzzy set.
 - A membership degree between 0 and 1 means the element is partially a member of the fuzzy set.
+
 This is in stark contrast to classical set theory (also known as "crisp sets"). In classical set theory, an element either belongs to a set or does not belong to it, with no intermediate states.
 
 A Simple Example: "Tall"

@@ -190,6 +190,7 @@ class BaseRandomGenerator(ABC):
 
         Examples
         --------
+
         .. code-block:: python
 
             def get_default_parameters(self):
@@ -200,6 +201,7 @@ class BaseRandomGenerator(ABC):
                     'nu_mode': 'orthopair',
                     'distribution_params': {'a': 2.0, 'b': 2.0}
                 }
+        
         """
         pass
 
@@ -235,6 +237,7 @@ class BaseRandomGenerator(ABC):
 
         Examples
         --------
+        
         .. code-block:: python
 
             def validate_parameters(self, **params):
@@ -246,6 +249,7 @@ class BaseRandomGenerator(ABC):
                 if 'md_low' in params and 'md_high' in params:
                     if params['md_low'] > params['md_high']:
                         raise ValueError("md_low cannot exceed md_high")
+
         """
         pass
 

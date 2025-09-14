@@ -17,27 +17,27 @@ The architecture of AxisFuzzy is founded on three key principles: performance,
 extensibility, and user experience. These pillars ensure that the library is not only 
 powerful but also adaptable and easy to integrate into modern scientific computing workflows.
 
-*   **Performance-Driven Architecture**: At the heart of AxisFuzzy lies a commitment to 
-computational efficiency. The core data structure, ``Fuzzarray``, is a high-performance 
-container for homogeneous collections of fuzzy numbers. It is backed by a **Struct of 
-Arrays (SoA)** design, which leverages NumPy's vectorized operations to execute computations 
-at near-native speed. This approach avoids the overhead of Python-level iteration, making 
-AxisFuzzy suitable for processing large datasets.
+- **Performance-Driven Architecture**: At the heart of AxisFuzzy lies a commitment to 
+  computational efficiency. The core data structure, ``Fuzzarray``, is a high-performance 
+  container for homogeneous collections of fuzzy numbers. It is backed by a **Struct of 
+  Arrays (SoA)** design, which leverages NumPy's vectorized operations to execute computations 
+  at near-native speed. This approach avoids the overhead of Python-level iteration, making 
+  AxisFuzzy suitable for processing large datasets.
 
-*   **Radical Extensibility**: AxisFuzzy is built with a modular, "plug-in" architecture. 
-The system's central registries allow developers to seamlessly define and integrate new 
-fuzzy number types (referred to as ``mtype``), complete with their own mathematical 
-operations, validation rules, and specialized functions. This is achieved through a clean 
-separation of concerns: the user-facing API (``Fuzznum``, ``Fuzzarray``) is decoupled from 
-the underlying implementation (``FuzznumStrategy``, ``FuzzarrayBackend``), enabling 
-independent development and extension without modifying the core library.
+- **Radical Extensibility**: AxisFuzzy is built with a modular, "plug-in" architecture. 
+  The system's central registries allow developers to seamlessly define and integrate new 
+  fuzzy number types (referred to as ``mtype``), complete with their own mathematical 
+  operations, validation rules, and specialized functions. This is achieved through a clean 
+  separation of concerns: the user-facing API (``Fuzznum``, ``Fuzzarray``) is decoupled from 
+  the underlying implementation (``FuzznumStrategy``, ``FuzzarrayBackend``), enabling 
+  independent development and extension without modifying the core library.
 
-*   **Elegant User Experience**: The library's API is designed to be intuitive and 
-familiar to users of established scientific computing packages like NumPy. Through 
-operator overloading, unified factory functions (e.g., ``fuzzynum()``, ``fuzzyset()``), 
-and a consistent interface, AxisFuzzy provides a programming experience that feels native 
-to Python. This focus on usability allows users to concentrate on solving problems rather 
-than grappling with complex library mechanics.
+- **Elegant User Experience**: The library's API is designed to be intuitive and 
+  familiar to users of established scientific computing packages like NumPy. Through 
+  operator overloading, unified factory functions (e.g., ``fuzzynum()``, ``fuzzyset()``), 
+  and a consistent interface, AxisFuzzy provides a programming experience that feels native 
+  to Python. This focus on usability allows users to concentrate on solving problems rather 
+  than grappling with complex library mechanics.
 
 Architecture Overview
 ---------------------

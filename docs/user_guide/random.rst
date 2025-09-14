@@ -524,7 +524,7 @@ API uses it internally to dispatch requests.
         print(qrofn_generator.get_default_parameters())
 
 list_registered_random() & is_registered_random() & get_registry_random()
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 To discover which generators are available or to check for the existence of a specific one, you can 
 use these utility functions.

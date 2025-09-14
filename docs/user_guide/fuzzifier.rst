@@ -168,7 +168,7 @@ This method signature is the core contract:
     instance (for scalar input) or a :class:`~axisfuzzy.core.fuzzarray.Fuzzarray` (for array-like input).
 
 Strategy Identification
----------------------
+-----------------------
 
 Each concrete strategy class is uniquely identified by two class attributes:
 
@@ -280,7 +280,7 @@ Key Parameters:
 *   ``**kwargs``: A flexible set of keyword arguments, including:
     
     - ``mf_params``: **Crucially**, this dictionary (or list of dictionaries) provides the parameters 
-    for the membership function when ``mf`` is a class or a name.
+      for the membership function when ``mf`` is a class or a name.
     
     - Other parameters required by the chosen strategy (e.g., ``q`` for q-rung orthopair fuzzy numbers).
 
