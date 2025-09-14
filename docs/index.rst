@@ -120,5 +120,6 @@ Navigation
    getting_started/index
    user_guide/index
    development/index
+   fuzzy_types/index
    api/index
    extension/index
