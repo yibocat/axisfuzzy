@@ -48,6 +48,10 @@ def _pairwise_combinations(
     See Also:
         np.add.outer, np.multiply.outer, np.fromfunction
     """
+    if not isinstance(a, np.ndarray) or not isinstance(b, np.ndarray):
+        a = np.array(a)
+        b = np.array(b)
+
     if a is None or b is None:
         raise ValueError("Inputs must not be None.")
     if a.ndim != 1 or b.ndim != 1:

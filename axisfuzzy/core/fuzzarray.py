@@ -252,6 +252,14 @@ class Fuzzarray:
         return self._backend
 
     @property
+    def md(self) -> np.ndarray:
+        return self._backend.mds
+
+    @property
+    def nmd(self) -> np.ndarray:
+        return self._backend.nmds
+
+    @property
     def shape(self) -> Tuple[int, ...]:
         """Shape of the fuzzy array."""
         return self._backend.shape

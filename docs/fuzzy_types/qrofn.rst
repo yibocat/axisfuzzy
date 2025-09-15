@@ -760,6 +760,8 @@ The random generator maintains statistical correctness while enforcing QROFN con
 
 .. code-block:: python
 
+    import axisfuzzy.random as fr
+
     # Generate large sample for statistical analysis
     sample = fr.rand(
         shape=(10000,),
@@ -805,6 +807,8 @@ The QROFN random generation system ensures both statistical validity and
 mathematical constraint satisfaction, providing a robust foundation for
 fuzzy logic simulations and uncertainty modeling.
 
+
+
 Extension Methods and Advanced Features
 ---------------------------------------
 
@@ -837,7 +841,7 @@ organized into five core categories:
    empty_array = af.empty(shape=(5,), q=2)          # Uninitialized
    
    # Template-based construction
-   template = af.qrofn([[0.8, 0.3], [0.6, 0.4]], q=2)
+   template = af.fuzzyset([[0.8, 0.3], [0.6, 0.4]], q=2)
    similar_empty = af.empty_like(template)
    similar_positive = af.positive_like(template)
 
@@ -856,7 +860,7 @@ optimizations for bulk initialization:
    negs = af.negative(shape=(3, 3), q=4)       # All non-membership = 1
    
    # Fill with specific QROFN value
-   fill_value = af.qrofn(0.7, 0.2, q=2)
+   fill_value = af.fuzzynum((0.7, 0.2), q=2)
    filled_array = af.full(fill_value, shape=(10, 5), q=2)
    
    # Template-based creation preserves shape and q-rung
@@ -872,7 +876,7 @@ accuracy and q-rung constraints:
 .. code-block:: python
 
    # CSV operations with vectorized string processing
-   qrofn_array = af.qrofn([[0.8, 0.3], [0.6, 0.4]], q=2)
+   qrofn_array = af.fuzzyset([[0.8, 0.3], [0.6, 0.4]], q=2)
    qrofn_array.to_csv('data.csv', delimiter=',')
    loaded_array = af.read_csv('data.csv', q=2)
    
@@ -896,18 +900,18 @@ with support for different norms and indeterminacy handling:
 .. code-block:: python
 
    # High-performance distance calculation
-   x = af.qrofn([[0.8, 0.2], [0.7, 0.3]], q=2)
-   y = af.qrofn([[0.6, 0.3], [0.8, 0.1]], q=2)
-   
+   x = af.fuzzyset([[0.8, 0.7], [0.2, 0.3]], q=2)
+   y = af.fuzzyset([[0.6, 0.8], [0.3, 0.1]], q=2)
+
    # Minkowski distance with p-norm
    dist_l2 = af.distance(x, y, p_l=2, indeterminacy=True)
    dist_l1 = af.distance(x, y, p_l=1, indeterminacy=False)
-   
+
    # Vectorized computation for arrays
    distances = x.distance(y, p_l=2)  # Element-wise distances
-   
+
    # Broadcasting support for mixed types
-   single_point = af.qrofn(0.5, 0.4, q=2)
+   single_point = af.fuzzynum((0.5, 0.4), q=2)
    array_distances = x.distance(single_point)
 
 Aggregation and Statistical Extensions
@@ -919,19 +923,20 @@ mathematically sound aggregation:
 .. code-block:: python
 
    # T-norm based aggregation operations
-   data = af.qrofn([[0.8, 0.2], [0.6, 0.3], [0.7, 0.2]], q=2)
-   
+   data = af.fuzzyset(np.array([[0.8, 0.2], [0.6, 0.3], [0.7, 0.2]]).T, q=2)
+
    # Aggregation along axes
    total_sum = data.sum()           # Overall aggregation
-   row_sums = data.sum(axis=1)      # Row-wise aggregation
-   col_means = data.mean(axis=0)    # Column-wise means
-   
+   row_sums = data.sum()      # Row-wise aggregation
+   col_means = data.mean()    # Column-wise means
+
    # Statistical measures
    maximum = data.max()             # Score-based maximum
    minimum = data.min()             # Score-based minimum
    product = data.prod()            # T-norm product
    variance = data.var()            # Fuzzy variance
    std_dev = data.std()             # Fuzzy standard deviation
+
 
 Property Extensions
 ~~~~~~~~~~~~~~~~~~~
@@ -941,58 +946,16 @@ QROFN objects provide computed properties for fuzzy-specific measures:
 .. code-block:: python
 
    # Fuzzy-specific properties
-   qrofn_data = af.qrofn([[0.8, 0.2], [0.6, 0.4]], q=2)
-   
+   qrofn_data = af.fuzzyset([[0.8, 0.2], [0.6, 0.4]], q=2)
+
    # Score function: md^q - nmd^q
    scores = qrofn_data.score
-   
+
    # Accuracy function: md^q + nmd^q
    accuracies = qrofn_data.acc
-   
+
    # Indeterminacy: (1 - md^q - nmd^q)^(1/q)
    indeterminacies = qrofn_data.ind
-
-Custom Extension Development
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The extension system supports custom functionality through the
-``@extension`` decorator with type-aware dispatch:
-
-.. code-block:: python
-
-   from axisfuzzy.extension import extension
-   import numpy as np
-   
-   @extension(name='entropy', mtype='qrofn')
-   def qrofn_entropy(fuzz, base=2):
-       """Calculate fuzzy entropy for QROFN."""
-       scores = fuzz.score
-       # Entropy calculation using score values
-       normalized = (scores + 1) / 2  # Normalize to [0,1]
-       entropy = -normalized * np.log(normalized) / np.log(base)
-       return np.nan_to_num(entropy)  # Handle log(0)
-   
-   # Usage after registration
-   data = af.qrofn([[0.8, 0.2], [0.6, 0.3]], q=2)
-   entropy_values = data.entropy(base=2)
-
-Integration with Other Fuzzy Types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The extension system enables seamless integration between different
-fuzzy number types through conversion and compatibility layers:
-
-.. code-block:: python
-
-   # Cross-type operations (when implemented)
-   qrofn_data = af.qrofn([[0.8, 0.2]], q=2)
-   
-   # Type conversion extensions
-   # converted = qrofn_data.to_qrohfn()  # Future extension
-   # similarity = af.cross_similarity(qrofn_data, qrohfn_data)
-   
-   # Unified operations through extension dispatch
-   # result = af.aggregate([qrofn_data, other_type_data])
 
 Performance Optimizations
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1007,16 +970,24 @@ QROFN extensions implement several performance optimizations:
 
 .. code-block:: python
 
+   import axisfuzzy as af
+
    # Performance comparison example
-   large_array = af.qrofn(np.random.rand(1000, 1000, 2), q=3)
-   
+   large_array = af.random.rand('qrofn',shape=(100,100), q=3)
+
    # Optimized extension methods
    %timeit large_array.sum()      # Vectorized t-conorm reduction
    %timeit large_array.mean()     # Efficient aggregation
    %timeit large_array.score      # Direct backend access
-   
+
    # Memory-efficient operations
    result = large_array.sum(axis=0)  # Reduces memory footprint
+
+output::
+
+   679 μs ± 108 μs per loop (mean ± std. dev. of 7 runs, 1,000 loops each)
+   718 μs ± 37.5 μs per loop (mean ± std. dev. of 7 runs, 1,000 loops each)
+   158 μs ± 2.33 μs per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
 
 The QROFN extension system provides a comprehensive framework for
 specialized fuzzy operations while maintaining the mathematical
@@ -1080,10 +1051,10 @@ The QROFN operations exhibit well-defined computational complexities:
 
 output::
 
-    Size 100: Add=0.0002s, Distance=0.0001s
-    Size 1000: Add=0.0006s, Distance=0.0002s
-    Size 10000: Add=0.0009s, Distance=0.0010s
-    Size 100000: Add=0.0074s, Distance=0.0110s
+   Size 100: Add=0.0001s, Distance=0.0000s
+   Size 1000: Add=0.0004s, Distance=0.0001s
+   Size 10000: Add=0.0008s, Distance=0.0010s
+   Size 100000: Add=0.0070s, Distance=0.0099s
 
 Memory Usage Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~

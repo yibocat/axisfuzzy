@@ -7,5 +7,6 @@ Extended Fuzzy Sets Type
    :caption: Contents:
 
    qrofn
+   qrohfn
 
 
