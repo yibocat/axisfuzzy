@@ -1,5 +1,5 @@
 =========================
-Extended Fuzzy Sets Type
+Fuzzy Sets Type
 =========================
 
 .. toctree::
