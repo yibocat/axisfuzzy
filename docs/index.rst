@@ -38,7 +38,7 @@ Quick Start
          # Fuzzy operations
          result = fn1 + fn2
          distance = fn1.distance(fn2)
-         score = fn1.score  # Score function: μ² - ν²
+         score = fn1.score  # Score function
 
          print(f"Result: {result}")
          print(f"Distance: {distance:.3f}")
