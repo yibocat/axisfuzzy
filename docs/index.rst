@@ -25,90 +25,133 @@ Quick Start
 
          pip install axisfuzzy
 
-   .. tab-item:: Basic Example
+   .. tab-item:: Factory Functions
 
       .. code-block:: python
          
-         import axisfuzzy as af
+         from axisfuzzy import fuzzynum, fuzzyset
 
-         # Create fuzzy numbers
-         fuzz1 = af.Fuzznum([0.8, 0.2], mtype='qrofn')
-         fuzz2 = af.Fuzznum([0.7, 0.3], mtype='qrofn')
+         # Create fuzzy numbers with modern factory functions
+         fn1 = fuzzynum((0.8, 0.2), q=2)  # q-Rung Orthopair Fuzzy Number
+         fn2 = fuzzynum((0.7, 0.3), q=2)
 
          # Fuzzy operations
-         result = fuzz1 + fuzz2
-         distance = fuzz1.distance(fuzz2)
+         result = fn1 + fn2
+         distance = fn1.distance(fn2)
+         score = fn1.score  # Score function: μ² - ν²
 
          print(f"Result: {result}")
-         print(f"Distance: {distance}")
+         print(f"Distance: {distance:.3f}")
+         print(f"Score: {score:.3f}")
 
-   .. tab-item:: Array Operations
+   .. tab-item:: High-Performance Arrays
 
       .. code-block:: python
 
-         import axisfuzzy as af
+         from axisfuzzy import fuzzyset, fuzzynum
+         import axisfuzzy.random as ar
 
-         # Create fuzzy arrays
-         data = [[0.8, 0.2], [0.7, 0.3], [0.9, 0.1]]
-         fuzz_array = af.Fuzzarray(data, mtype='qrofn')
+         # Create fuzzy arrays efficiently
+         fuzzy_numbers = [
+             fuzzynum((0.8, 0.2)),
+             fuzzynum((0.6, 0.4)),
+             fuzzynum((0.9, 0.1))
+         ]
+         fs = fuzzyset(fuzzy_numbers)
 
-         # Batch operations
-         mean_result = fuzz_array.mean()
-         reshaped = fuzz_array.reshape(3, 1, 2)
+         # Vectorized operations (10x-100x faster)
+         mean_result = fs.mean()
+         distances = fs.distance(fuzzynum((0.5, 0.4)))
+
+         # Random generation for simulation
+         random_array = ar.rand(shape=(1000,))
+         print(f"Generated {len(random_array)} fuzzy numbers")
+
+   .. tab-item:: Advanced Features
+
+      .. code-block:: python
+
+         from axisfuzzy import fuzzynum
+         from axisfuzzy.membership import create_mf
+         from axisfuzzy.fuzzifier import Fuzzifier
+
+         # Hesitant fuzzy numbers
+         hesitant_fn = fuzzynum(
+             ([0.5, 0.6, 0.7], [0.2, 0.3]), 
+             mtype='qrohfn', q=1
+         )
+
+         # Membership functions and fuzzification
+         gauss_mf, _ = create_mf('gaussmf', sigma=0.15, c=0.5)
+         fuzzifier = Fuzzifier(mf='gaussmf', 
+                              mf_params={'sigma': 0.1, 'c': 0.5})
+         
+         # Convert crisp values to fuzzy
+         crisp_data = [0.3, 0.6, 0.9]
+         fuzzy_results = fuzzifier(crisp_data)
 
 Navigation
 ==========
 
 .. container:: nav-cards
 
-   .. grid:: 2 2 2 2
+   .. grid:: 2 2 3 3
       :gutter: 4
       :class-container: nav-grid
 
-      .. grid-item-card:: Getting Started
+      .. grid-item-card:: 🚀 Getting Started
          :class-card: nav-card
          :link: getting_started/index
          :link-type: doc
 
-         📚
+         **Quick Start & Fundamentals**
 
-         Installation guide, basic concepts, and first steps with AxisFuzzy
+         Installation guide, core concepts, and hands-on tutorials to get you productive with AxisFuzzy in minutes
 
-      .. grid-item-card:: User Guide
+      .. grid-item-card:: 📖 User Guide
          :class-card: nav-card
          :link: user_guide/index
          :link-type: doc
 
-         📖
+         **Comprehensive Tutorials**
 
-         Comprehensive tutorials, examples, and advanced usage patterns
+         In-depth guides covering data structures, operations, membership functions, fuzzification, and advanced patterns
 
-      .. grid-item-card:: Developer Guide
+      .. grid-item-card:: 🧮 Fuzzy Types
+         :class-card: nav-card
+         :link: fuzzy_types/index
+         :link-type: doc
+
+         **Advanced Mathematical Frameworks**
+
+         q-Rung Orthopair Fuzzy Numbers (QROFN) and Hesitant Fuzzy Numbers (QROHFN) for complex uncertainty modeling
+
+      .. grid-item-card:: 🔧 Developer Guide
          :class-card: nav-card
          :link: development/index
          :link-type: doc
 
-         🔧
+         **Extend & Customize**
 
-         Extending AxisFuzzy, contributing guidelines, and architecture details
+         Create custom fuzzy types, operations, fuzzification strategies, and integrate with existing systems
 
-      .. grid-item-card:: API Reference
+      .. grid-item-card:: 📋 API Reference
          :class-card: nav-card
          :link: api/index
          :link-type: doc
 
-         📋
+         **Complete Technical Reference**
 
-         Complete API documentation with detailed function and class references
+         Detailed documentation for all classes, methods, and functions with type annotations and examples
 
-      .. grid-item-card:: Extension Systems
+      .. grid-item-card:: ⚡ Extension Systems
          :class-card: nav-card
          :link: extension/index
          :link-type: doc
 
-         🚀
+         **Domain-Specific Modules**
 
-         High-level extension modules for specific domains and applications
+         High-level specialized extensions for machine learning, decision support, and scientific computing
 
 .. raw:: html
 
