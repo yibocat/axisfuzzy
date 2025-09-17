@@ -1,5 +1,5 @@
 =========================
-Development
+Development Manual
 =========================
 
 This section provides comprehensive development guides for extending AxisFuzzy with custom implementations.

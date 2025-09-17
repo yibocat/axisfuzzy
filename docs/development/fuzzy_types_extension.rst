@@ -6,8 +6,8 @@ This development guide provides comprehensive instructions for extending AxisFuz
 The guide demonstrates the complete implementation process using Q-Rung Orthopair Fuzzy Numbers (QROFN) as a 
 reference example, covering both the strategy pattern implementation and backend architecture.
 
-Overview
---------
+The Fuzzy Types Extension Framework
+------------------------------------
 
 AxisFuzzy employs a sophisticated architecture that separates the user interface layer from the computational 
 backend through the Strategy Pattern. This design enables developers to create new fuzzy number types by 
