@@ -20,8 +20,7 @@ Whether you're building decision support systems, implementing fuzzy algorithms,
 complex analytical models, this guide serves as your complete reference for leveraging the full
 potential of fuzzy data analysis with AxisFuzzy.
 
-Core Components Overview
-------------------------
+**Core Components Overview**
 
 The AxisFuzzy Analysis System consists of four fundamental components that work together to provide
 a complete analytical framework:
@@ -41,16 +40,12 @@ stability.
 **Model API** offers a high-level abstraction layer inspired by PyTorch, allowing users to build
 complex, reusable analytical models with declarative syntax and comprehensive lifecycle management.
 
-
-Documentation Contents
-----------------------
-
 .. toctree::
    :maxdepth: 2
 
    overview
    contracts_deep_dive
    components_and_pipeline
-   model_api
+   model
    data_structures
    usage_and_examples
