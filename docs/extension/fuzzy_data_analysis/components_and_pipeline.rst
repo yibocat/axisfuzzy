@@ -1707,6 +1707,12 @@ output::
    :alt: Pipeline Visualization with graphviz
    :align: center
 
+.. Note::
+    The visualization is generated using **graphviz** (If not, by using `matplotlip`). 
+    If you encounter any issues 
+    with the visualization, please ensure that graphviz is installed and 
+    available in your system PATH.
+
 
 Conclusion
 ----------
