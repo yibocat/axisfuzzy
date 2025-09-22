@@ -24,7 +24,7 @@ imprecise data.
 
 The following extensions are currently available in the AxisFuzzy ecosystem:
 
-:doc:`Fuzzy Data Analysis <fuzzy_data_analysis/index>` *(Stable)*
+:doc:`Fuzzy Data Analysis <fuzzy_data_analysis/index>` *(developing)*
     A comprehensive framework for building sophisticated data analysis pipelines 
     that leverage fuzzy logic principles. Features modular components, pipeline 
     orchestration, contract-driven validation, and high-level modeling abstractions 

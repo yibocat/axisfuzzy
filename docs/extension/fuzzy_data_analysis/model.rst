@@ -1136,8 +1136,8 @@ analytical pipelines.
        return self.fuzzifier(normalized)
    
    # Runtime validation with contract decorators
-   @contract(input_data=ContractCrispTable, output=ContractFuzzyTable)
-   def custom_component(input_data):
+   @contract
+   def custom_component(input_data: ContractCrispTable) -> ContractFuzzyTable:
        return fuzzify_data(input_data)
 
 **Custom Contracts**:
