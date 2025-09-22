@@ -210,23 +210,42 @@ class FuzzyDataFrame:
         """Return the number of rows."""
         return self.shape[0]
 
-    def __getitem__(self, key: str) -> 'Fuzzarray':
+    def __getitem__(self, key: Union[str, List[str]]) -> Union['Fuzzarray', 'FuzzyDataFrame']:
         """
-        Retrieve a column as a Fuzzarray.
+        Retrieve a column as a Fuzzarray or multiple columns as a new FuzzyDataFrame.
 
         Parameters
         ----------
-        key : str
-            The name of the column to retrieve.
+        key : str or list of str
+            The name of the column(s) to retrieve.
 
         Returns
         -------
-        Fuzzarray
-            The fuzzy array corresponding to the column.
+        Fuzzarray or FuzzyDataFrame
+            If key is a string, returns the fuzzy array corresponding to the column.
+            If key is a list, returns a new FuzzyDataFrame with the selected columns.
         """
-        if key not in self._columns:
-            raise KeyError(f"Column '{key}' not found.")
-        return self._data[key]
+        if isinstance(key, str):
+            # Single column selection
+            if key not in self._columns:
+                raise KeyError(f"Column '{key}' not found.")
+            return self._data[key]
+        elif isinstance(key, list):
+            # Multiple column selection
+            for col in key:
+                if col not in self._columns:
+                    raise KeyError(f"Column '{col}' not found.")
+            
+            # Create new FuzzyDataFrame with selected columns
+            selected_data = {col: self._data[col] for col in key}
+            return FuzzyDataFrame(
+                data=selected_data,
+                index=self._index,
+                columns=key,
+                mtype=self._mtype
+            )
+        else:
+            raise TypeError(f"Key must be a string or list of strings, got {type(key)}")
 
     def __setitem__(self, key: str, value: 'Fuzzarray'):
         """
