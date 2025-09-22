@@ -69,6 +69,26 @@
   - 错误处理、验证和线程安全性
   - 装饰器注册和集成测试
 
+### 8. `test_factory.py` - 工厂方法测试
+- **功能**: 测试 `factory.py` 中的工厂方法功能
+- **覆盖范围**:
+  - `fuzzynum` 工厂方法的基本创建功能
+  - `fuzzyset` 工厂方法的三种构造路径测试
+  - 参数验证和错误处理机制
+  - 不同模糊数类型（QROFN、QROHFN）的支持
+  - 性能测试和边界情况处理
+  - Path 2 错误处理逻辑的修复验证
+
+### 9. `test_backend_constraints.py` - 后端约束检查测试
+- **功能**: 测试 QROFN 和 QROHFN 后端的模糊约束检查
+- **覆盖范围**:
+  - QROFN 约束检查：md^q + nmd^q <= 1
+  - QROHFN 约束检查：max(md)^q + max(nmd)^q <= 1
+  - 不同 q 值的约束验证
+  - 多维数组和大数据的性能测试
+  - 边界值、负值、空值的处理
+  - 误差容忍度和数据类型验证
+
 ## 测试运行方法
 
 ### 环境要求
@@ -102,6 +122,12 @@ pytest test/test_core/test_registry.py -v
 
 # 运行操作调度器测试
 pytest test/test_core/test_operation_dispatcher.py -v
+
+# 运行工厂方法测试
+pytest test/test_core/test_factory.py -v
+
+# 运行后端约束检查测试
+pytest test/test_core/test_backend_constraints.py -v
 ```
 
 ### 运行特定测试类或方法

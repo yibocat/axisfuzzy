@@ -54,6 +54,7 @@ import difflib
 from typing import Optional, Any, Dict, Callable, Set, List, Tuple
 
 from ..config import get_config
+from ..utils import deprecated
 
 from .registry import get_registry_fuzztype
 from .base import FuzznumStrategy
@@ -809,6 +810,8 @@ class Fuzznum:
 
 # ================================= 工厂函数 =================================
 
+
+@deprecated(message="Please use 'fuzzynum' instead.")
 def fuzznum(values: tuple = None,
             mtype: Optional[str] = None,
             q: Optional[int] = None,

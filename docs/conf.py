@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- 项目信息 --------------------------------------------------------------
 # 定义项目的基础元数据，如项目名称、版权和作者。
-project = 'AxisFuzzy'  # 更改为首字母大写
+project = 'AxisFuzzy'
 copyright = '2025, yibocat'
 author = 'yibocat'
 
@@ -56,7 +56,6 @@ extensions = [
     'sphinx.ext.mathjax',     # 使用 MathJax 渲染数学公式
     'sphinx.ext.autosummary', # 为 API 文档生成摘要表格
     'sphinx_tabs.tabs',       # 添加标签页功能
-    'pydata_sphinx_theme',    # PyData Sphinx 主题扩展
 ]
 
 # 包含模板的路径，相对于此目录。
@@ -122,45 +121,61 @@ copybutton_prompt_is_regexp = True
 # 用于 HTML 和 HTML Help 页面的主题。
 # 其他主题选项（例如 "furo", "pydata_sphinx_theme", "shibuya"）可以在依赖稳定后尝试
 # 使用 pydata_sphinx_theme 主题，提供现代化的文档界面
-html_theme = 'pydata_sphinx_theme'
+# html_theme = 'shibuya'
+html_theme = "sphinx_rtd_theme"
 
 # 包含自定义静态文件（例如 CSS、JavaScript）的路径。
 html_static_path = ['_static']
 
+# 主题特定选项 - sphinxawesome-theme
+# from sphinxawesome_theme.postprocess import Icons
+# html_permalinks_icon = Icons.permalinks_icon        # 先用主题的图标作为测试
+
+# html_theme_options = {
+#     "logo_light": "path/to/light/logo",     # 设置亮模式 logo, 目前暂无
+#     "logo_dark": "path/to/dark/logo",       # 设置暗模式 logo, 目前暂无
+#     "show_breadcrumbs": True,
+# }
+
+# html_sidebars = {
+#   "**": ["sidebar_main_nav_links.html", "sidebar_toc.html"]
+# }
+
+
 # 主题特定选项。
 # 这些选项特定于 'pydata_sphinx_theme'。
-html_theme_options = {
-    "logo": {
-        "text": "AxisFuzzy",  # 添加 logo 文本
-        "image_light": "_static/logo-light.png",  # 可选：浅色模式 logo
-        "image_dark": "_static/logo-dark.png",   # 可选：深色模式 logo
-    },
-    "icon_links": [
-        {
-            "name": "GitHub",
-            "url": "https://github.com/your-repo/axisfuzzy", # 重要：请更新此 URL 为您的实际 GitHub 仓库地址！
-            "icon": "fab fa-github-square",
-            "type": "fontawesome", # 指定使用 Font Awesome 图标
-        },
-    ],
-    "navbar_end": ["version-switcher", "navbar-icon-links", "theme-switcher"],
-    "show_nav_level": 1,            # 减少默认展开级别，使导航更简洁
-    "navigation_depth": 3,          # 减少导航深度
-    # "footer_items": ["copyright"],  # 简化页脚，移除 sphinx-version
-    "primary_sidebar_end": [],      # 清空主侧边栏底部
-    "show_toc_level": 2,            # 减少目录层级
-    "pygments_light_style": "github-light",
-    "pygments_dark_style": "github-dark",
-}
+# html_theme_options = {
+#     # "logo": {
+#     #     "text": "AxisFuzzy",  # 添加 logo 文本
+#     #     "image_light": "_static/logo-light.png",  # 可选：浅色模式 logo
+#     #     "image_dark": "_static/logo-dark.png",   # 可选：深色模式 logo
+#     # },
+#     # "icon_links": [
+#     #     {
+#     #         "name": "GitHub",
+#     #         "url": "https://github.com/your-repo/axisfuzzy", # 重要：请更新此 URL 为您的实际 GitHub 仓库地址！
+#     #         "icon": "fab fa-github-square",
+#     #         "type": "fontawesome", # 指定使用 Font Awesome 图标
+#     #     },
+#     # ],
+#     # "navbar_end": ["version-switcher", "navbar-icon-links", "theme-switcher"],
+#     # "show_nav_level": 1,            # 减少默认展开级别，使导航更简洁
+#     # "navigation_depth": 3,          # 减少导航深度
+#     # # "footer_items": ["copyright"],  # 简化页脚，移除 sphinx-version
+#     # "primary_sidebar_end": [],      # 清空主侧边栏底部
+#     # "show_toc_level": 2,            # 减少目录层级
+#     # "pygments_light_style": "github-light",
+#     # "pygments_dark_style": "github-dark",
+# }
 
 # 不在页面底部显示"查看源码"链接。
 # 这通常更适用于干净的公共文档，避免用户看到原始rst文件。
-html_show_sourcelink = False
+# html_show_sourcelink = False
 
 # 自定义页面标题
-html_title = f"{project} Documentation"
+# html_title = f"{project} Documentation"
 
 # 添加自定义 CSS
-html_css_files = [
-    'custom.css',
-]
+# html_css_files = [
+#     'custom.css',
+# ]

@@ -224,10 +224,6 @@ class SigmoidMF(MembershipFunction):
     """
     Sigmoid membership function.
 
-    .. math::
-
-        f(x) = \\frac{1}{1 + \\exp\\bigl(-k\\,(x - c)\\bigr)}
-
     A smooth S-shaped function commonly used in neural networks and fuzzy logic.
     The function transitions from 0 to 1 with adjustable steepness and center point.
 
@@ -291,10 +287,6 @@ class SigmoidMF(MembershipFunction):
 class TriangularMF(MembershipFunction):
     """
     Triangular membership function.
-
-    .. math::
-
-        f(x) = \\max\\!\\left(0,\\; \\min\\!\\left(\\frac{x - a}{\\,b - a\\,},\\; \\frac{c - x}{\\,c - b\,}\\right)\\right)
 
     A piecewise linear function forming a triangle shape. It rises linearly from
     0 to 1 and then falls linearly back to 0. This is one of the most commonly
@@ -391,10 +383,6 @@ class TrapezoidalMF(MembershipFunction):
     """
     Trapezoidal membership function.
 
-    .. math::
-
-        f(x)=\\max\\!\\left(0,\\; \\min\\!\\left(\\dfrac{x - a}{\\,b - a\\,},\\; 1,\\; \\dfrac{d - x}{\\,d - c\\,}\\right)\\right)
-
     A piecewise linear function forming a trapezoid shape. It has a flat top
     region between two linear transition regions. This function is useful when
     there's a range of values that should have maximum membership.
@@ -478,10 +466,6 @@ class GaussianMF(MembershipFunction):
     """
     Gaussian membership function.
 
-    .. math::
-
-        f(x) = \\exp(-\\frac{(x-c)^2}{2\\sigma^2})
-
     A bell-shaped curve based on the normal distribution. It provides smooth
     transitions and is commonly used when gradual membership changes are desired.
     The function is symmetric around its center point.
@@ -544,17 +528,6 @@ class GaussianMF(MembershipFunction):
 class SMF(MembershipFunction):
     """
     S-shaped membership function.
-
-    .. math::
-       :label: s-shaped-function
-
-       f(x) =
-       \\begin{cases}
-         0, & x \\le a,\\\[6pt]
-         2\\left(\\dfrac{x-a}{b-a}\\right)^2, & a < x < \\dfrac{a+b}{2},\\\[6pt]
-         1 - 2\\left(\\dfrac{x-b}{b-a}\\right)^2, & \\dfrac{a+b}{2} \\le x < b,\\\[6pt]
-         1, & x \\ge b.
-       \\end{cases}
 
     A smooth S-curve that transitions from 0 to 1. The function has an inflection
     point at the midpoint between parameters a and b. It's useful for representing
@@ -638,17 +611,6 @@ class ZMF(MembershipFunction):
     """
     Z-shaped membership function.
 
-    .. math::
-        :label: s-shaped-function
-
-        f(x) =
-        \\begin{cases}
-         1, & x \\le a,\\\[6pt]
-         1 - 2\\left(\\dfrac{x - a}{b - a}\\right)^2, & a < x < \\dfrac{a + b}{2},\\\[6pt]
-         2\\left(\\dfrac{x - b}{b - a}\\right)^2, & \\dfrac{a + b}{2} \\le x < b,\\\[6pt]
-         0, & x \\ge b.
-        \\end{cases}
-
     A smooth Z-curve that transitions from 1 to 0. It's the inverse of the S-curve
     and is useful for representing gradual decrease in membership. The function
     has an inflection point at the midpoint between parameters a and b.
@@ -731,11 +693,6 @@ class DoubleGaussianMF(MembershipFunction):
     """
     Double Gaussian membership function.
 
-    .. math::
-
-        f(x) = \\max(\\exp(-\\frac{(x - c_1)^2}{2\\sigma_1^2}),
-                     \\exp(-\\frac{(x - c_2)^2}{2\\sigma_2^2}))
-
     A combination of two Gaussian curves that takes the maximum value at each point.
     This creates a function with two peaks or a broader, flatter top than a single
     Gaussian. Useful for representing bimodal distributions or wide acceptance regions.
@@ -799,10 +756,6 @@ class DoubleGaussianMF(MembershipFunction):
 class GeneralizedBellMF(MembershipFunction):
     """
     Generalized Bell membership function.
-
-    .. math::
-
-        f(x) = \\frac{1}{1 + \\left|\\dfrac{x - c}{a}\\right|^{2 b}}
 
     A bell-shaped curve with adjustable steepness and width. It provides more
     flexibility than the Gaussian function by allowing independent control of
@@ -884,19 +837,6 @@ class GeneralizedBellMF(MembershipFunction):
 class PiMF(MembershipFunction):
     """
     Pi-shaped membership function.
-
-    .. math::
-
-        f(x) =
-       \\begin{cases}
-         0, & x \\le a,\\\[6pt]
-         2\\left(\\dfrac{x-a}{b-a}\\right)^2, & a < x < \\dfrac{a+b}{2},\\\[6pt]
-         1 - 2\\left(\\dfrac{x-b}{b-a}\\right)^2, & \\dfrac{a+b}{2} \\le x < b,\\\[6pt]
-         1, & b \\le x \\le c,\\\[6pt]
-         1 - 2\\left(\\dfrac{x-c}{d-c}\\right)^2, & c < x < \\dfrac{c+d}{2},\\\[6pt]
-         2\\left(\\dfrac{x-d}{d-c}\\right)^2, & \\dfrac{c+d}{2} \\le x < d,\\\[6pt]
-         0, & x \\ge d.
-       \end{cases}
 
     A combination of S-shaped and Z-shaped curves creating a bell-like function
     with smooth transitions. It rises smoothly, maintains a flat top, then falls

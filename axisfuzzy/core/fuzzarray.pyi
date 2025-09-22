@@ -18,6 +18,10 @@ class Fuzzarray:
     @property
     def backend(self) -> FuzzarrayBackend: ...
     @property
+    def md(self) -> np.ndarray: ...
+    @property
+    def nmd(self) -> np.ndarray: ...
+    @property
     def shape(self) -> Tuple[int, ...]: ...
     @property
     def ndim(self) -> int: ...
@@ -128,8 +132,9 @@ class Fuzzarray:
     def __setstate__(self, state: Dict[str, Any]) -> None: ...
 
 # --- 工厂函数 ---
-def fuzzarray(data: Any,
-              mtype: Optional[str] = ...,
-              shape: Optional[Tuple[int, ...]] = ...,
-              copy: bool = ...,
+def fuzzarray(data: Optional[Any] = ..., 
+              backend: Optional[FuzzarrayBackend] = ..., 
+              mtype: Optional[str] = ..., 
+              q: Optional[int] = ..., 
+              shape: Optional[Tuple[int, ...]] = ..., 
               **mtype_kwargs: Any) -> Fuzzarray: ...

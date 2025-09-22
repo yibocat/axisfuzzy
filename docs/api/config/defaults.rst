@@ -5,3 +5,4 @@ config file defaults
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:

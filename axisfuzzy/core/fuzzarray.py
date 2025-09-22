@@ -50,6 +50,8 @@ from typing import Optional, Union, Any, Tuple, Iterator, Dict
 import numpy as np
 
 from ..config import get_config
+from ..utils import deprecated
+
 from .fuzznums import Fuzznum
 from .backend import FuzzarrayBackend
 from .registry import get_registry_fuzztype
@@ -242,90 +244,20 @@ class Fuzzarray:
         # Unsupported
         raise TypeError(f"Unsupported data type for Fuzzarray creation: {type(data)}")
 
-    # def _create_backend_from_data(self, data, shape: Optional[Tuple[int, ...]]) -> FuzzarrayBackend:
-    #     """
-    #     Build a backend instance from provided input data.
-    #
-    #     Parameters
-    #     ----------
-    #     data : Fuzznum or list/tuple/numpy.ndarray or None
-    #         Source data used to initialize backend contents.
-    #     shape : tuple of int or None
-    #         Target shape for the backend. Required when ``data`` is None.
-    #
-    #     Returns
-    #     -------
-    #     FuzzarrayBackend
-    #         New backend instance populated according to ``data``.
-    #
-    #     Raises
-    #     ------
-    #     ValueError
-    #         If required shape is missing or shapes cannot be reconciled.
-    #     TypeError
-    #         If input contains non-Fuzznum elements or unsupported data type.
-    #     """
-    #     registry = get_registry_fuzztype()
-    #     backend_cls = registry.get_backend(self._mtype)
-    #     if backend_cls is None:
-    #         raise ValueError(f"No backend registered for mtype '{self._mtype}'")
-    #
-    #     # Case 1: No data provided
-    #     if data is None:
-    #         if shape is None:
-    #             raise ValueError("Shape must be provided when data is None")
-    #         return backend_cls(shape=shape, q=self._q, **self._kwargs)
-    #
-    #     # Case 2: Single Fuzznum
-    #     if isinstance(data, Fuzznum):
-    #         if shape is None:
-    #             shape = ()
-    #         backend = backend_cls(shape=shape, q=data.q, **self._kwargs)
-    #         for idx in np.ndindex(shape):
-    #             backend.set_fuzznum_data(idx, data)
-    #         return backend
-    #
-    #     # Case 3: list/tuple/ndarray
-    #     if isinstance(data, (list, tuple, np.ndarray)):
-    #         if not isinstance(data, np.ndarray):
-    #             data = np.array(data, dtype=object)
-    #
-    #         # Empty case ([])
-    #         if data.size == 0:
-    #             if shape is None:
-    #                 shape = data.shape  # e.g. (0,)
-    #             return backend_cls(shape=shape, q=self._q, **self._kwargs)
-    #
-    #         if shape is None:
-    #             shape = data.shape
-    #         elif data.shape != shape:
-    #             try:
-    #                 data = data.reshape(shape)
-    #             except ValueError:
-    #                 raise ValueError(f"Cannot reshape array of size {data.size} into shape {shape}")
-    #
-    #         # 这里是关键：如果非空，取第一个 Fuzznum 推导 q
-    #         if isinstance(data.flatten()[0], Fuzznum):
-    #             self._q = data.flatten()[0].q
-    #
-    #         backend = backend_cls(shape=shape, q=self._q, **self._kwargs)
-    #
-    #         it = np.nditer(data, flags=['multi_index', 'refs_ok'])
-    #         for item in it:
-    #             fuzznum_item = item.item()
-    #             if not isinstance(fuzznum_item, Fuzznum):
-    #                 raise TypeError(f"All elements in input data must be Fuzznum, found {type(fuzznum_item)}")
-    #             backend.set_fuzznum_data(it.multi_index, fuzznum_item)
-    #         return backend
-    #
-    #     raise TypeError(f"Unsupported data type for Fuzzarray creation: {type(data)}")
-
     # ========================= Properties =========================
 
     @property
     def backend(self) -> FuzzarrayBackend:
         """Access to the underlying backend."""
         return self._backend
+
+    @property
+    def md(self) -> np.ndarray:
+        return self._backend.mds
+
+    @property
+    def nmd(self) -> np.ndarray:
+        return self._backend.nmds
 
     @property
     def shape(self) -> Tuple[int, ...]:
@@ -805,26 +737,31 @@ class Fuzzarray:
 
 # ================================= Factory function =================================
 
-# TODO: 这个工厂函数 fuzzarray 有点问题, 没有 backend 参数, 但 Fuzzarray 的构造函数需要 backend 参数.
-def fuzzarray(data,
+@deprecated(message="Please use 'fuzzyset' instead.")
+def fuzzarray(data=None,
+              backend: Optional[FuzzarrayBackend] = None,
               mtype: Optional[str] = None,
+              q: Optional[int] = None,
               shape: Optional[Tuple[int, ...]] = None,
-              copy: bool = True,
               **mtype_kwargs) -> Fuzzarray:
     """
     Factory function to create Fuzzarray instances.
 
     Parameters
     ----------
-    data : array-like or Fuzznum or None
-        Input data to populate the returned Fuzzarray.
+    data : array-like or Fuzznum or None, optional
+        Input data to populate the returned Fuzzarray. If ``backend`` is provided,
+        this argument is ignored.
+    backend : FuzzarrayBackend, optional
+        Pre-constructed backend instance. If provided, ``data`` is ignored and
+        the returned Fuzzarray directly wraps this backend.
     mtype : str, optional
-        Fuzztype name.
+        Membership type name (e.g. ``'qrofn'``). Required if ``data`` is None and
+        ``backend`` is not provided.
+    q : int, optional
+        q-rung parameter for q-rung based mtypes.
     shape : tuple of int, optional
         Desired shape when constructing from scalars or empty data.
-    copy : bool, optional
-        Reserved for API compatibility; current implementation forwards data
-        to Fuzzarray constructor which controls copying semantics.
     **mtype_kwargs : dict
         Additional mtype-specific parameters forwarded to Fuzzarray.
 
@@ -833,6 +770,12 @@ def fuzzarray(data,
     Fuzzarray
         New Fuzzarray instance constructed from the provided inputs.
 
+    Notes
+    -----
+    - If ``backend`` is provided, it is used directly and ``data`` is ignored.
+    - If ``data`` is provided, it is used to construct a new backend.
+    - If neither ``data`` nor ``backend`` is provided, an empty Fuzzarray is created.
+
     Examples
     --------
     .. code-block:: python
@@ -840,7 +783,15 @@ def fuzzarray(data,
         from axisfuzzy.core.fuzznums import fuzznum
         from axisfuzzy.core.fuzzarray import fuzzarray
 
+        # Create from data
         arr = fuzzarray([fuzznum(md=0.1, nmd=0.2), fuzznum(md=0.2, nmd=0.3)])
         print(arr)
+
+        # Create from backend (more efficient)
+        from axisfuzzy.core.backend import QROFNBackend
+        backend = QROFNBackend()
+        # Populate backend with data...
+        arr2 = fuzzarray(backend=backend)
+        print(arr2)
     """
-    return Fuzzarray(data=data, mtype=mtype, shape=shape, **mtype_kwargs)
+    return Fuzzarray(data=data, backend=backend, mtype=mtype, q=q, shape=shape, **mtype_kwargs)

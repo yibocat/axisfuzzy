@@ -39,6 +39,21 @@ class MockBackend(FuzzarrayBackend):
         self.mtype = 'qrofn'  # 设置默认类型
         super().__init__(shape, q, **kwargs)
     
+    @property
+    def cmpnum(self) -> int:
+        """返回组件数量。"""
+        return 2
+    
+    @property
+    def cmpnames(self) -> Tuple[str, ...]:
+        """返回组件名称。"""
+        return ('md', 'nmd')
+    
+    @property
+    def dtype(self) -> np.dtype:
+        """返回数据类型。"""
+        return np.dtype(np.float64)
+    
     def _initialize_arrays(self):
         """初始化成员度和非成员度数组。"""
         self._md = np.zeros(self.shape, dtype=float)

@@ -29,7 +29,7 @@ from .triangular import OperationTNorm
 from ..config import get_config
 
 if TYPE_CHECKING:
-    from .operation import OperationRegistry
+    from .operation import OperationScheduler
 
 
 class FuzznumStrategy(ABC):
