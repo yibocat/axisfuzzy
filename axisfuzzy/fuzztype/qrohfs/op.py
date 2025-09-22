@@ -630,10 +630,10 @@ class QROHFNGreaterThan(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrohfn']
 
-    def _execute_binary_op_impl(self,
-                                operand1: Any,
-                                operand2: Any,
-                                tnorm: OperationTNorm) -> bool:
+    def _execute_comparison_op_impl(self,
+                                    operand1: Any,
+                                    operand2: Any,
+                                    tnorm: OperationTNorm) -> bool:
         """
         Executes greater than comparison for two single QROHFN strategies.
         """
@@ -653,7 +653,7 @@ class QROHFNGreaterThan(OperationMixin):
         score1 = md1_mean ** q - nmd1_mean ** q
         score2 = md2_mean ** q - nmd2_mean ** q
 
-        return score1 > score2
+        return {'value': bool(score1 > score2)}
 
     def _execute_fuzzarray_op_impl(self,
                                    operand1: Any,
@@ -697,10 +697,10 @@ class QROHFNLessThan(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrohfn']
 
-    def _execute_binary_op_impl(self,
-                                operand1: Any,
-                                operand2: Any,
-                                tnorm: OperationTNorm) -> bool:
+    def _execute_comparison_op_impl(self,
+                                    operand1: Any,
+                                    operand2: Any,
+                                    tnorm: OperationTNorm) -> bool:
         """
         Executes less than comparison for two single QROHFN strategies.
         """
@@ -719,7 +719,7 @@ class QROHFNLessThan(OperationMixin):
         score1 = md1_mean ** q - nmd1_mean ** q
         score2 = md2_mean ** q - nmd2_mean ** q
 
-        return score1 < score2
+        return {'value': bool(score1 < score2)}
 
     def _execute_fuzzarray_op_impl(self,
                                    operand1: Any,
@@ -763,10 +763,10 @@ class QROHFNEquals(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrohfn']
 
-    def _execute_binary_op_impl(self,
-                                operand1: Any,
-                                operand2: Any,
-                                tnorm: OperationTNorm) -> bool:
+    def _execute_comparison_op_impl(self,
+                                    operand1: Any,
+                                    operand2: Any,
+                                    tnorm: OperationTNorm) -> bool:
         """
         Executes equality comparison for two single QROHFN strategies.
         """
@@ -786,7 +786,7 @@ class QROHFNEquals(OperationMixin):
         md_equal = abs(md1_mean - md2_mean) < epsilon
         nmd_equal = abs(nmd1_mean - nmd2_mean) < epsilon
 
-        return md_equal and nmd_equal
+        return {'value': bool(md_equal and nmd_equal)}
 
     def _execute_fuzzarray_op_impl(self,
                                    operand1: Any,
@@ -830,10 +830,10 @@ class QROHFNGreaterEquals(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrohfn']
 
-    def _execute_binary_op_impl(self,
-                                operand1: Any,
-                                operand2: Any,
-                                tnorm: OperationTNorm) -> bool:
+    def _execute_comparison_op_impl(self,
+                                    operand1: Any,
+                                    operand2: Any,
+                                    tnorm: OperationTNorm) -> bool:
         """
         Executes greater than or equal comparison for two single QROHFN strategies.
         """
@@ -852,7 +852,7 @@ class QROHFNGreaterEquals(OperationMixin):
         score1 = md1_mean ** q - nmd1_mean ** q
         score2 = md2_mean ** q - nmd2_mean ** q
 
-        return score1 >= score2
+        return {'value': bool(score1 >= score2)}
 
     def _execute_fuzzarray_op_impl(self,
                                    operand1: Any,
@@ -896,10 +896,10 @@ class QROHFNLessEquals(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrohfn']
 
-    def _execute_binary_op_impl(self,
-                                operand1: Any,
-                                operand2: Any,
-                                tnorm: OperationTNorm) -> bool:
+    def _execute_comparison_op_impl(self,
+                                    operand1: Any,
+                                    operand2: Any,
+                                    tnorm: OperationTNorm) -> bool:
         """
         Executes less than or equal comparison for two single QROHFN strategies.
         """
@@ -918,7 +918,7 @@ class QROHFNLessEquals(OperationMixin):
         score1 = md1_mean ** q - nmd1_mean ** q
         score2 = md2_mean ** q - nmd2_mean ** q
 
-        return score1 <= score2
+        return {'value': bool(score1 <= score2)}
 
     def _execute_fuzzarray_op_impl(self,
                                    operand1: Any,
@@ -962,10 +962,10 @@ class QROHFNNotEquals(OperationMixin):
     def get_supported_mtypes(self) -> List[str]:
         return ['qrohfn']
 
-    def _execute_binary_op_impl(self,
-                                operand1: Any,
-                                operand2: Any,
-                                tnorm: OperationTNorm) -> bool:
+    def _execute_comparison_op_impl(self,
+                                    operand1: Any,
+                                    operand2: Any,
+                                    tnorm: OperationTNorm) -> bool:
         """
         Executes not equal comparison for two single QROHFN strategies.
         """
@@ -985,7 +985,7 @@ class QROHFNNotEquals(OperationMixin):
         md_not_equal = abs(md1_mean - md2_mean) >= epsilon
         nmd_not_equal = abs(nmd1_mean - nmd2_mean) >= epsilon
 
-        return md_not_equal or nmd_not_equal
+        return {'value': bool(md_not_equal or nmd_not_equal)}
 
     def _execute_fuzzarray_op_impl(self,
                                    operand1: Any,

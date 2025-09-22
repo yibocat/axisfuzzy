@@ -1,5 +1,3 @@
-:html_theme.sidebar_secondary.remove:
-
 ========================
 mixin (axisfuzzy.mixin)
 ========================
@@ -12,9 +10,6 @@ across all fuzzy number types without requiring mtype-specific dispatch logic. F
 instance methods and top-level functions during library initialization, offering seamless integration with the core data structures.
 
 .. toctree::
-
-    :maxdepth: 1
-    :caption: Extension Modules
 
     registry
     register

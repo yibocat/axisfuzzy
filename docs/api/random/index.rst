@@ -1,5 +1,3 @@
-:html_theme.sidebar_secondary.remove:
-
 ==========================
 random (axisfuzzy.random)
 ==========================
@@ -15,9 +13,6 @@ thread-safe global state, and direct backend population to ensure scalability
 and deterministic behavior for scientific workflows.
 
 .. toctree::
-
-    :maxdepth: 1
-    :caption: Extension Modules
 
     base
     registry

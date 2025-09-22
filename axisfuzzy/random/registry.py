@@ -171,6 +171,7 @@ class RandomGeneratorRegistry:
 
         registry = get_registry_random()
         registry.register('custom', CustomGenerator())
+        
     """
 
     _instance: Optional['RandomGeneratorRegistry'] = None
@@ -251,6 +252,7 @@ class RandomGeneratorRegistry:
 
         Examples
         --------
+
         .. code-block:: python
 
             # Manual registration (typically not needed)
@@ -261,6 +263,7 @@ class RandomGeneratorRegistry:
             # Verify registration
             assert registry.is_registered('mytype')
             assert registry.get_generator('mytype') is generator
+
         """
         if not isinstance(generator, BaseRandomGenerator):
             raise TypeError(f"Generator must be an instance of BaseRandomGenerator, "
