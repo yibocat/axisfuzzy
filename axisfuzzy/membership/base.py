@@ -443,7 +443,10 @@ class MembershipFunction(ABC):
             mf1.plot()
             mf2.plot()
             plt.legend(['Function 1', 'Function 2'])
-            plt.show()
+            # For users who want to display the plot immediately.
+        # plt.show() should be called outside the function
+        # to allow for multiple plots to be drawn on the same figure.
+        # plt.show()
 
         Raises
         ------
