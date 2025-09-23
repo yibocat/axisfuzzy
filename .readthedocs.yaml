@@ -31,6 +31,5 @@ python:
 
 # Formats of the documentation to build
 formats:
-  - pdf
   - htmlzip
         
