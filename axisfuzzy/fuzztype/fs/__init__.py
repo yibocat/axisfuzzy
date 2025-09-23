@@ -4,3 +4,5 @@
 #  Author: yibow
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
+
+from . import fn
