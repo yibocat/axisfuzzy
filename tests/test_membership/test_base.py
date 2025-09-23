@@ -203,13 +203,12 @@ class TestPlottingFunctionality:
     @patch('matplotlib.pyplot.title')
     @patch('matplotlib.pyplot.grid')
     @patch('matplotlib.pyplot.legend')
-    @patch('matplotlib.pyplot.show')
-    def test_plot_default_parameters(self, mock_show, mock_legend, mock_grid,
+    def test_plot_default_parameters(self, mock_legend, mock_grid,
                                    mock_title, mock_ylabel, mock_xlabel,
                                    mock_plot, concrete_mf):
         """测试默认参数的绘图"""
         concrete_mf.plot()
-        
+
         # 验证 matplotlib 函数被调用
         mock_plot.assert_called_once()
         mock_xlabel.assert_called_once_with('x')
@@ -217,8 +216,7 @@ class TestPlottingFunctionality:
         mock_title.assert_called_once_with('ConcreteMembershipFunction Membership Function')
         mock_grid.assert_called_once_with(True)
         mock_legend.assert_called_once()
-        mock_show.assert_called_once()
-        
+
         # 检查绘图数据
         args, kwargs = mock_plot.call_args
         x_data, y_data = args
@@ -230,8 +228,7 @@ class TestPlottingFunctionality:
     
     @patch('matplotlib.pyplot.plot')
     @patch('matplotlib.pyplot.legend')
-    @patch('matplotlib.pyplot.show')
-    def test_plot_custom_parameters(self, mock_show, mock_legend, mock_plot, concrete_mf):
+    def test_plot_custom_parameters(self, mock_legend, mock_plot, concrete_mf):
         """测试自定义参数的绘图"""
         x_range = (-2, 3)
         num_points = 500

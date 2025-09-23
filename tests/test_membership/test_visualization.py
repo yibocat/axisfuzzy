@@ -57,51 +57,45 @@ class TestBasicPlotting:
             assert hasattr(mf, 'plot')
             assert callable(mf.plot)
     
-    @patch('matplotlib.pyplot.show')
-    def test_basic_plot_execution(self, mock_show):
+    def test_basic_plot_execution(self):
         """测试基本绘图执行不出错"""
         mf = TriangularMF(0, 0.5, 1)
         
         # 应该能够正常执行而不抛出异常
         try:
             mf.plot()
-            # 验证show被调用
-            mock_show.assert_called_once()
         except Exception as e:
             pytest.fail(f"Basic plot execution failed: {e}")
         finally:
             plt.close('all')  # 清理图形
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_with_custom_range(self, mock_show):
+    def test_plot_with_custom_range(self):
         """测试自定义范围绘图"""
         mf = TriangularMF(0, 0.5, 1)
         
         try:
             # 测试自定义x范围
             mf.plot(x_range=(-0.5, 1.5))
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Plot with custom range failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_with_custom_points(self, mock_show):
+
+    
+    def test_plot_with_custom_points(self):
         """测试自定义点数绘图"""
         mf = GaussianMF(sigma=0.2, c=0.5)
         
         try:
             # 测试自定义点数
             mf.plot(num_points=50)
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Plot with custom points failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_data_correctness(self, mock_show):
+    def test_plot_data_correctness(self):
         """测试绘图数据的正确性"""
         mf = TriangularMF(0, 0.5, 1)
         
@@ -129,8 +123,6 @@ class TestBasicPlotting:
                 max_idx = np.argmax(plot_y)
                 assert plot_x[max_idx] == pytest.approx(0.5, abs=1e-2)
                 assert plot_y[max_idx] == pytest.approx(1.0, abs=TOLERANCE)
-            
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Plot data correctness test failed: {e}")
         finally:
@@ -140,8 +132,7 @@ class TestBasicPlotting:
 class TestPlotCustomization:
     """测试绘图自定义选项"""
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_with_different_ranges(self, mock_show):
+    def test_plot_with_different_ranges(self):
         """测试不同的绘图范围"""
         mf = TriangularMF(0, 0.5, 1)
         
@@ -155,14 +146,12 @@ class TestPlotCustomization:
         for x_range in ranges_to_test:
             try:
                 mf.plot(x_range=x_range)
-                mock_show.assert_called()
             except Exception as e:
                 pytest.fail(f"Plot with range {x_range} failed: {e}")
             finally:
                 plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_with_different_point_counts(self, mock_show):
+    def test_plot_with_different_point_counts(self):
         """测试不同的点数设置"""
         mf = GaussianMF(sigma=0.2, c=0.5)
         
@@ -171,7 +160,6 @@ class TestPlotCustomization:
         for num_points in point_counts:
             try:
                 mf.plot(num_points=num_points)
-                mock_show.assert_called()
             except Exception as e:
                 pytest.fail(f"Plot with {num_points} points failed: {e}")
             finally:
@@ -181,8 +169,7 @@ class TestPlotCustomization:
 class TestMultipleFunctionPlotting:
     """测试多函数绘图"""
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_multiple_functions_same_axes(self, mock_show):
+    def test_plot_multiple_functions_same_axes(self):
         """测试在同一坐标轴上绘制多个函数"""
         mf1 = TriangularMF(0, 0.3, 0.6)
         mf2 = TriangularMF(0.4, 0.7, 1.0)
@@ -200,14 +187,12 @@ class TestMultipleFunctionPlotting:
             lines = ax.get_lines()
             assert len(lines) >= 2
             
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Multiple function plotting failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_function_comparison(self, mock_show):
+    def test_plot_function_comparison(self):
         """测试函数对比绘图"""
         functions = [
             TriangularMF(0, 0.5, 1),
@@ -225,7 +210,6 @@ class TestMultipleFunctionPlotting:
             lines = ax.get_lines()
             assert len(lines) >= len(functions)
             
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Function comparison plotting failed: {e}")
         finally:
@@ -235,50 +219,43 @@ class TestMultipleFunctionPlotting:
 class TestSpecialCasePlotting:
     """测试特殊情况下的绘图"""
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_degenerate_triangle(self, mock_show):
+    def test_plot_degenerate_triangle(self):
         """测试退化三角形的绘图"""
         # 退化为点的三角形
         mf = TriangularMF(0.5, 0.5, 0.5)
         
         try:
             mf.plot()
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Degenerate triangle plotting failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_extreme_gaussian(self, mock_show):
+    def test_plot_extreme_gaussian(self):
         """测试极端参数的高斯函数绘图"""
         # 极小的sigma
         mf = GaussianMF(sigma=0.001, c=0.5)
         
         try:
             mf.plot()
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Extreme Gaussian plotting failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_steep_sigmoid(self, mock_show):
+    def test_plot_steep_sigmoid(self):
         """测试陡峭的Sigmoid函数绘图"""
         # 极大的斜率
         mf = SigmoidMF(k=100, c=0.5)
         
         try:
             mf.plot()
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Steep Sigmoid plotting failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_double_gaussian_peaks(self, mock_show):
+    def test_plot_double_gaussian_peaks(self):
         """测试双峰高斯函数的绘图"""
         mf = DoubleGaussianMF(sigma1=0.1, c1=0.3, sigma2=0.1, c2=0.7)
         
@@ -296,8 +273,6 @@ class TestSpecialCasePlotting:
                 # 这里只检查绘图不出错
                 assert len(plot_x) > 0
                 assert len(plot_y) > 0
-            
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Double Gaussian plotting failed: {e}")
         finally:
@@ -307,8 +282,7 @@ class TestSpecialCasePlotting:
 class TestPlotErrorHandling:
     """测试绘图错误处理"""
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_with_invalid_range(self, mock_show):
+    def test_plot_with_invalid_range(self):
         """测试无效范围的处理"""
         mf = TriangularMF(0, 0.5, 1)
         
@@ -316,22 +290,19 @@ class TestPlotErrorHandling:
             # 测试无效范围（最小值大于最大值）
             # plot方法应该能处理这种情况或使用默认值
             mf.plot(x_range=(1, 0))
-            mock_show.assert_called()
         except Exception as e:
             # 如果抛出异常也是可接受的
             assert isinstance(e, (ValueError, TypeError))
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_with_invalid_points(self, mock_show):
+    def test_plot_with_invalid_points(self):
         """测试无效点数的处理"""
         mf = GaussianMF(sigma=0.2, c=0.5)
         
         try:
             # 测试负数点数 - plot方法应该能处理或使用默认值
             mf.plot(num_points=-10)
-            mock_show.assert_called()
         except Exception as e:
             # 如果抛出异常也是可接受的
             assert isinstance(e, (ValueError, TypeError))
@@ -341,22 +312,19 @@ class TestPlotErrorHandling:
         try:
             # 测试零点数
             mf.plot(num_points=0)
-            mock_show.assert_called()
         except Exception as e:
             # 如果抛出异常也是可接受的
             assert isinstance(e, (ValueError, TypeError))
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_with_edge_case_parameters(self, mock_show):
+    def test_plot_with_edge_case_parameters(self):
         """测试边界情况参数"""
         mf = TriangularMF(0, 0.5, 1)
         
         try:
             # 测试最小点数
             mf.plot(num_points=2)
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Plot with edge case parameters failed: {e}")
         finally:
@@ -366,22 +334,19 @@ class TestPlotErrorHandling:
 class TestPlotPerformance:
     """测试绘图性能"""
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_large_point_count(self, mock_show):
+    def test_plot_large_point_count(self):
         """测试大点数绘图性能"""
         mf = GaussianMF(sigma=0.2, c=0.5)
         
         try:
             # 测试大点数（应该在合理时间内完成）
             mf.plot(num_points=10000)
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Large point count plotting failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_multiple_functions_performance(self, mock_show):
+    def test_plot_multiple_functions_performance(self):
         """测试多函数绘图性能"""
         functions = [
             TriangularMF(0, 0.2, 0.4),
@@ -396,8 +361,6 @@ class TestPlotPerformance:
         try:
             for mf in functions:
                 mf.plot()
-            
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Multiple functions performance test failed: {e}")
         finally:
@@ -407,8 +370,7 @@ class TestPlotPerformance:
 class TestPlotIntegration:
     """测试绘图集成功能"""
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_with_factory_created_functions(self, mock_show):
+    def test_plot_with_factory_created_functions(self):
         """测试工厂创建函数的绘图"""
         try:
             # 使用工厂函数创建隶属函数
@@ -416,14 +378,12 @@ class TestPlotIntegration:
             
             # 测试绘图
             mf.plot()
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Factory created function plotting failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_after_parameter_update(self, mock_show):
+    def test_plot_after_parameter_update(self):
         """测试参数更新后的绘图"""
         mf = TriangularMF(0, 0.5, 1)
         
@@ -436,15 +396,12 @@ class TestPlotIntegration:
             
             # 再次绘图
             mf.plot()
-            
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Plot after parameter update failed: {e}")
         finally:
             plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_consistency_across_calls(self, mock_show):
+    def test_plot_consistency_across_calls(self):
         """测试多次调用的一致性"""
         mf = GaussianMF(sigma=0.2, c=0.5)
         
@@ -452,8 +409,6 @@ class TestPlotIntegration:
             # 多次绘图调用
             for _ in range(3):
                 mf.plot()
-            
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Plot consistency test failed: {e}")
         finally:
@@ -463,8 +418,7 @@ class TestPlotIntegration:
 class TestPlotDocumentation:
     """测试绘图文档一致性"""
     
-    @patch('matplotlib.pyplot.show')
-    def test_documented_plot_parameters(self, mock_show):
+    def test_documented_plot_parameters(self):
         """测试文档中提到的参数"""
         mf = TriangularMF(0, 0.5, 1)
         
@@ -477,14 +431,12 @@ class TestPlotDocumentation:
         for params in documented_params:
             try:
                 mf.plot(**params)
-                mock_show.assert_called()
             except Exception as e:
                 pytest.fail(f"Documented parameter {params} failed: {e}")
             finally:
                 plt.close('all')
     
-    @patch('matplotlib.pyplot.show')
-    def test_plot_examples_from_docs(self, mock_show):
+    def test_plot_examples_from_docs(self):
         """测试文档示例"""
         try:
             # 文档示例1：默认设置绘图
@@ -493,16 +445,13 @@ class TestPlotDocumentation:
             
             # 文档示例2：自定义范围和高分辨率
             mf.plot(x_range=(-2, 3), num_points=2000)
-            
-            mock_show.assert_called()
         except Exception as e:
             pytest.fail(f"Documentation examples failed: {e}")
         finally:
             plt.close('all')
 
 
-@patch('matplotlib.pyplot.show')
-def test_plot_in_headless_environment(mock_show):
+def test_plot_in_headless_environment():
     """测试无头环境下的绘图"""
     # 设置matplotlib后端为Agg（无头模式）
     import matplotlib
@@ -514,7 +463,6 @@ def test_plot_in_headless_environment(mock_show):
         mf = TriangularMF(0, 0.5, 1)
         mf.plot()
         
-        mock_show.assert_called()
     except Exception as e:
         pytest.fail(f"Headless environment plotting failed: {e}")
     finally:
