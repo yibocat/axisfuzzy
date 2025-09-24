@@ -1040,14 +1040,14 @@ different fuzzy number types.
 
 .. code-block:: python
 
-    from axisfuzzy.core import fuzzyset
+    from axisfuzzy.core import fuzzyarray
     import numpy as np
 
     # Configuration affects array operations
     config.set_config(DEFAULT_MTYPE='qrofn', DEFAULT_Q=3)
 
     data = np.array([[[0.2, 0.3], [0.4, 0.5]], [[0.1, 0.2], [0.3, 0.4]]], dtype=object)
-    farr = fuzzyset(data=data)
+    farr = fuzzyarray(data=data)
     reshaped = farr.reshape((4, 1))  # Respects type configuration
 
 Third-Party Integration Patterns

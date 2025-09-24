@@ -23,7 +23,8 @@ from typing import Any, Tuple, Optional, Callable
 
 from axisfuzzy.core.fuzzarray import Fuzzarray
 from axisfuzzy.core.backend import FuzzarrayBackend
-from axisfuzzy.core.fuzznums import fuzznum, Fuzznum
+from axisfuzzy.core.fuzznums import Fuzznum
+from axisfuzzy.core import fuzzynum
 from axisfuzzy.core.registry import get_registry_fuzztype
 
 
@@ -63,12 +64,12 @@ class MockBackend(FuzzarrayBackend):
         """获取指定索引处的模糊数视图。"""
         md_val = float(self._md[index])
         nmd_val = float(self._nmd[index])
-        return fuzznum(mtype=self.mtype, q=self.q, md=md_val, nmd=nmd_val)
+        return fuzzynum(mtype=self.mtype, q=self.q, md=md_val, nmd=nmd_val)
     
-    def set_fuzznum_data(self, index: Any, fuzznum: 'Fuzznum'):
+    def set_fuzznum_data(self, index: Any, fuzzynum: 'Fuzznum'):
         """设置指定索引处的模糊数数据。"""
-        self._md[index] = fuzznum.md
-        self._nmd[index] = fuzznum.nmd
+        self._md[index] = fuzzynum.md
+        self._nmd[index] = fuzzynum.nmd
     
     def copy(self) -> 'MockBackend':
         """创建后端的深拷贝。"""
@@ -192,7 +193,7 @@ class TestFuzzarrayBackend:
         backend = MockBackend((2, 2), q=2)
         
         # 设置模糊数
-        test_fuzznum = fuzznum((0.6, 0.3), q=2, mtype='qrofn')
+        test_fuzznum = fuzzynum((0.6, 0.3), q=2, mtype='qrofn')
         backend.set_fuzznum_data((0, 0), test_fuzznum)
         
         # 获取模糊数视图
@@ -220,7 +221,7 @@ class TestFuzzarray:
     
     def test_fuzzarray_creation_from_fuzznum(self):
         """测试从单个模糊数创建 Fuzzarray。"""
-        fn = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
         arr = Fuzzarray(fn, shape=(2, 2))
         
         assert arr.shape == (2, 2)
@@ -237,9 +238,9 @@ class TestFuzzarray:
     def test_fuzzarray_creation_from_list(self):
         """测试从模糊数列表创建 Fuzzarray。"""
         fuzznums = [
-            fuzznum(mtype='qrofn', q=2, md=0.1, nmd=0.2),
-            fuzznum(mtype='qrofn', q=2, md=0.3, nmd=0.4),
-            fuzznum(mtype='qrofn', q=2, md=0.5, nmd=0.6)
+            fuzzynum(mtype='qrofn', q=2, md=0.1, nmd=0.2),
+            fuzzynum(mtype='qrofn', q=2, md=0.3, nmd=0.4),
+            fuzzynum(mtype='qrofn', q=2, md=0.5, nmd=0.6)
         ]
         arr = Fuzzarray(fuzznums)
         
@@ -251,7 +252,7 @@ class TestFuzzarray:
     
     def test_fuzzarray_indexing(self):
         """测试 Fuzzarray 索引访问。"""
-        fn = fuzznum(mtype='qrofn', q=2, md=0.7, nmd=0.2)
+        fn = fuzzynum(mtype='qrofn', q=2, md=0.7, nmd=0.2)
         arr = Fuzzarray(fn, shape=(3, 3))
         
         # 单元素访问
@@ -266,10 +267,10 @@ class TestFuzzarray:
     
     def test_fuzzarray_setitem(self):
         """测试 Fuzzarray 元素设置。"""
-        fn = fuzznum(mtype='qrofn', q=2, md=0.5, nmd=0.3)
+        fn = fuzzynum(mtype='qrofn', q=2, md=0.5, nmd=0.3)
         arr = Fuzzarray(fn, shape=(2, 2))
         
-        new_fn = fuzznum(mtype='qrofn', q=2, md=0.8, nmd=0.1)
+        new_fn = fuzzynum(mtype='qrofn', q=2, md=0.8, nmd=0.1)
         arr[0, 0] = new_fn
         
         assert arr[0, 0].md == 0.8
@@ -280,9 +281,9 @@ class TestFuzzarray:
     def test_fuzzarray_iteration(self):
         """测试 Fuzzarray 迭代。"""
         fuzznums = [
-            fuzznum(mtype='qrofn', q=2, md=0.1, nmd=0.9),
-            fuzznum(mtype='qrofn', q=2, md=0.2, nmd=0.8),
-            fuzznum(mtype='qrofn', q=2, md=0.3, nmd=0.7)
+            fuzzynum(mtype='qrofn', q=2, md=0.1, nmd=0.9),
+            fuzzynum(mtype='qrofn', q=2, md=0.2, nmd=0.8),
+            fuzzynum(mtype='qrofn', q=2, md=0.3, nmd=0.7)
         ]
         arr = Fuzzarray(fuzznums)
         
@@ -295,7 +296,7 @@ class TestFuzzarray:
     
     def test_fuzzarray_copy(self):
         """测试 Fuzzarray 拷贝。"""
-        fn = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
         arr = Fuzzarray(fn, shape=(2, 2))
         
         copied = arr.copy()
@@ -305,14 +306,14 @@ class TestFuzzarray:
         assert copied.q == arr.q
         
         # 修改原数组不应影响拷贝
-        new_fn = fuzznum(mtype='qrofn', q=2, md=0.9, nmd=0.1)
+        new_fn = fuzzynum(mtype='qrofn', q=2, md=0.9, nmd=0.1)
         arr[0, 0] = new_fn
         
         assert copied[0, 0].md == 0.6  # 拷贝应该保持原值
     
     def test_fuzzarray_properties(self):
         """测试 Fuzzarray 属性。"""
-        fn = fuzznum(mtype='qrofn', q=3, md=0.7, nmd=0.2)
+        fn = fuzzynum(mtype='qrofn', q=3, md=0.7, nmd=0.2)
         arr = Fuzzarray(fn, shape=(2, 3, 4))
         
         assert arr.shape == (2, 3, 4)
@@ -324,8 +325,8 @@ class TestFuzzarray:
     
     def test_fuzzarray_contains(self):
         """测试 Fuzzarray 包含检查。"""
-        fn1 = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
-        fn2 = fuzznum(mtype='qrofn', q=2, md=0.8, nmd=0.1)
+        fn1 = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn2 = fuzzynum(mtype='qrofn', q=2, md=0.8, nmd=0.1)
         
         arr = Fuzzarray([fn1, fn2])
         
@@ -334,7 +335,7 @@ class TestFuzzarray:
     
     def test_fuzzarray_bool_single_element(self):
         """测试单元素 Fuzzarray 的布尔值。"""
-        fn = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
         arr = Fuzzarray([fn])
         
         # 单元素数组的布尔值应该基于模糊数本身
@@ -342,7 +343,7 @@ class TestFuzzarray:
     
     def test_fuzzarray_bool_multiple_elements_error(self):
         """测试多元素 Fuzzarray 的布尔值应该抛出错误。"""
-        fn = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
         arr = Fuzzarray(fn, shape=(2, 2))
         
         with pytest.raises(ValueError, match="ambiguous"):
@@ -359,7 +360,7 @@ class TestFuzzarray:
     
     def test_fuzzarray_string_representation(self):
         """测试 Fuzzarray 字符串表示。"""
-        fn = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
         arr = Fuzzarray([fn])
         
         repr_str = repr(arr)
@@ -376,8 +377,8 @@ class TestFuzzarrayOperators:
     
     def test_arithmetic_operators_structure(self):
         """测试算术运算符的结构（不测试具体计算）。"""
-        fn1 = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
-        fn2 = fuzznum(mtype='qrofn', q=2, md=0.4, nmd=0.5)
+        fn1 = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn2 = fuzzynum(mtype='qrofn', q=2, md=0.4, nmd=0.5)
         
         arr1 = Fuzzarray([fn1])
         arr2 = Fuzzarray([fn2])
@@ -409,8 +410,8 @@ class TestFuzzarrayOperators:
     
     def test_comparison_operators_structure(self):
         """测试比较运算符的结构。"""
-        fn1 = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
-        fn2 = fuzznum(mtype='qrofn', q=2, md=0.4, nmd=0.5)
+        fn1 = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn2 = fuzzynum(mtype='qrofn', q=2, md=0.4, nmd=0.5)
         
         arr1 = Fuzzarray([fn1])
         arr2 = Fuzzarray([fn2])
@@ -439,7 +440,7 @@ class TestFuzzarrayOperators:
     
     def test_logical_operators_structure(self):
         """测试逻辑运算符的结构。"""
-        fn = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+        fn = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
         arr = Fuzzarray([fn])
         
         # 测试逻辑运算符是否存在
@@ -460,7 +461,7 @@ class TestFuzzarrayIntegration:
         """测试与真实模糊数类型的集成。"""
         # 使用真实的模糊数类型
         try:
-            fn = fuzznum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
+            fn = fuzzynum(mtype='qrofn', q=2, md=0.6, nmd=0.3)
             arr = Fuzzarray([fn, fn, fn])
             
             assert arr.shape == (3,)
@@ -473,7 +474,7 @@ class TestFuzzarrayIntegration:
             assert elem.nmd == 0.3
             
         except Exception as e:
-            pytest.skip(f"Real fuzznum integration not available: {e}")
+            pytest.skip(f"Real fuzzynum integration not available: {e}")
     
     def test_integration_with_registry(self):
         """测试与注册表的集成。"""
@@ -481,7 +482,7 @@ class TestFuzzarrayIntegration:
             # 尝试获取注册的模糊数类型
             registry = get_registry_fuzztype()
             if 'qrofn' in registry:
-                fn = fuzznum(mtype='qrofn', q=2, md=0.7, nmd=0.2)
+                fn = fuzzynum(mtype='qrofn', q=2, md=0.7, nmd=0.2)
                 arr = Fuzzarray([fn])
                 
                 assert arr.mtype == 'qrofn'

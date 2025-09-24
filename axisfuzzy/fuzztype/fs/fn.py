@@ -40,8 +40,8 @@ from typing import Optional, Any
 
 import numpy as np
 
-from ...config import get_config
-from ...core import FuzznumStrategy, register_strategy
+from axisfuzzy.config import get_config
+from axisfuzzy.core import FuzznumStrategy, register_strategy
 
 
 @register_strategy

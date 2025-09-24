@@ -31,7 +31,7 @@ from .core import (
     Fuzznum as Fuzznum,
     Fuzzarray as Fuzzarray,
     fuzzynum as fuzzynum,
-    fuzzyset as fuzzyset,
+    fuzzyarray as fuzzyarray,
     operate as operate,
     OperationTNorm as OperationTNorm,
 
@@ -42,10 +42,6 @@ from .core import (
     register_backend as register_backend,
     register_operation as register_operation,
     register_fuzztype as register_fuzztype,
-
-    # will be deprecated
-    fuzznum as fuzznum,
-    fuzzarray as fuzzarray,
 )
 from .extension import (
     get_registry_extension as get_registry_extension,

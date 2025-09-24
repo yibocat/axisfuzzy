@@ -48,7 +48,7 @@ import pytest
 import numpy as np
 from typing import Union, List, Tuple
 
-from axisfuzzy.core.fuzznums import fuzznum, Fuzznum
+from axisfuzzy import Fuzznum, fuzzynum
 from axisfuzzy.core.fuzzarray import Fuzzarray
 from axisfuzzy.mixin.factory import (
     _reshape_factory,
@@ -77,7 +77,7 @@ def sample_fuzznum():
     Note: mixin functions are mtype-agnostic, so we use a single
     representative type for all tests.
     """
-    return fuzznum(mtype='qrofn', q=2).create(md=0.6, nmd=0.3)
+    return fuzzynum(mtype='qrofn', q=2).create(md=0.6, nmd=0.3)
 
 
 @pytest.fixture
@@ -87,10 +87,10 @@ def sample_fuzznum_list():
     Note: Values must satisfy md^q + nmd^q <= 1 constraint for qrofn.
     """
     return [
-        fuzznum(mtype='qrofn', q=2).create(md=0.1, nmd=0.2),
-        fuzznum(mtype='qrofn', q=2).create(md=0.3, nmd=0.4),
-        fuzznum(mtype='qrofn', q=2).create(md=0.5, nmd=0.3),
-        fuzznum(mtype='qrofn', q=2).create(md=0.6, nmd=0.2)
+        fuzzynum(mtype='qrofn', q=2).create(md=0.1, nmd=0.2),
+        fuzzynum(mtype='qrofn', q=2).create(md=0.3, nmd=0.4),
+        fuzzynum(mtype='qrofn', q=2).create(md=0.5, nmd=0.3),
+        fuzzynum(mtype='qrofn', q=2).create(md=0.6, nmd=0.2)
     ]
 
 
@@ -100,7 +100,7 @@ def different_mtype_fuzznum():
     
     Note: Using fs type for testing incompatible mtype scenarios.
     """
-    return fuzznum(mtype='fs').create(md=0.7)
+    return fuzzynum(mtype='fs').create(md=0.7)
 
 
 @pytest.fixture
@@ -563,7 +563,7 @@ class TestConcatFactory:
         """Test error handling for incompatible mtypes."""
         # Skip this test since only qrofn type is currently tested
         pytest.skip("Currently only testing qrofn type, skipping mtype incompatibility test")
-        # fuzznum_diff = fuzznum(mtype='fs').create(md=0.7)
+        # fuzznum_diff = fuzzynum(mtype='fs').create(md=0.7)
         # arr_diff = Fuzzarray(data=fuzznum_diff, shape=(1,))
         # 
         # with pytest.raises(ValueError, match="must have the same mtype"):
@@ -613,7 +613,7 @@ class TestStackFactory:
         """Test error handling for incompatible mtypes."""
         # Skip this test since only qrofn type is currently tested
         pytest.skip("Currently only testing qrofn type, skipping mtype incompatibility test")
-        # fuzznum_diff = fuzznum(mtype='fs').create(md=0.7)
+        # fuzznum_diff = fuzzynum(mtype='fs').create(md=0.7)
         # arr_diff = Fuzzarray(data=np.array([fuzznum_diff] * 4, dtype=object))
         # 
         # with pytest.raises(ValueError, match="must have the same mtype"):
@@ -805,7 +805,7 @@ class TestEdgeCases:
     def test_large_array_operations(self, sample_fuzznum):
         """Test operations with larger arrays for basic performance."""
         # Create a larger array (100 elements)
-        large_fuzznum = fuzznum(mtype='qrofn', q=2).create(md=0.5, nmd=0.3)
+        large_fuzznum = fuzzynum(mtype='qrofn', q=2).create(md=0.5, nmd=0.3)
         
         large_array = Fuzzarray(data=large_fuzznum, shape=(100,))
         

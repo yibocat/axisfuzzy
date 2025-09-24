@@ -5,7 +5,7 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 """
-This module provides a high-performance factory function `fuzzyset` for
+This module provides a high-performance factory function `fuzzyarray` for
 creating Fuzzarray instances. It serves as a versatile and efficient entry
 point for Fuzzarray construction, accommodating various input types and
 optimizing for performance where possible.
@@ -85,7 +85,7 @@ def fuzzynum(values: Optional[tuple | float] = None,
         return instance
 
 
-def fuzzyset(
+def fuzzyarray(
     data: Optional[Union[np.ndarray, List, tuple, Fuzznum, Fuzzarray]] = None,
     backend: Optional[FuzzarrayBackend] = None,
     mtype: Optional[str] = None,

@@ -228,7 +228,7 @@ vectorized ``Fuzzarray`` computations.
 Creating QROFN Objects
 ~~~~~~~~~~~~~~~~~~~~~~
 
-QROFN objects are created using the factory functions ``fuzzynum`` and ``fuzzyset``:
+QROFN objects are created using the factory functions ``fuzzynum`` and ``fuzzyarray``:
 
 .. code-block:: python
 
@@ -238,8 +238,8 @@ QROFN objects are created using the factory functions ``fuzzynum`` and ``fuzzyse
    qrofn1 = af.fuzzynum((0.7, 0.2), mtype='qrofn', q=3)
    qrofn2 = af.fuzzynum(md=0.6, nmd=0.3, mtype='qrofn', q=3)
    
-   # Create QROFN arrays using fuzzyset factory
-   qrofn_array = af.fuzzyset([[0.7, 0.2], [0.8, 0.1]], mtype='qrofn', q=3)
+   # Create QROFN arrays using fuzzyarray factory
+   qrofn_array = af.fuzzyarray([[0.7, 0.2], [0.8, 0.1]], mtype='qrofn', q=3)
    
    print(qrofn1)        # <0.7, 0.2>
    print(qrofn_array)   # [[<0.7, 0.2>], [<0.8, 0.1>]]
@@ -344,9 +344,9 @@ Matrix Operations
 .. code-block:: python
 
    # Create 2D QROFN arrays
-   matrix1 = af.fuzzyset([[[0.7, 0.2], [0.8, 0.1]], 
+   matrix1 = af.fuzzyarray([[[0.7, 0.2], [0.8, 0.1]],
                           [[0.6, 0.3], [0.9, 0.05]]], mtype='qrofn')
-   matrix2 = af.fuzzyset([[[0.5, 0.4], [0.7, 0.2]], 
+   matrix2 = af.fuzzyarray([[[0.5, 0.4], [0.7, 0.2]],
                           [[0.8, 0.15], [0.6, 0.35]]], mtype='qrofn')
    
    matmul_result = matrix1 @ matrix2
@@ -359,8 +359,8 @@ All operators support efficient vectorized operations on ``Fuzzarray`` objects:
 .. code-block:: python
 
    # Element-wise operations on arrays
-   array1 = af.fuzzyset([[0.7, 0.2], [0.8, 0.1]], mtype='qrofn')
-   array2 = af.fuzzyset([[0.6, 0.3], [0.5, 0.4]], mtype='qrofn')
+   array1 = af.fuzzyarray([[0.7, 0.2], [0.8, 0.1]], mtype='qrofn')
+   array2 = af.fuzzyarray([[0.6, 0.3], [0.5, 0.4]], mtype='qrofn')
    
    # All operators work element-wise
    sum_array = array1 + array2
@@ -841,7 +841,7 @@ organized into five core categories:
    empty_array = af.empty(shape=(5,), q=2)          # Uninitialized
    
    # Template-based construction
-   template = af.fuzzyset([[0.8, 0.3], [0.6, 0.4]], q=2)
+   template = af.fuzzyarray([[0.8, 0.3], [0.6, 0.4]], q=2)
    similar_empty = af.empty_like(template)
    similar_positive = af.positive_like(template)
 
@@ -876,7 +876,7 @@ accuracy and q-rung constraints:
 .. code-block:: python
 
    # CSV operations with vectorized string processing
-   qrofn_array = af.fuzzyset([[0.8, 0.3], [0.6, 0.4]], q=2)
+   qrofn_array = af.fuzzyarray([[0.8, 0.3], [0.6, 0.4]], q=2)
    qrofn_array.to_csv('data.csv', delimiter=',')
    loaded_array = af.read_csv('data.csv', q=2)
    
@@ -900,8 +900,8 @@ with support for different norms and indeterminacy handling:
 .. code-block:: python
 
    # High-performance distance calculation
-   x = af.fuzzyset([[0.8, 0.7], [0.2, 0.3]], q=2)
-   y = af.fuzzyset([[0.6, 0.8], [0.3, 0.1]], q=2)
+   x = af.fuzzyarray([[0.8, 0.7], [0.2, 0.3]], q=2)
+   y = af.fuzzyarray([[0.6, 0.8], [0.3, 0.1]], q=2)
 
    # Minkowski distance with p-norm
    dist_l2 = af.distance(x, y, p_l=2, indeterminacy=True)
@@ -923,7 +923,7 @@ mathematically sound aggregation:
 .. code-block:: python
 
    # T-norm based aggregation operations
-   data = af.fuzzyset(np.array([[0.8, 0.2], [0.6, 0.3], [0.7, 0.2]]).T, q=2)
+   data = af.fuzzyarray(np.array([[0.8, 0.2], [0.6, 0.3], [0.7, 0.2]]).T, q=2)
 
    # Aggregation along axes
    total_sum = data.sum()           # Overall aggregation
@@ -946,7 +946,7 @@ QROFN objects provide computed properties for fuzzy-specific measures:
 .. code-block:: python
 
    # Fuzzy-specific properties
-   qrofn_data = af.fuzzyset([[0.8, 0.2], [0.6, 0.4]], q=2)
+   qrofn_data = af.fuzzyarray([[0.8, 0.2], [0.6, 0.4]], q=2)
 
    # Score function: md^q - nmd^q
    scores = qrofn_data.score

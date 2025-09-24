@@ -12,13 +12,9 @@ from .base import FuzznumStrategy as FuzznumStrategy
 
 from .backend import FuzzarrayBackend as FuzzarrayBackend
 
-from .fuzznums import (
-    Fuzznum as Fuzznum,
-    fuzznum as fuzznum)
+from .fuzznums import Fuzznum as Fuzznum
 
-from .fuzzarray import (
-    Fuzzarray as Fuzzarray,
-    fuzzarray as fuzzarray)
+from .fuzzarray import Fuzzarray as Fuzzarray
 
 from .dispatcher import (
     operate as operate)
@@ -40,7 +36,7 @@ from .registry import (
 
 from .factory import (
     fuzzynum as fuzzynum,
-    fuzzyset as fuzzyset
+    fuzzyarray as fuzzyarray
 )
 
 __all__ = [
@@ -48,7 +44,7 @@ __all__ = [
     'FuzzarrayBackend',
     'Fuzznum',
     'Fuzzarray',
-    'fuzzyset',
+    'fuzzyarray',
     'fuzzynum',
     'operate',
     'OperationMixin',
@@ -60,8 +56,4 @@ __all__ = [
     'register_strategy',
     'register_backend',
     'register_fuzztype',
-
-    # deprecated
-    'fuzznum',
-    'fuzzarray',
 ]
