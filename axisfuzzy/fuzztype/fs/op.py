@@ -748,7 +748,8 @@ class FSLessThan(OperationMixin):
         Dict[str, bool]
             A dictionary containing the comparison result.
         """
-        result = strategy_1.md < strategy_2.md
+        tolerance = get_config().DEFAULT_EPSILON
+        result = strategy_1.md < strategy_2.md - tolerance
         return {'value': result}
 
     def _execute_fuzzarray_op_impl(self,
@@ -759,7 +760,8 @@ class FSLessThan(OperationMixin):
         High-performance vectorized less-than comparison for FS fuzzy arrays.
         """
         mds1, mds2 = _prepare_fs_operands(fuzzarray_1, fuzzarray_2)
-        return mds1 < mds2
+        tolerance = get_config().DEFAULT_EPSILON
+        return mds1 < mds2 - tolerance
 
 
 @register_operation
@@ -883,7 +885,8 @@ class FSGreaterEquals(OperationMixin):
         Dict[str, bool]
             A dictionary containing the comparison result.
         """
-        result = strategy_1.md >= strategy_2.md
+        tolerance = get_config().DEFAULT_EPSILON
+        result = strategy_1.md >= strategy_2.md + tolerance
         return {'value': result}
 
     def _execute_fuzzarray_op_impl(self,
@@ -894,7 +897,8 @@ class FSGreaterEquals(OperationMixin):
         High-performance vectorized greater-than-or-equal comparison for FS fuzzy arrays.
         """
         mds1, mds2 = _prepare_fs_operands(fuzzarray_1, fuzzarray_2)
-        return mds1 >= mds2
+        tolerance = get_config().DEFAULT_EPSILON
+        return mds1 >= mds2 + tolerance
 
 
 @register_operation
@@ -949,7 +953,8 @@ class FSLessEquals(OperationMixin):
         Dict[str, bool]
             A dictionary containing the comparison result.
         """
-        result = strategy_1.md <= strategy_2.md
+        tolerance = get_config().DEFAULT_EPSILON
+        result = strategy_1.md <= strategy_2.md - tolerance
         return {'value': result}
 
     def _execute_fuzzarray_op_impl(self,
@@ -960,7 +965,8 @@ class FSLessEquals(OperationMixin):
         High-performance vectorized less-than-or-equal comparison for FS fuzzy arrays.
         """
         mds1, mds2 = _prepare_fs_operands(fuzzarray_1, fuzzarray_2)
-        return mds1 <= mds2
+        tolerance = get_config().DEFAULT_EPSILON
+        return mds1 <= mds2 - tolerance
 
 
 @register_operation
@@ -1365,9 +1371,9 @@ class FSSymmetricDifference(OperationMixin):
         Returns
         -------
         str
-            The string 'symmetric_difference'.
+            The string 'symdiff'.
         """
-        return 'symmetric_difference'
+        return 'symdiff'
 
     def get_supported_mtypes(self) -> List[str]:
         """
@@ -1652,16 +1658,14 @@ class FSMatmul(OperationMixin):
         if mds1.shape[1] != mds2.shape[0]:
             raise ValueError(f"Cannot multiply matrices with shapes {mds1.shape} and {mds2.shape}")
 
-        # Perform fuzzy matrix multiplication
+        # Perform fuzzy matrix multiplication using vectorized operations
         # For each element (i,j) in result: S_k(T(A_ik, B_kj))
-        result_shape = (mds1.shape[0], mds2.shape[1])
-        result_md = np.zeros(result_shape, dtype=np.float64)
-
-        for i in range(result_shape[0]):
-            for j in range(result_shape[1]):
-                # Compute fuzzy dot product: S_k(T(A_ik, B_kj))
-                products = tnorm.t_norm(mds1[i, :], mds2[:, j])
-                result_md[i, j] = tnorm.t_conorm_reduce(products)
+        # Using broadcasting to compute all t-norm operations at once
+        # Shape: (i, k, j) where k is the common dimension
+        md_products = tnorm.t_norm(mds1[:, :, np.newaxis], mds2[np.newaxis, :, :])
+        
+        # Aggregate along the common dimension k using t-conorm
+        result_md = tnorm.t_conorm_reduce(md_products, axis=1)
 
         backend_cls = get_registry_fuzztype().get_backend('fs')
         new_backend = backend_cls.from_arrays(result_md)
