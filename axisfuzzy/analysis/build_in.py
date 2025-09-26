@@ -27,21 +27,30 @@ from axisfuzzy.analysis.dataframe import FuzzyDataFrame
 
 # --- Helper Validators ---
 def _is_pandas_df(obj: Any) -> bool:
-    """检查对象是否为 pandas DataFrame，处理 pandas 未安装的情况。"""
+    """
+    Check if the object is a pandas DataFrame
+    
+    handle cases where pandas is not installed."""
     if not _PANDAS_AVAILABLE or pd is None:
         return False
     return isinstance(obj, pd.DataFrame)
 
 
 def _is_pandas_series(obj: Any) -> bool:
-    """检查对象是否为 pandas Series，处理 pandas 未安装的情况。"""
+    """
+    Check if the object is a pandas Series
+    Handle the case where pandas is not installed.
+    
+    """
     if not _PANDAS_AVAILABLE or pd is None:
         return False
     return isinstance(obj, pd.Series)
 
 
 def _is_numpy_array(obj: Any) -> bool:
-    """检查对象是否为 numpy 数组，处理 numpy 未安装的情况。"""
+    """Check if the object is a numpy array,
+    
+    Handle the case where numpy is not installed."""
     if not _PANDAS_AVAILABLE or np is None:
         return False
     return isinstance(obj, np.ndarray)
@@ -51,7 +60,7 @@ def _is_numpy_array(obj: Any) -> bool:
 ContractAny = Contract('Any', lambda obj: True)
 
 def _validate_crisp_table(obj: Any) -> bool:
-    """验证对象是否为数值型 pandas DataFrame。"""
+    """Check if the object is a numeric pandas DataFrame."""
     if not _PANDAS_AVAILABLE or pd is None:
         return False
     return _is_pandas_df(obj) and all(pd.api.types.is_numeric_dtype(dtype) for dtype in obj.dtypes)
