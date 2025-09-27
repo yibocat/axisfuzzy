@@ -760,7 +760,7 @@ Extension Types and Examples
     norm2 = af.normalize(fuzz)    # Function
 
 Advanced Options
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 **Manual Application Control**:
 

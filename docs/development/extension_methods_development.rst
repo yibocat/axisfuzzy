@@ -889,7 +889,7 @@ For external projects, use ``@external_extension`` (recommended):
     # Usage: fuzz.my_both() OR af.my_both(fuzz)
 
 Common Use Cases
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 **Custom Similarity Measures**:
 
@@ -930,7 +930,7 @@ Common Use Cases
         return 0
 
 Library Packaging
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 **Package Structure**:
 
@@ -994,7 +994,7 @@ Library Packaging
         return self.md**self.q - self.nmd**self.q
 
 Advanced Options
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 **Priority Control**:
 
@@ -1033,7 +1033,7 @@ Advanced Options
         pass  # Skip if NumPy not available
 
 Best Practices
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 1. **Use descriptive names**: Choose names that clearly indicate functionality
 2. **Add docstrings**: Document parameters, returns, and examples
@@ -1042,7 +1042,7 @@ Best Practices
 5. **Version compatibility**: Specify minimum AxisFuzzy version requirements
 
 Testing Your Extensions
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -1075,7 +1075,7 @@ Testing Your Extensions
         assert isinstance(score, float)
 
 Deployment
-~~~~~~~~~
+~~~~~~~~~~
 
 **Installation Order**:
 
