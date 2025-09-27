@@ -35,6 +35,7 @@ TEST_MODULES = {
     'core': [
         'test_config',
         'test_core', 
+        'test_extension',  # 扩展系统测试
         'test_fuzzifier',
         'test_membership',
         'test_mixin',
@@ -261,6 +262,39 @@ def run_analysis_tests(verbose: bool = True,
     return result['success']
 
 
+def run_extension_tests(verbose: bool = True,
+                       extra_args: Optional[List[str]] = None) -> bool:
+    """运行扩展系统测试
+    
+    Args:
+        verbose: 是否显示详细输出
+        extra_args: 额外的 pytest 参数
+        
+    Returns:
+        测试是否全部通过
+    """
+    print("\n🔧 开始运行扩展系统测试...")
+    print("这些测试验证 AxisFuzzy 的扩展系统功能")
+    
+    # 检查扩展测试目录是否存在
+    extension_dir = TEST_DIR / 'test_extension'
+    if not extension_dir.exists():
+        print("⚠️  扩展测试目录不存在，跳过扩展测试")
+        return True
+    
+    test_paths = [str(TEST_DIR / 'test_extension')]
+    result = _run_pytest(test_paths, verbose=verbose, extra_args=extra_args)
+    
+    if result['success']:
+        print(f"\n✅ 扩展测试通过 (耗时: {result['duration']:.2f}s)")
+        print("包含注册表测试、装饰器测试、分发测试、注入测试、外部扩展测试、集成测试、性能测试、边界测试等")
+    else:
+        print(f"\n❌ 扩展测试失败 (耗时: {result['duration']:.2f}s)")
+        print("请检查扩展系统的实现和测试配置")
+    
+    return result['success']
+
+
 def run_all_tests(include_docs: bool = False,
                  include_analysis: bool = True,
                  verbose: bool = True,
@@ -380,6 +414,7 @@ try:
     from . import test_core
     from . import test_dependencies
     from . import test_docs
+    from . import test_extension
     from . import test_fuzzifier
     from . import test_membership
     from . import test_mixin
@@ -395,6 +430,7 @@ __all__ = [
     'run_dependency_tests',
     'run_docs_tests',
     'run_analysis_tests',
+    'run_extension_tests',
     'run_quick_tests',
     'TEST_MODULES',
     'TEST_PRIORITIES'

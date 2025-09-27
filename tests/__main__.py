@@ -18,6 +18,7 @@ from . import (
     run_dependency_tests,
     run_docs_tests,
     run_analysis_tests,
+    run_extension_tests,
     run_quick_tests
 )
 
@@ -66,6 +67,11 @@ def main():
         '--analysis-only', 
         action='store_true', 
         help='仅运行分析模块测试'
+    )
+    test_group.add_argument(
+        '--extension-only', 
+        action='store_true', 
+        help='仅运行扩展系统测试'
     )
     
     # 包含选项（用于完整测试）
@@ -119,6 +125,10 @@ def main():
         elif args.analysis_only:
             print("📈 运行分析模块测试...")
             success = run_analysis_tests(verbose=verbose, extra_args=extra_args)
+            
+        elif args.extension_only:
+            print("🔌 运行扩展系统测试...")
+            success = run_extension_tests(verbose=verbose, extra_args=extra_args)
             
         elif args.quick or (not args.docs and not args.analysis):
             # 默认行为：快速测试

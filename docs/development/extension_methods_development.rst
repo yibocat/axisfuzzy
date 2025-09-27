@@ -14,6 +14,13 @@ behavior based on the fuzzy number's mathematical type (mtype). This guide
 focuses on the practical aspects of developing, registering, and deploying
 extension methods for custom fuzzy number types.
 
+.. note::
+   
+   **Enhanced External Extension Support**: Starting with AxisFuzzy v0.2.0, external 
+   extension registration has been streamlined with new APIs that automatically handle 
+   extension injection. See :ref:`external_extension_development` for comprehensive 
+   guidance on external extension development.
+
 Extension System Architecture Overview
 --------------------------------------
 
@@ -814,6 +821,279 @@ The QROFN implementation demonstrates several effective error handling patterns.
 
 This comprehensive approach to deployment ensures that your extension methods integrate seamlessly with AxisFuzzy 
 while providing a robust, performant, and maintainable foundation for users.
+
+.. _external_extension_development:
+
+External Extension Development: Quick Guide for Third-Party Developers
+----------------------------------------------------------------------
+
+This guide shows how to create and deploy external extensions for AxisFuzzy 
+libraries and applications. External extensions allow you to add custom 
+functionality without modifying the core AxisFuzzy codebase.
+
+Quick Start: Creating External Extensions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Step 1: Choose the Right Decorator**
+
+For external projects, use ``@external_extension`` (recommended):
+
+.. code-block:: python
+
+    # my_fuzzy_extensions.py
+    import axisfuzzy as af
+    from axisfuzzy.extension import external_extension
+    
+    @external_extension('custom_distance', mtype='qrofn')
+    def my_distance(self, other):
+        """Custom distance function."""
+        return abs(self.md - other.md) + abs(self.nmd - other.nmd)
+    
+    # Automatically available - no setup needed!
+    fuzz1 = af.Fuzznum('qrofn', q=2).create(md=0.8, nmd=0.3)
+    fuzz2 = af.Fuzznum('qrofn', q=2).create(md=0.6, nmd=0.4)
+    dist = fuzz1.custom_distance(fuzz2)
+
+**Step 2: Choose Injection Type**
+
+.. code-block:: python
+
+    # Instance method (default)
+    @external_extension('my_method', mtype='qrofn')
+    def method_func(self):
+        return self.md + self.nmd
+    
+    # Usage: fuzz.my_method()
+    
+    # Top-level function
+    @external_extension('my_function', mtype='qrofn', 
+                        injection_type='top_level_function')
+    def function_func(x, y):
+        return x.md * y.md
+    
+    # Usage: af.my_function(fuzz1, fuzz2)
+    
+    # Instance property
+    @external_extension('my_property', mtype='qrofn', 
+                        injection_type='instance_property')
+    def property_func(self):
+        return self.md ** 2
+    
+    # Usage: fuzz.my_property (no parentheses)
+    
+    # Both method and function
+    @external_extension('my_both', mtype='qrofn', injection_type='both')
+    def both_func(x):
+        return x.md * 2
+    
+    # Usage: fuzz.my_both() OR af.my_both(fuzz)
+
+Common Use Cases
+~~~~~~~~~~~~~~~
+
+**Custom Similarity Measures**:
+
+.. code-block:: python
+
+    @external_extension('cosine_similarity', mtype='qrofn')
+    def cosine_sim(self, other):
+        """Cosine similarity for QROFN."""
+        numerator = self.md * other.md + self.nmd * other.nmd
+        denom = ((self.md**2 + self.nmd**2) * (other.md**2 + other.nmd**2))**0.5
+        return numerator / denom if denom > 0 else 0
+
+**Custom Aggregation Functions**:
+
+.. code-block:: python
+
+    @external_extension('weighted_mean', mtype='qrofn', 
+                        injection_type='top_level_function')
+    def weighted_aggregation(fuzzy_list, weights):
+        """Weighted mean aggregation."""
+        total_weight = sum(weights)
+        md_sum = sum(f.md * w for f, w in zip(fuzzy_list, weights))
+        nmd_sum = sum(f.nmd * w for f, w in zip(fuzzy_list, weights))
+        return af.Fuzznum('qrofn', q=fuzzy_list[0].q).create(
+            md=md_sum/total_weight, nmd=nmd_sum/total_weight)
+
+**Custom Properties**:
+
+.. code-block:: python
+
+    @external_extension('entropy', mtype='qrofn', 
+                        injection_type='instance_property')
+    def qrofn_entropy(self):
+        """Calculate entropy measure."""
+        import math
+        if self.md > 0 and self.nmd > 0:
+            return -(self.md * math.log(self.md) + self.nmd * math.log(self.nmd))
+        return 0
+
+Library Packaging
+~~~~~~~~~~~~~~~~
+
+**Package Structure**:
+
+.. code-block:: text
+
+    my_fuzzy_lib/
+    ├── __init__.py          # Main package
+    ├── extensions.py        # Extension definitions
+    ├── utils.py            # Helper functions
+    └── tests/              # Test suite
+        └── test_extensions.py
+
+**Main Package (``__init__.py``)**:
+
+.. code-block:: python
+
+    # my_fuzzy_lib/__init__.py
+    """My Fuzzy Extensions Library."""
+    
+    __version__ = "1.0.0"
+    
+    # Import extensions to register them
+    from . import extensions
+    
+    # Verify AxisFuzzy is available
+    try:
+        import axisfuzzy as af
+    except ImportError:
+        raise ImportError("my_fuzzy_lib requires axisfuzzy")
+    
+    # Optional: verify extensions loaded
+    def verify_extensions():
+        """Check if extensions are available."""
+        from axisfuzzy.extension import apply_extensions
+        return apply_extensions(force_reapply=True)
+
+**Extensions Module (``extensions.py``)**:
+
+.. code-block:: python
+
+    # my_fuzzy_lib/extensions.py
+    """Extension definitions."""
+    
+    import axisfuzzy as af
+    from axisfuzzy.extension import external_extension
+    
+    @external_extension('lib_distance', mtype='qrofn')
+    def custom_distance(self, other, method='euclidean'):
+        """Custom distance with multiple methods."""
+        if method == 'euclidean':
+            return ((self.md - other.md)**2 + (self.nmd - other.nmd)**2)**0.5
+        elif method == 'manhattan':
+            return abs(self.md - other.md) + abs(self.nmd - other.nmd)
+        else:
+            raise ValueError(f"Unknown method: {method}")
+    
+    @external_extension('lib_score', mtype='qrofn', 
+                        injection_type='instance_property')
+    def custom_score(self):
+        """Custom scoring function."""
+        return self.md**self.q - self.nmd**self.q
+
+Advanced Options
+~~~~~~~~~~~~~~~
+
+**Priority Control**:
+
+.. code-block:: python
+
+    # Higher priority overrides existing implementations
+    @external_extension('distance', mtype='qrofn', priority=10)
+    def improved_distance(self, other):
+        return "Better distance algorithm"
+
+**Manual Application**:
+
+.. code-block:: python
+
+    # Defer automatic application
+    @external_extension('batch_method', mtype='qrofn', auto_apply=False)
+    def batch_operation(self):
+        return "Batch processing"
+    
+    # Apply when ready
+    from axisfuzzy.extension import apply_extensions
+    apply_extensions(force_reapply=True)
+
+**Conditional Extensions**:
+
+.. code-block:: python
+
+    # Only register if dependencies available
+    try:
+        import numpy as np
+        
+        @external_extension('numpy_op', mtype='qrofn')
+        def numpy_operation(self):
+            return np.array([self.md, self.nmd])
+    except ImportError:
+        pass  # Skip if NumPy not available
+
+Best Practices
+~~~~~~~~~~~~~
+
+1. **Use descriptive names**: Choose names that clearly indicate functionality
+2. **Add docstrings**: Document parameters, returns, and examples
+3. **Handle errors**: Check inputs and provide meaningful error messages
+4. **Test thoroughly**: Test with different fuzzy types and edge cases
+5. **Version compatibility**: Specify minimum AxisFuzzy version requirements
+
+Testing Your Extensions
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    # test_extensions.py
+    import pytest
+    import axisfuzzy as af
+    
+    def test_custom_distance():
+        """Test custom distance function."""
+        fuzz1 = af.Fuzznum('qrofn', q=2).create(md=0.8, nmd=0.3)
+        fuzz2 = af.Fuzznum('qrofn', q=2).create(md=0.6, nmd=0.4)
+        
+        # Test method exists
+        assert hasattr(fuzz1, 'custom_distance')
+        
+        # Test functionality
+        dist = fuzz1.custom_distance(fuzz2)
+        assert isinstance(dist, float)
+        assert dist >= 0
+    
+    def test_custom_score():
+        """Test custom score property."""
+        fuzz = af.Fuzznum('qrofn', q=2).create(md=0.8, nmd=0.3)
+        
+        # Test property exists
+        assert hasattr(fuzz, 'custom_score')
+        
+        # Test value
+        score = fuzz.custom_score
+        assert isinstance(score, float)
+
+Deployment
+~~~~~~~~~
+
+**Installation Order**:
+
+.. code-block:: bash
+
+    pip install axisfuzzy>=0.2.0
+    pip install my-fuzzy-lib
+
+**Usage**:
+
+.. code-block:: python
+
+    import axisfuzzy as af
+    import my_fuzzy_lib  # Extensions auto-register
+    
+    # Use extensions immediately
+    fuzz = af.Fuzznum('qrofn', q=2).create(md=0.8, nmd=0.3)
+    result = fuzz.custom_distance(other_fuzz)
 
 Conclusion
 ----------

@@ -333,12 +333,11 @@ class ExtensionRegistry:
                 raise RuntimeError('No distance registered')
         """
         with self._lock:
-            # First, try to find a specialized implementation if mtype is provided.
-            if mtype and name in self._functions and mtype in self._functions[name]:
+            # First, try to find a specialized implementation for the given mtype.
+            if name in self._functions and mtype in self._functions[name]:
                 return self._functions[name][mtype][0]
 
-            # If no specialized implementation is found (or mtype was not provided),
-            # fall back to the default.
+            # If no specialized implementation is found, fall back to the default.
             if name in self._defaults:
                 return self._defaults[name][0]
 

@@ -57,7 +57,8 @@ from .extension import (
     get_registry_extension,
     extension,
     batch_extension,
-    apply_extensions
+    apply_extensions,
+    external_extension
 )
 
 from .fuzzifier import (
@@ -102,6 +103,7 @@ _static_api = [
     'get_registry_extension',
     'extension',
     'batch_extension',
+    'external_extension',
     # fuzzifier
     'FuzzificationStrategy',
     'Fuzzifier',

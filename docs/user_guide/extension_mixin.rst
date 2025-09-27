@@ -119,6 +119,13 @@ multiple implementations for a single function name, with the framework automati
 dispatching to the correct one at runtime based on the object's type. This polymorphic 
 behavior is essential for building a robust and extensible fuzzy logic ecosystem.
 
+.. note::
+   
+   **External Extension Support**: AxisFuzzy v0.2.0+ includes enhanced support for 
+   external extensions. External users can now easily register custom extensions that 
+   are immediately available for use without manual intervention. See 
+   :ref:`external_extension_registration` for details.
+
 Architectural Pillars
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -673,6 +680,156 @@ base classes, making them feel like native methods.
     num_copy = af.copy(num)
     arr_copy = af.copy(arr)
 
+
+.. _external_extension_registration:
+
+External Extension Registration: Simplified API for External Users
+------------------------------------------------------------------
+
+Starting with AxisFuzzy v0.2.0, external extension registration has been simplified 
+for external developers who define custom extensions after importing AxisFuzzy.
+
+Quick Start Guide
+~~~~~~~~~~~~~~~~~
+
+**Use the** ``@external_extension`` **decorator for automatic registration:**
+
+.. code-block:: python
+
+    import axisfuzzy as af
+    from axisfuzzy.extension import external_extension
+    
+    # Define external extension - automatically available!
+    @external_extension('custom_score', mtype='qrofn')
+    def my_score(self):
+        """Custom scoring function."""
+        return self.md ** 2 + self.nmd ** 2
+    
+    # Use immediately without additional steps
+    fuzz = af.Fuzznum('qrofn', q=2).create(md=0.8, nmd=0.3)
+    score = fuzz.custom_score()  # Works right away!
+
+Extension Types and Examples
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Instance Method (default)**:
+
+.. code-block:: python
+
+    @external_extension('complement', mtype='qrofn')
+    def qrofn_complement(self):
+        return af.Fuzznum('qrofn', q=self.q).create(md=self.nmd, nmd=self.md)
+    
+    comp = fuzz.complement()  # Called as method
+
+**Top-level Function**:
+
+.. code-block:: python
+
+    @external_extension('similarity', mtype='qrofn', 
+                        injection_type='top_level_function')
+    def qrofn_similarity(x, y):
+        return 1 - abs(x.md - y.md) - abs(x.nmd - y.nmd)
+    
+    sim = af.similarity(fuzz1, fuzz2)  # Called as function
+
+**Instance Property**:
+
+.. code-block:: python
+
+    @external_extension('uncertainty', mtype='qrofn', 
+                        injection_type='instance_property')
+    def qrofn_uncertainty(self):
+        return 1 - (self.md**self.q + self.nmd**self.q)**(1/self.q)
+    
+    value = fuzz.uncertainty  # Accessed as property (no parentheses)
+
+**Both Method and Function**:
+
+.. code-block:: python
+
+    @external_extension('normalize', mtype='qrofn', injection_type='both')
+    def qrofn_normalize(x):
+        total = x.md + x.nmd
+        if total > 0:
+            return af.Fuzznum('qrofn', q=x.q).create(md=x.md/total, nmd=x.nmd/total)
+        return x
+    
+    # Both work:
+    norm1 = fuzz.normalize()      # Method
+    norm2 = af.normalize(fuzz)    # Function
+
+Advanced Options
+~~~~~~~~~~~~~~~
+
+**Manual Application Control**:
+
+.. code-block:: python
+
+    @external_extension('batch_op', mtype='qrofn', auto_apply=False)
+    def batch_operation(self):
+        return "Deferred operation"
+    
+    # Apply manually when ready
+    from axisfuzzy.extension import apply_extensions
+    apply_extensions(force_reapply=True)
+
+**Priority Settings**:
+
+.. code-block:: python
+
+    # Higher priority overrides existing implementations
+    @external_extension('distance', mtype='qrofn', priority=10)
+    def improved_distance(x, y):
+        return "Enhanced distance calculation"
+
+Alternative Traditional Approach
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For users who prefer explicit control, use the traditional approach:
+
+.. code-block:: python
+
+    from axisfuzzy.extension import extension, apply_extensions
+    
+    @extension(name='traditional_method', mtype='qrofn')
+    def my_method(self):
+        return self.md + self.nmd
+    
+    # Manual application required
+    apply_extensions(force_reapply=True)
+    
+    # Now available
+    result = fuzz.traditional_method()
+
+Best Practices
+~~~~~~~~~~~~~~
+
+1. **Use** ``@external_extension`` **for simplicity**
+2. **Choose descriptive names** that indicate purpose and type
+3. **Document your extensions** with clear docstrings
+4. **Test thoroughly** with different fuzzy number configurations
+5. **Handle edge cases** like zero values or invalid inputs
+
+Troubleshooting
+~~~~~~~~~~~~~~~
+
+If extensions don't work:
+
+- **Check mtype**: Verify ``mtype`` matches your fuzzy object's type
+- **Verify import**: Ensure you import from ``axisfuzzy.extension``
+- **Manual application**: Try ``apply_extensions(force_reapply=True)``
+- **Check conflicts**: Ensure no naming conflicts with existing methods
+
+.. warning::
+   
+   External extensions modify AxisFuzzy classes at runtime. Test thoroughly 
+   to avoid interference with existing functionality.
+
+.. tip::
+   
+   Use the ``priority`` parameter to handle conflicts when multiple extensions 
+   provide the same functionality.
 
 
 Developer Guide: Creating Custom Extensions

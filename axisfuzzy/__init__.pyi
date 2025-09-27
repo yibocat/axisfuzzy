@@ -46,7 +46,8 @@ from .core import (
 from .extension import (
     get_registry_extension as get_registry_extension,
     extension as extension,
-    batch_extension as batch_extension
+    batch_extension as batch_extension,
+    external_extension as external_extension
 )
 
 from .fuzzifier import (

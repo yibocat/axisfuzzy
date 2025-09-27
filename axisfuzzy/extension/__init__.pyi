@@ -5,7 +5,7 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 
-from typing import Any, Dict, Union, Optional, Tuple
+from typing import Any, Dict, Union, Optional, Tuple, List, Literal
 import numpy as np
 
 from ..core import Fuzznum, Fuzzarray
@@ -61,4 +61,20 @@ from .injector import ExtensionInjector
 def get_registry_extension() -> ExtensionRegistry: ...
 def get_extension_dispatcher() -> ExtensionDispatcher: ...
 def get_extension_injector() -> ExtensionInjector: ...
-def apply_extensions(target_module_globals: Dict[str, Any] | None = None) -> bool: ...
+def apply_extensions(force_reapply: bool = ...) -> bool: ...
+
+def external_extension(
+    name: str,
+    mtype: Optional[str] = ...,
+    target_classes: Union[str, List[str], None] = ...,
+    injection_type: Literal[
+        'instance_method',
+        'instance_property', 
+        'top_level_function',
+        'both'
+    ] = ...,
+    is_default: bool = ...,
+    priority: int = ...,
+    auto_apply: bool = ...,
+    **kwargs: Any
+) -> Any: ...
