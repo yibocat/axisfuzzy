@@ -403,7 +403,7 @@ initialization patterns for hesitant sets:
       [[0.8, 0.9, 0.95], [0.1]],
       [[0.5], [0.3, 0.4, 0.45]]
    ], dtype=object)
-   qrohfn_array = af.fuzzyset(hesitant_data.T, mtype='qrohfn', q=2)
+   qrohfn_array = af.fuzzyarray(hesitant_data.T, mtype='qrohfn', q=2)
 
 **Constraint Validation During Creation**
 
@@ -468,8 +468,8 @@ for non-membership degrees:
    ], dtype=object)
 
    # Vectorized array operations
-   array1 = af.fuzzyset(hesitant_data1.T, mtype='qrohfn')
-   array2 = af.fuzzyset(hesitant_data2.T, mtype='qrohfn')
+   array1 = af.fuzzyarray(hesitant_data1.T, mtype='qrohfn')
+   array2 = af.fuzzyarray(hesitant_data2.T, mtype='qrohfn')
    array_sum = array1 + array2
 
 **Multiplication and Power Operations**
@@ -534,8 +534,8 @@ Vectorized comparisons return boolean arrays for element-wise analysis:
 .. code-block:: python
 
    # Array comparisons
-   array1 = af.fuzzyset(hesitant_data1, mtype='qrohfn')
-   array2 = af.fuzzyset(hesitant_data2, mtype='qrohfn')
+   array1 = af.fuzzyarray(hesitant_data1, mtype='qrohfn')
+   array2 = af.fuzzyarray(hesitant_data2, mtype='qrohfn')
    
    comparison_result = array1 >= array2
    print(f"Element-wise comparison: {comparison_result}")
@@ -1421,7 +1421,7 @@ optimized t-norm/t-conorm operations:
 .. code-block:: python
 
    # Hesitant set aggregation operations
-   data = af.fuzzyset(np.array([[[0.8, 0.6], [0.7]], [[0.2], [0.3, 0.1]]], dtype=object), mtype='qrohfn', q=3)
+   data = af.fuzzyarray(np.array([[[0.8, 0.6], [0.7]], [[0.2], [0.3, 0.1]]], dtype=object), mtype='qrohfn', q=3)
 
    # Statistical aggregations with hesitant set handling
    total_sum = data.sum()           # Aggregates all hesitant elements
@@ -1436,7 +1436,7 @@ QROHFN objects provide computed properties specific to hesitant fuzzy sets:
 .. code-block:: python
 
    # Hesitant set properties
-   qrohfn_data = af.fuzzyset(np.array([[[0.8, 0.6], [0.7]], [[0.2], [0.3, 0.1]]], dtype=object), mtype='qrohfn', q=3)
+   qrohfn_data = af.fuzzyarray(np.array([[[0.8, 0.6], [0.7]], [[0.2], [0.3, 0.1]]], dtype=object), mtype='qrohfn', q=3)
 
    # Core properties for hesitant sets
    scores = qrohfn_data.score      # Aggregated score from hesitant sets
@@ -1487,7 +1487,7 @@ element contains variable-length NumPy arrays:
 .. code-block:: python
 
    # Memory layout demonstration
-   data = af.fuzzyset(np.array([
+   data = af.fuzzyarray(np.array([
       [[0.8, 0.6, 0.7], [0.2]],        # Variable hesitant set lengths
       [[0.9], [0.1, 0.2, 0.3]]         # Asymmetric membership sets
    ], dtype=object).T, mtype='qrohfn', q=2)

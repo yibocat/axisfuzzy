@@ -5,7 +5,7 @@
 #  Email: yibocat@yeah.net
 #  Software: AxisFuzzy
 """
-This module provides a high-performance factory function `fuzzyset` for
+This module provides a high-performance factory function `fuzzyarray` for
 creating Fuzzarray instances. It serves as a versatile and efficient entry
 point for Fuzzarray construction, accommodating various input types and
 optimizing for performance where possible.
@@ -21,7 +21,7 @@ from .registry import get_registry_fuzztype
 from ..config import get_config
 
 
-def fuzzynum(values: Optional[tuple] = None,
+def fuzzynum(values: Optional[tuple | float] = None,
              mtype: Optional[str] = None,
              q: Optional[int] = None,
              **kwargs: Any) -> Fuzznum:
@@ -30,7 +30,7 @@ def fuzzynum(values: Optional[tuple] = None,
 
     Parameters
     ----------
-    values : tuple, optional
+    values : tuple, float, optional
         Membership degree value tuple of fuzzy numbers, adapted to different mtypes.
         If none, convert to settings based on kwargs.
     mtype : str, optional
@@ -67,6 +67,11 @@ def fuzzynum(values: Optional[tuple] = None,
         if mtype not in registry.strategies:
             raise ValueError(f"Unsupported mtype '{mtype}'. Available mtypes: {', '.join(registry.strategies.keys())}")
         strategy_cls = registry.strategies[mtype]
+        
+        # Handle single value (non-tuple) input for FS and similar types
+        if not isinstance(values, (tuple, list)):
+            values = (values,)
+            
         attr_names = [a for a in strategy_cls().get_declared_attributes() if a != 'q' and a != 'mtype']
         attr_names = attr_names[:len(values)]
         tuple_kwargs = dict(zip(attr_names, values))
@@ -80,7 +85,7 @@ def fuzzynum(values: Optional[tuple] = None,
         return instance
 
 
-def fuzzyset(
+def fuzzyarray(
     data: Optional[Union[np.ndarray, List, tuple, Fuzznum, Fuzzarray]] = None,
     backend: Optional[FuzzarrayBackend] = None,
     mtype: Optional[str] = None,

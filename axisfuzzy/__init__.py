@@ -42,7 +42,7 @@ from .core import (
     FuzzarrayBackend,
     Fuzznum,
     Fuzzarray,
-    fuzzyset,
+    fuzzyarray,
     fuzzynum,
     operate,
     OperationTNorm,
@@ -52,16 +52,13 @@ from .core import (
     register_backend,
     register_operation,
     register_fuzztype,
-
-    # will be deprecated
-    fuzznum,
-    fuzzarray,
 )
 from .extension import (
     get_registry_extension,
     extension,
     batch_extension,
-    apply_extensions
+    apply_extensions,
+    external_extension
 )
 
 from .fuzzifier import (
@@ -92,7 +89,7 @@ _static_api = [
     'Fuzznum',
     'Fuzzarray',
     'fuzzynum',
-    'fuzzyset',
+    'fuzzyarray',
     'operate',
     'OperationTNorm',
     'get_registry_fuzztype',
@@ -106,6 +103,7 @@ _static_api = [
     'get_registry_extension',
     'extension',
     'batch_extension',
+    'external_extension',
     # fuzzifier
     'FuzzificationStrategy',
     'Fuzzifier',
@@ -120,10 +118,6 @@ _static_api = [
     'random',
     # analysis (as a module)
     # 'analysis'  # 移除直接导入，改为延迟导入
-
-    # will be deprecated
-    'fuzznum',
-    'fuzzarray',
 ]
 
 # 从 mixin 系统获取动态函数名
@@ -138,6 +132,7 @@ __all__ = sorted(list(set(_static_api + _mixin_funcs + _extension_funcs)))
 #    这会将 extension 和 mixin 函数附加到核心类和本模块的命名空间中。
 apply_extensions()
 apply_mixins(globals())
+
 
 # 5. 清理命名空间
 # 延迟导入 analysis 模块的实现
@@ -159,9 +154,9 @@ def __getattr__(name: str):
             ) from e
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
+
 del _static_api
 del _mixin_funcs
 del _extension_funcs
 del apply_extensions
 del apply_mixins
-

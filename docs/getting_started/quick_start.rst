@@ -15,7 +15,7 @@ and vectorized fuzzy operations.
 
 Key features that distinguish ``axisfuzzy``:
 
-- **Factory-Based Object Creation**: Streamlined ``fuzzynum()`` and ``fuzzyset()`` functions for effortless fuzzy object instantiation
+- **Factory-Based Object Creation**: Streamlined ``fuzzynum()`` and ``fuzzyarray()`` functions for effortless fuzzy object instantiation
 - **Extensible Type System**: Built-in support for q-Rung Orthopair Fuzzy Numbers (QROFN) and q-Rung Orthopair Hesitant Fuzzy Numbers (QROHFN), with extensible architecture for custom types
 - **High-Performance Backend**: ``Fuzzarray`` leverages NumPy's vectorized operations for efficient batch computations
 - **Advanced Fuzzification**: Comprehensive membership function library and flexible fuzzification strategies
@@ -41,7 +41,7 @@ Factory Functions Overview
 type safety and validation. The two core factory functions are:
 
 - ``fuzzynum()``: Creates individual fuzzy numbers (``Fuzznum`` objects)
-- ``fuzzyset()``: Creates collections of fuzzy numbers (``Fuzzarray`` objects)
+- ``fuzzyarray()``: Creates collections of fuzzy numbers (``Fuzzarray`` objects)
 
 These functions automatically handle type detection, parameter validation, and strategy 
 selection based on your input specifications.
@@ -83,14 +83,14 @@ For q-Rung Orthopair Hesitant Fuzzy Numbers (QROHFN), the syntax accommodates mu
 Creating Fuzzy Sets
 ~~~~~~~~~~~~~~~~~~~~
 
-The ``fuzzyset()`` function creates ``Fuzzarray`` objects, which are optimized containers 
+The ``fuzzyarray()`` function creates ``Fuzzarray`` objects, which are optimized containers
 for batch operations on multiple fuzzy numbers:
 
 **1. Import axisfuzzy**
 
 .. code-block:: python
 
-    from axisfuzzy import fuzzyset, fuzzynum
+    from axisfuzzy import fuzzyarray, fuzzynum
 
 **2. Create from a list of fuzzy numbers**
 
@@ -102,7 +102,7 @@ for batch operations on multiple fuzzy numbers:
         fuzzynum((0.9, 0.1))
     ]
     
-    fs1 = fuzzyset(fuzzy_numbers)
+    fs1 = fuzzyarray(fuzzy_numbers)
     print(fs1)
 
 output::
@@ -119,7 +119,7 @@ output with ``repr``::
 
     tuple_data = [(0.7, 0.3), (0.5, 0.5), (0.8, 0.2)]
     fuzzy_list = [fuzzynum(t, q=2) for t in tuple_data]
-    fs2 = fuzzyset(fuzzy_list)
+    fs2 = fuzzyarray(fuzzy_list)
     print(fs2)
     # Output: Fuzzarray([<0.7,0.3> <0.5,0.5> <0.8,0.2>], mtype='qrofn', q=2, shape=(3,))
 
@@ -132,7 +132,7 @@ output with ``repr``::
     data_2d = np.array([[[0.8,0.2], [0.6,0.4]],
                         [[0.9,0.1], [0.7,0.3]]])
 
-    fs3 = fuzzyset(data_2d.T)
+    fs3 = fuzzyarray(data_2d.T)
     print(fs3.shape)  # Output: (2, 2)
 
 **5. High-performance creation from raw arrays (advanced usage)**
@@ -144,7 +144,7 @@ output with ``repr``::
     nmd_values = np.array([0.1, 0.3, 0.2])
     raw_data = np.array([md_values, nmd_values])  # Shape: (2, 3)
     
-    fs4 = fuzzyset(data=raw_data, mtype='qrofn', q=2)
+    fs4 = fuzzyarray(data=raw_data, mtype='qrofn', q=2)
     print(fs4)
     # Output: Fuzzarray([<0.8,0.1> <0.6,0.3> <0.7,0.2>], mtype='qrofn', q=2, shape=(3,))
 
@@ -286,7 +286,7 @@ contiguous NumPy arrays, unlocking significant performance benefits.
     ]  # Objects scattered in memory
 
     # Efficient: Struct of Arrays (SoA) in Fuzzarray
-    efficient_array = fuzzyset([
+    efficient_array = fuzzyarray([
         fuzzynum((0.8, 0.1)),
         fuzzynum((0.6, 0.3)),
         fuzzynum((0.7, 0.2))
@@ -307,7 +307,7 @@ Performance benefits become dramatic with larger datasets:
 
     import time
     import numpy as np
-    from axisfuzzy import fuzzyset, fuzzynum
+    from axisfuzzy import fuzzyarray, fuzzynum
 
     # Create large fuzzy arrays for performance comparison
     size = 100000
@@ -318,7 +318,7 @@ Performance benefits become dramatic with larger datasets:
     raw_data = np.array([md_values, nmd_values])
 
     start_time = time.perf_counter()
-    large_array = fuzzyset(data=raw_data, mtype='qrofn', q=2)
+    large_array = fuzzyarray(data=raw_data, mtype='qrofn', q=2)
     elapsed_time = time.perf_counter() - start_time
 
     print(f"Created array with {size} elements efficiently, time elapsed: {elapsed_time * 1000:.3f} ms")
@@ -383,7 +383,7 @@ output::
 
     # Broadcasting enables operations between different shapes
     single_fuzzy = fuzzynum((0.5, 0.4), q=2)
-    array_fuzzy = fuzzyset([fuzzynum((0.8, 0.1), q=2) for _ in range(100)])
+    array_fuzzy = fuzzyarray([fuzzynum((0.8, 0.1), q=2) for _ in range(100)])
     
     # Broadcast single fuzzy number across entire array
     broadcast_distances = array_fuzzy.distance(single_fuzzy)
@@ -398,7 +398,7 @@ output::
 
     # Process multiple datasets efficiently
     datasets = [
-        fuzzyset(data=np.random.uniform(0, 1, (2, 1000)), mtype='qrofn', q=2)
+        fuzzyarray(data=np.random.uniform(0, 1, (2, 1000)), mtype='qrofn', q=2)
         for _ in range(10)
     ]
     
@@ -429,10 +429,10 @@ and maximize computational throughput, making it suitable for large-scale applic
     nmd_data = np.random.beta(2, 2, large_size) * 0.6
     raw_array = np.array([md_data, nmd_data])
     
-    efficient_array = fuzzyset(data=raw_array, mtype='qrofn', q=2)
+    efficient_array = fuzzyarray(data=raw_array, mtype='qrofn', q=2)
     
     # Method 2: Empty array with subsequent filling
-    empty_array = fuzzyset(fuzzynum((0.5, 0.3), q=2), shape=(large_size,))
+    empty_array = fuzzyarray(fuzzynum((0.5, 0.3), q=2), shape=(large_size,))
     # Fill with vectorized operations...
 
 **Chained Operations and Memory Efficiency:**
@@ -440,7 +440,7 @@ and maximize computational throughput, making it suitable for large-scale applic
 .. code-block:: python
 
     # Efficient chained operations
-    large_array = fuzzyset(data=raw_array, mtype='qrofn', q=2)
+    large_array = fuzzyarray(data=raw_array, mtype='qrofn', q=2)
     
     # Chained operations with minimal memory overhead
     # Note: These operations create new arrays but are optimized internally

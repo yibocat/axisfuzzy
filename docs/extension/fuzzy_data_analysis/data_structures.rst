@@ -172,10 +172,10 @@ Create a FuzzyDataFrame directly from a dictionary mapping column names to Fuzza
 .. code-block:: python
 
     from axisfuzzy.analysis.dataframe import FuzzyDataFrame
-    from axisfuzzy import fuzzyset, fuzzynum
+    from axisfuzzy import fuzzyarray, fuzzynum
 
     # Create fuzzy arrays
-    scores = fuzzyset([
+    scores = fuzzyarray([
         fuzzynum((0.8,0.1), q=2),
         fuzzynum((0.7,0.2), q=2)
     ])
@@ -459,11 +459,11 @@ Extend your dataset with new fuzzy attributes:
 .. code-block:: python
 
     # Create new fuzzy data
-    from axisfuzzy import fuzzynum, fuzzyset
+    from axisfuzzy import fuzzynum, fuzzyarray
 
     # Prepare new fuzzy values
     pressure_values = [fuzzynum((0.7,0.3), q=2) for _ in range(len(fdf))]
-    new_pressure_column = fuzzyset(pressure_values)
+    new_pressure_column = fuzzyarray(pressure_values)
 
     # Add the new column
     fdf['pressure'] = new_pressure_column

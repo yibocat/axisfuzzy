@@ -1,8 +1,8 @@
 """测试工厂方法模块
 
-本模块测试 fuzzynum 和 fuzzyset 工厂方法的功能，包括：
+本模块测试 fuzzynum 和 fuzzyarray 工厂方法的功能，包括：
 - fuzzynum 工厂方法的基本功能
-- fuzzyset 工厂方法的三种构造方式
+- fuzzyarray 工厂方法的三种构造方式
 - 参数验证和错误处理
 - 性能测试
 """
@@ -12,7 +12,7 @@ import numpy as np
 import time
 from unittest.mock import patch, MagicMock
 
-from axisfuzzy.core.factory import fuzzynum, fuzzyset
+from axisfuzzy.core.factory import fuzzynum, fuzzyarray
 from axisfuzzy.core.fuzzarray import Fuzzarray
 from axisfuzzy.core.fuzznums import Fuzznum
 from axisfuzzy.core.backend import FuzzarrayBackend
@@ -67,73 +67,73 @@ class TestFuzzynumFactory:
 
 
 class TestFuzzysetFactory:
-    """测试 fuzzyset 工厂方法"""
+    """测试 fuzzyarray 工厂方法"""
 
     def test_fuzzyset_empty_creation(self):
-        """测试空 fuzzyset 创建"""
-        farr = fuzzyset()
+        """测试空 fuzzyarray 创建"""
+        farr = fuzzyarray()
         assert isinstance(farr, Fuzzarray)
 
     def test_fuzzyset_from_numpy_array(self):
-        """测试从 numpy 数组创建 fuzzyset (Path 2)"""
+        """测试从 numpy 数组创建 fuzzyarray (Path 2)"""
         # 测试 2D 数组 - 使用满足约束的值，QROFN需要2个组件
         data = np.array([[0.3, 0.4, 0.2], [0.4, 0.5, 0.1]])  # 2个组件，3个元素
-        farr = fuzzyset(data=data, mtype='qrofn')
+        farr = fuzzyarray(data=data, mtype='qrofn')
         assert isinstance(farr, Fuzzarray)
         assert farr.shape == (3,)
         
         # 测试 3D 数组 (QROHFN) - 使用满足约束的值
         data = np.array([[[0.2, 0.3], [0.4, 0.5]], [[0.1, 0.2], [0.3, 0.4]]])
-        farr = fuzzyset(data=data, mtype='qrohfn')
+        farr = fuzzyarray(data=data, mtype='qrohfn')
         assert isinstance(farr, Fuzzarray)
 
     def test_fuzzyset_from_list(self):
-        """测试从列表创建 fuzzyset"""
+        """测试从列表创建 fuzzyarray"""
         # 测试普通列表 - 使用满足约束的值，QROFN需要2个组件
         data = [[0.3, 0.4], [0.4, 0.5]]
-        farr = fuzzyset(data=data, mtype='qrofn')
+        farr = fuzzyarray(data=data, mtype='qrofn')
         assert isinstance(farr, Fuzzarray)
         
         # 测试嵌套列表 - 使用满足约束的值
         data = [[[0.2, 0.3], [0.4, 0.5]], [[0.1, 0.2], [0.3, 0.4]]]
-        farr = fuzzyset(data=data, mtype='qrohfn')
+        farr = fuzzyarray(data=data, mtype='qrohfn')
         assert isinstance(farr, Fuzzarray)
 
     def test_fuzzyset_from_fuzznum_list(self):
-        """测试从 Fuzznum 列表创建 fuzzyset (Path 1)"""
+        """测试从 Fuzznum 列表创建 fuzzyarray (Path 1)"""
         # 创建 Fuzznum 列表 - 使用满足约束的值
         fnum1 = fuzzynum(values=(0.3, 0.4))
         fnum2 = fuzzynum(values=(0.4, 0.5))
         fnum_list = [fnum1, fnum2]
         
-        farr = fuzzyset(data=fnum_list)
+        farr = fuzzyarray(data=fnum_list)
         assert isinstance(farr, Fuzzarray)
         assert farr.shape == (2,)
 
     def test_fuzzyset_from_existing_fuzzarray(self):
-        """测试从现有 Fuzzarray 创建 fuzzyset (Path 3)"""
+        """测试从现有 Fuzzarray 创建 fuzzyarray (Path 3)"""
         # 先创建一个 Fuzzarray - 使用满足约束的值，QROFN需要2个组件
         original_data = np.array([[0.3, 0.4], [0.4, 0.5]])
-        original_farr = fuzzyset(data=original_data, mtype='qrofn')
+        original_farr = fuzzyarray(data=original_data, mtype='qrofn')
         
         # 从现有 Fuzzarray 创建新的
-        new_farr = fuzzyset(data=original_farr)
+        new_farr = fuzzyarray(data=original_farr)
         assert isinstance(new_farr, Fuzzarray)
         assert new_farr.shape == original_farr.shape
 
     def test_fuzzyset_with_backend(self):
-        """测试指定后端的 fuzzyset 创建"""
+        """测试指定后端的 fuzzyarray 创建"""
         # 这里需要根据实际的后端实现进行测试 - 使用满足约束的值
         data = np.array([[0.3, 0.4], [0.4, 0.5]])
         
         # 测试不同的后端类型
-        farr = fuzzyset(data=data, mtype='qrofn')
+        farr = fuzzyarray(data=data, mtype='qrofn')
         assert isinstance(farr, Fuzzarray)
 
     def test_fuzzyset_with_shape(self):
-        """测试指定形状的 fuzzyset 创建"""
+        """测试指定形状的 fuzzyarray 创建"""
         # 测试指定形状
-        farr = fuzzyset(shape=(3, 2), mtype='qrofn')
+        farr = fuzzyarray(shape=(3, 2), mtype='qrofn')
         assert isinstance(farr, Fuzzarray)
         
     def test_fuzzyset_path2_error_handling(self):
@@ -143,28 +143,28 @@ class TestFuzzysetFactory:
         
         # 根据修复后的逻辑，应该直接抛出错误而不是回退
         with pytest.raises((ValueError, TypeError)):
-            fuzzyset(data=invalid_data, mtype='qrofn')
+            fuzzyarray(data=invalid_data, mtype='qrofn')
 
     def test_fuzzyset_parameter_validation(self):
         """测试参数验证"""
         # 测试无效的 mtype
         with pytest.raises((ValueError, KeyError)):
-            fuzzyset(mtype='invalid_type')
+            fuzzyarray(mtype='invalid_type')
             
         # 测试约束违反 - QROFN需要2个组件
         with pytest.raises(ValueError):
             data = np.array([[0.8, 0.9], [0.9, 0.8]])  # 违反 md + nmd <= 1 约束
-            fuzzyset(data=data, mtype='qrofn')
+            fuzzyarray(data=data, mtype='qrofn')
             
         # 测试维度不匹配的数据
         with pytest.raises(ValueError):
             data = np.array([0.5, 0.3])  # 1D数组，应该是2D
-            fuzzyset(data=data, mtype='qrofn')
+            fuzzyarray(data=data, mtype='qrofn')
 
     def test_fuzzyset_kwargs_passing(self):
         """测试额外参数的传递"""
         data = np.array([[0.3, 0.4], [0.4, 0.5]])  # 2个组件，2个元素
-        farr = fuzzyset(data=data, mtype='qrofn', q=2, custom_param='test')
+        farr = fuzzyarray(data=data, mtype='qrofn', q=2, custom_param='test')
         assert isinstance(farr, Fuzzarray)
 
 
@@ -186,7 +186,7 @@ class TestFactoryPerformance:
         assert creation_time < 5.0, f"创建1000个fuzzynum耗时{creation_time:.2f}秒，超过预期"
 
     def test_fuzzyset_creation_performance(self):
-        """测试 fuzzyset 创建性能"""
+        """测试 fuzzyarray 创建性能"""
         # 测试不同大小的数组创建性能
         sizes = [10, 100, 1000]
         
@@ -197,7 +197,7 @@ class TestFactoryPerformance:
             data = np.array([md_data, nmd_data])  # 2个组件，size个元素
             
             start_time = time.time()
-            farr = fuzzyset(data=data, mtype='qrofn')
+            farr = fuzzyarray(data=data, mtype='qrofn')
             end_time = time.time()
             
             creation_time = end_time - start_time
@@ -215,18 +215,18 @@ class TestFactoryPerformance:
         
         # Path 2: 从原始数组创建
         start_time = time.time()
-        farr1 = fuzzyset(data=data, mtype='qrofn')
+        farr1 = fuzzyarray(data=data, mtype='qrofn')
         path2_time = time.time() - start_time
         
         # Path 1: 从 Fuzznum 列表创建
         fnum_list = [fuzzynum(values=(md_data[i], nmd_data[i])) for i in range(size)]
         start_time = time.time()
-        farr2 = fuzzyset(data=fnum_list)
+        farr2 = fuzzyarray(data=fnum_list)
         path1_time = time.time() - start_time
         
         # Path 3: 从现有 Fuzzarray 创建
         start_time = time.time()
-        farr3 = fuzzyset(data=farr1)
+        farr3 = fuzzyarray(data=farr1)
         path3_time = time.time() - start_time
         
         # 记录性能信息（用于调试和优化）
@@ -247,7 +247,7 @@ class TestFactoryEdgeCases:
         """测试空数据的处理"""
         # 测试空数组 - 需要正确的维度
         empty_array = np.array([[], []])  # 2个组件，0个元素
-        farr = fuzzyset(data=empty_array, mtype='qrofn')
+        farr = fuzzyarray(data=empty_array, mtype='qrofn')
         assert isinstance(farr, Fuzzarray)
         
         # 测试空的Fuzznum列表 - 跳过，因为空列表会被转换为1D数组
@@ -258,13 +258,13 @@ class TestFactoryEdgeCases:
         """测试单元素数据"""
         # 单个 Fuzznum - 使用满足约束的值
         fnum = fuzzynum(values=(0.3, 0.4))
-        farr = fuzzyset(data=[fnum])
+        farr = fuzzyarray(data=[fnum])
         assert isinstance(farr, Fuzzarray)
         assert farr.shape == (1,)
         
         # 单元素数组 - 使用满足约束的值，QROFN需要2个组件
         data = np.array([[0.3], [0.4]])  # 2个组件，1个元素
-        farr = fuzzyset(data=data, mtype='qrofn')
+        farr = fuzzyarray(data=data, mtype='qrofn')
         assert isinstance(farr, Fuzzarray)
         assert farr.shape == (1,)
 
@@ -277,7 +277,7 @@ class TestFactoryEdgeCases:
         large_data = np.array([md_data, nmd_data])  # 2个组件，10000个元素
         
         start_time = time.time()
-        farr = fuzzyset(data=large_data, mtype='qrofn')
+        farr = fuzzyarray(data=large_data, mtype='qrofn')
         end_time = time.time()
         
         assert isinstance(farr, Fuzzarray)
@@ -294,7 +294,7 @@ class TestFactoryEdgeCases:
         
         # 应该能够处理或给出明确的错误
         try:
-            farr = fuzzyset(data=mixed_data, mtype='qrofn')
+            farr = fuzzyarray(data=mixed_data, mtype='qrofn')
             assert isinstance(farr, Fuzzarray)
         except (ValueError, TypeError):
             # 如果不支持混合类型，应该给出明确的错误
@@ -304,12 +304,12 @@ class TestFactoryEdgeCases:
         """测试边界值"""
         # 测试边界值 [0, 1] - 满足约束 md + nmd <= 1，QROFN需要2个组件
         boundary_data = np.array([[0.0, 1.0, 0.5], [1.0, 0.0, 0.5]])  # 2个组件，3个元素
-        farr = fuzzyset(data=boundary_data, mtype='qrofn')
+        farr = fuzzyarray(data=boundary_data, mtype='qrofn')
         assert isinstance(farr, Fuzzarray)
         
         # 测试接近边界的值
         near_boundary = np.array([[0.001, 0.999], [0.999, 0.001]])  # 2个组件，2个元素
-        farr = fuzzyset(data=near_boundary, mtype='qrofn')
+        farr = fuzzyarray(data=near_boundary, mtype='qrofn')
         assert isinstance(farr, Fuzzarray)
 
 
