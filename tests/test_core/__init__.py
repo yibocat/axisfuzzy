@@ -15,7 +15,7 @@
 - test_operation_dispatcher.py: 操作分发器测试
 - test_registry.py: 注册表系统测试
 - test_triangular.py: 三角模糊数测试
-- test_factory.py: 工厂方法测试（fuzzynum 和 fuzzyset）
+- test_factory.py: 工厂方法测试（fuzzynum 和 fuzzyarray）
 - test_backend_constraints.py: 后端约束检查测试（QROFN 和 QROHFN）
 """
 

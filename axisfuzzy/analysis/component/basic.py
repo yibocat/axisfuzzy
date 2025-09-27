@@ -1,4 +1,3 @@
-#  Copyright (c) yibocat 2025 All Rights Reserved
 #  Python: 3.12.7
 #  Date: 2025/8/24 20:18
 #  Author: yibow
@@ -15,8 +14,8 @@ This version is refactored to use the new type-annotation-driven contract system
 from __future__ import annotations
 from typing import Union
 
-# 延迟导入策略：避免在模块级别直接导入可选依赖
-# 这样可以确保核心包安装时不会因为缺少可选依赖而导致导入错误
+# Lazy import strategy: Avoid directly importing optional dependencies at the module level
+# This ensures that the core package installation won't result in import errors due to missing optional dependencies.
 try:
     import numpy as np
     import pandas as pd
@@ -34,7 +33,8 @@ from ..build_in import (
     ContractWeightVector,
     ContractStatisticsDict,
     ContractNormalizedWeights,
-    ContractFuzzyTable
+    ContractFuzzyTable,
+    ContractThreeWayResult
 )
 
 from .base import AnalysisComponent
@@ -93,7 +93,6 @@ class ToolNormalization(AnalysisComponent):
         normalized_data = data.copy().astype(float)
 
         if self.method == 'min_max':
-            # ... (implementation is unchanged)
             if self.axis == 1:
                 for idx in normalized_data.index:
                     row = normalized_data.loc[idx]
@@ -110,7 +109,6 @@ class ToolNormalization(AnalysisComponent):
                         normalized_data[col] = (col_data - min_val) / (max_val - min_val)
                     else:
                         normalized_data[col] = 0.5
-        # ... (other methods like z_score, sum, max are unchanged)
         elif self.method == 'z_score':
             if self.axis == 1:
                 for idx in normalized_data.index:
@@ -341,3 +339,232 @@ class ToolFuzzification(AnalysisComponent):
         """
         from ..dataframe import FuzzyDataFrame
         return FuzzyDataFrame.from_pandas(data, self.fuzzifier)
+
+
+class ToolThreeWayDecision(AnalysisComponent):
+    """
+    A component for three-way decision analysis based on crisp numerical input.
+    
+    This component implements the classical three-way decision theory, which
+    divides data into three regions: Accept, Boundary (Defer), and Reject.
+    
+    Parameters
+    ----------
+    alpha : float, default 0.7
+        The acceptance threshold. Data above this value is classified into the accept region.
+    beta : float, default 0.3  
+        The rejection threshold. Data below this value is classified into the reject region.
+        Data between beta and alpha is classified into the boundary region.
+    decision_column : str, optional
+        The column name to use for decision making. If None, uses the mean of all columns.
+    """
+    
+    def __init__(self, alpha: float = 0.7, beta: float = 0.3, decision_column: str = None):
+        if alpha <= beta:
+            raise ValueError("Alpha threshold must be greater than beta threshold")
+        if not (0 <= beta < alpha <= 1):
+            raise ValueError("Thresholds must be between 0 and 1, with beta < alpha")
+            
+        self.alpha = alpha
+        self.beta = beta
+        self.decision_column = decision_column
+
+    def get_config(self) -> dict:
+        """Return the component's configuration."""
+        return {
+            'alpha': self.alpha,
+            'beta': self.beta, 
+            'decision_column': self.decision_column
+        }
+
+    @contract
+    def run(self, data: ContractCrispTable) -> ContractThreeWayResult:
+        """
+        Execute three-way decision analysis.
+        
+        Parameters
+        ----------
+        data : ContractCrispTable
+            Input crisp numerical data table.
+            
+        Returns
+        -------
+        ContractThreeWayResult
+            Dictionary containing three-way decision results with 'accept', 'reject', 'defer' keys.
+            Each key maps to a list of row indices classified into that region.
+        """
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas and numpy are not installed. ToolThreeWayDecision requires these dependencies. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
+            
+        # Ensure data is numeric type
+        data_numeric = data.astype(float)
+        
+        # Calculate decision values
+        if self.decision_column is not None:
+            if self.decision_column not in data_numeric.columns:
+                raise ValueError(f"Decision column '{self.decision_column}' not found in data")
+            decision_values = data_numeric[self.decision_column]
+        else:
+            # Use mean of all columns as decision basis
+            decision_values = data_numeric.mean(axis=1)
+        
+        # Initialize lists for three regions
+        accept_indices = []
+        reject_indices = []
+        defer_indices = []
+        
+        # Classify based on thresholds
+        for idx in data_numeric.index:
+            value = decision_values.loc[idx] if hasattr(decision_values, 'loc') else decision_values[idx]
+            if value >= self.alpha:
+                accept_indices.append(idx)
+            elif value <= self.beta:
+                reject_indices.append(idx)
+            else:
+                defer_indices.append(idx)
+        
+        # Return three-way decision results
+        return {
+            'accept': accept_indices,
+            'reject': reject_indices, 
+            'defer': defer_indices
+        }
+
+
+class ToolAdvancedThreeWayDecision(AnalysisComponent):
+    """
+    An advanced three-way decision component supporting multi-criteria decision making and weight allocation.
+    
+    This component extends basic three-way decision to support multi-criteria weighted evaluation,
+    allowing different weights to be assigned to different criteria for more flexible decision making.
+    
+    Parameters
+    ----------
+    alpha : float, default 0.7
+        The acceptance threshold.
+    beta : float, default 0.3
+        The rejection threshold.  
+    weights : array-like, optional
+        Weights for each criterion. If None, equal weights will be used.
+    aggregation_method : str, default 'weighted_average'
+        Aggregation method: 'weighted_average', 'weighted_geometric_mean', or 'topsis_like'.
+    """
+    
+    def __init__(self, alpha: float = 0.7, beta: float = 0.3, 
+                 weights: Union[list, np.ndarray] = None,
+                 aggregation_method: str = 'weighted_average'):
+        
+        if alpha <= beta:
+            raise ValueError("Alpha threshold must be greater than beta threshold")
+        if not (0 <= beta < alpha <= 1):
+            raise ValueError("Thresholds must be between 0 and 1, with beta < alpha")
+            
+        valid_methods = ['weighted_average', 'weighted_geometric_mean', 'topsis_like']
+        if aggregation_method not in valid_methods:
+            raise ValueError(f"Aggregation method must be one of {valid_methods}")
+            
+        self.alpha = alpha
+        self.beta = beta
+        self.weights = weights
+        self.aggregation_method = aggregation_method
+
+    def get_config(self) -> dict:
+        """Return the component's configuration."""
+        weights_config = None
+        if self.weights is not None:
+            if hasattr(self.weights, 'tolist'):
+                weights_config = self.weights.tolist()
+            else:
+                weights_config = list(self.weights)
+        
+        return {
+            'alpha': self.alpha,
+            'beta': self.beta,
+            'weights': weights_config,
+            'aggregation_method': self.aggregation_method
+        }
+
+    @contract
+    def run(self, data: ContractCrispTable, weights: ContractWeightVector = None) -> ContractThreeWayResult:
+        """
+        Execute advanced three-way decision analysis.
+        
+        Parameters
+        ----------
+        data : ContractCrispTable
+            Input crisp numerical data table.
+        weights : ContractWeightVector, optional
+            Criterion weight vector. If provided, overrides the weights set during initialization.
+            
+        Returns
+        -------
+        ContractThreeWayResult
+            Dictionary containing three-way decision results.
+        """
+        if not _PANDAS_AVAILABLE or pd is None:
+            raise ImportError(
+                "pandas and numpy are not installed. ToolAdvancedThreeWayDecision requires these dependencies. "
+                "Please install with: pip install 'axisfuzzy[analysis]'"
+            )
+        
+        # Ensure data is numeric type
+        data_numeric = data.astype(float)
+        
+        # Determine weights to use
+        if weights is not None:
+            used_weights = np.array(weights)
+        elif self.weights is not None:
+            used_weights = np.array(self.weights)
+        else:
+            # Use equal weights
+            used_weights = np.ones(data_numeric.shape[1]) / data_numeric.shape[1]
+        
+        # Validate weight dimensions
+        if len(used_weights) != data_numeric.shape[1]:
+            raise ValueError(f"Weight vector length ({len(used_weights)}) must match number of data columns ({data_numeric.shape[1]})")
+        
+        # Normalize weights
+        used_weights = used_weights / np.sum(used_weights)
+        
+        # Calculate weighted decision values
+        if self.aggregation_method == 'weighted_average':
+            decision_values = (data_numeric * used_weights).sum(axis=1)
+        elif self.aggregation_method == 'weighted_geometric_mean':
+            # Geometric weighted mean
+            decision_values = np.power(np.prod(data_numeric ** used_weights, axis=1), 1.0 / data_numeric.shape[1])
+        elif self.aggregation_method == 'topsis_like':
+            # TOPSIS-style evaluation
+            # Calculate distances to positive and negative ideal solutions
+            positive_ideal = data_numeric.max(axis=0)
+            negative_ideal = data_numeric.min(axis=0)
+            
+            # Calculate distance to positive ideal solution
+            pos_distance = np.sqrt(((data_numeric - positive_ideal) ** 2 * used_weights).sum(axis=1))
+            # Calculate distance to negative ideal solution  
+            neg_distance = np.sqrt(((data_numeric - negative_ideal) ** 2 * used_weights).sum(axis=1))
+            
+            # Relative closeness
+            decision_values = neg_distance / (pos_distance + neg_distance + 1e-10)
+        
+        # Execute three-way decision classification
+        accept_indices = []
+        reject_indices = []
+        defer_indices = []
+        
+        for idx in data_numeric.index:
+            value = decision_values.loc[idx] if hasattr(decision_values, 'loc') else decision_values[idx]
+            if value >= self.alpha:
+                accept_indices.append(idx)
+            elif value <= self.beta:
+                reject_indices.append(idx)
+            else:
+                defer_indices.append(idx)
+        
+        return {
+            'accept': accept_indices,
+            'reject': reject_indices,
+            'defer': defer_indices
+        }

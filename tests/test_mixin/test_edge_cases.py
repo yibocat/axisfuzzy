@@ -46,6 +46,7 @@ import time
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List, Optional
 
+from axisfuzzy.core.fuzzarray import Fuzzarray
 from axisfuzzy.mixin.registry import (
     MixinFunctionRegistry,
     get_registry_mixin,
@@ -56,8 +57,8 @@ from axisfuzzy.mixin.factory import (
     _stack_factory,
     _append_factory
 )
-from axisfuzzy.core.fuzznums import fuzznum
-from axisfuzzy.core.fuzzarray import fuzzarray
+from axisfuzzy import fuzzynum
+from axisfuzzy import fuzzyarray
 
 
 class TestRegistryEdgeCases:
@@ -261,7 +262,7 @@ class TestFactoryEdgeCases:
         Verifies that factory functions handle empty input arrays correctly.
         """
         # Create empty Fuzzarray
-        empty_array = fuzzarray([], mtype='qrofn', q=2, shape=(0,))
+        empty_array = Fuzzarray([], mtype='qrofn', q=2, shape=(0,))
         
         # Test concat with empty array - should work with single empty array
         result = _concat_factory(empty_array)
@@ -288,10 +289,10 @@ class TestFactoryEdgeCases:
         Verifies correct behavior with minimal input sizes.
         """
         # Create single-element Fuzzarray
-        fn = fuzznum(mtype='qrofn', q=2)
+        fn = fuzzynum(mtype='qrofn', q=2)
         fn.md = 0.6
         fn.nmd = 0.3
-        single_array = fuzzarray([fn])
+        single_array = fuzzyarray([fn])
         
         # Test operations with single-element arrays
         result = _concat_factory(single_array)
@@ -312,15 +313,15 @@ class TestFactoryEdgeCases:
         Verifies error handling when input objects have incompatible attributes.
         """
         # Create arrays with different mtype and q parameters
-        fn1 = fuzznum(mtype='qrofn', q=2)
+        fn1 = fuzzynum(mtype='qrofn', q=2)
         fn1.md = 0.6
         fn1.nmd = 0.3
-        array1 = fuzzarray([fn1])
+        array1 = fuzzyarray([fn1])
         
-        fn2 = fuzznum(mtype='qrofn', q=3)  # Different q parameter
+        fn2 = fuzzynum(mtype='qrofn', q=3)  # Different q parameter
         fn2.md = 0.7
         fn2.nmd = 0.2
-        array2 = fuzzarray([fn2])
+        array2 = fuzzyarray([fn2])
         
         # Test that mismatched q parameters raise ValueError
         with pytest.raises(ValueError, match="all Fuzzarrays must have the same mtype and parameters"):
@@ -366,7 +367,7 @@ class TestFactoryEdgeCases:
             _append_factory(None, None)
         
         # Test with valid empty Fuzzarray
-        empty_array = fuzzarray([], mtype='qrofn', q=2, shape=(0,))
+        empty_array = Fuzzarray([], mtype='qrofn', q=2, shape=(0,))
         result = _concat_factory(empty_array)
         assert isinstance(result, type(empty_array))
         assert result.size == 0
@@ -758,11 +759,11 @@ class TestBoundaryConditions:
         zero_q_array = MockFuzzarray([1, 2, 3], q=0)
         
         # Test with real Fuzzarray objects
-        from axisfuzzy.core.fuzzarray import Fuzzarray
+        from axisfuzzy.core import Fuzzarray
         
-        # Create test arrays with valid fuzznum objects
-        fuzz1 = fuzznum(mtype='qrofn', q=2).create(md=0.6, nmd=0.3)
-        fuzz2 = fuzznum(mtype='qrofn', q=2).create(md=0.7, nmd=0.2)
+        # Create test arrays with valid fuzzynum objects
+        fuzz1 = fuzzynum(mtype='qrofn', q=2).create(md=0.6, nmd=0.3)
+        fuzz2 = fuzzynum(mtype='qrofn', q=2).create(md=0.7, nmd=0.2)
         
         zero_q_array = Fuzzarray([fuzz1], mtype='qrofn')
         another_array = Fuzzarray([fuzz2], mtype='qrofn')
@@ -831,11 +832,11 @@ class TestBoundaryConditions:
                 return self._values
         
         # Test with moderately large arrays using real Fuzzarray
-        from axisfuzzy.core.fuzzarray import Fuzzarray
+        from axisfuzzy.core import Fuzzarray
         
-        # Create large fuzznum objects for testing
-        large_fuzz1 = fuzznum(mtype='qrofn', q=2).create(md=0.8, nmd=0.1)
-        large_fuzz2 = fuzznum(mtype='qrofn', q=2).create(md=0.9, nmd=0.05)
+        # Create large fuzzynum objects for testing
+        large_fuzz1 = fuzzynum(mtype='qrofn', q=2).create(md=0.8, nmd=0.1)
+        large_fuzz2 = fuzzynum(mtype='qrofn', q=2).create(md=0.9, nmd=0.05)
         
         large_array1 = Fuzzarray([large_fuzz1], mtype='qrofn')
         large_array2 = Fuzzarray([large_fuzz2], mtype='qrofn')

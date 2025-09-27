@@ -29,7 +29,7 @@ Quick Start
 
       .. code-block:: python
          
-         from axisfuzzy import fuzzynum, fuzzyset
+         from axisfuzzy import fuzzynum, fuzzyarray
 
          # Create fuzzy numbers with modern factory functions
          fn1 = fuzzynum((0.8, 0.2), q=2)  # q-Rung Orthopair Fuzzy Number
@@ -48,7 +48,7 @@ Quick Start
 
       .. code-block:: python
 
-         from axisfuzzy import fuzzyset, fuzzynum
+         from axisfuzzy import fuzzyarray, fuzzynum
          import axisfuzzy.random as ar
 
          # Create fuzzy arrays efficiently
@@ -57,7 +57,7 @@ Quick Start
              fuzzynum((0.6, 0.4)),
              fuzzynum((0.9, 0.1))
          ]
-         fs = fuzzyset(fuzzy_numbers)
+         fs = fuzzyarray(fuzzy_numbers)
 
          # Vectorized operations (10x-100x faster)
          mean_result = fs.mean()

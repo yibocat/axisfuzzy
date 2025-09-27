@@ -9,9 +9,9 @@ from .base import FuzznumStrategy
 
 from .dispatcher import operate
 
-from .fuzznums import Fuzznum, fuzznum
-from .fuzzarray import Fuzzarray, fuzzarray
-from .factory import fuzzynum, fuzzyset
+from .fuzznums import Fuzznum
+from .fuzzarray import Fuzzarray
+from .factory import fuzzynum, fuzzyarray
 from .backend import FuzzarrayBackend
 
 from .operation import OperationMixin, get_registry_operation, register_operation
@@ -34,15 +34,11 @@ __all__ = [
     'OperationTNorm',
     'operate',
     'fuzzynum',
-    'fuzzyset',
+    'fuzzyarray',
     'get_registry_operation',
     'get_registry_fuzztype',
     'register_operation',
     'register_strategy',
     'register_backend',
     'register_fuzztype',
-
-    # Deprecated
-    'fuzznum',
-    'fuzzarray',
 ]

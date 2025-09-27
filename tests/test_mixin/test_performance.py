@@ -79,11 +79,11 @@ class TestMixinPerformance:
     def test_factory_function_performance(self):
         """Test performance of factory functions with large arrays."""
         # Create large test arrays using qrofn type
-        from axisfuzzy.core.fuzznums import fuzznum
+        from axisfuzzy import fuzzynum
         
         # Create fuzznums for the arrays
-        fuzz1 = fuzznum(mtype='qrofn', q=2).create(md=0.6, nmd=0.3)
-        fuzz2 = fuzznum(mtype='qrofn', q=2).create(md=0.7, nmd=0.2)
+        fuzz1 = fuzzynum(mtype='qrofn', q=2).create(md=0.6, nmd=0.3)
+        fuzz2 = fuzzynum(mtype='qrofn', q=2).create(md=0.7, nmd=0.2)
         
         large_array1 = Fuzzarray([fuzz1] * 1000)  # Reduced size for performance
         large_array2 = Fuzzarray([fuzz2] * 1000)
@@ -193,11 +193,11 @@ class TestMixinPerformance:
     def test_factory_with_many_small_arrays(self):
         """Test factory performance with many small arrays."""
         # Create many small arrays using qrofn type
-        from axisfuzzy.core.fuzznums import fuzznum
+        from axisfuzzy import fuzzynum
         
         small_arrays = []
         for i in range(100):  # Reduced for performance
-            fuzz = fuzznum(mtype='qrofn', q=2).create(md=0.1 + i*0.001, nmd=0.1)
+            fuzz = fuzzynum(mtype='qrofn', q=2).create(md=0.1 + i*0.001, nmd=0.1)
             small_arrays.append(Fuzzarray([fuzz]))
         
         # Test concat performance with many arrays
@@ -286,11 +286,11 @@ class TestMixinPerformance:
     def test_factory_performance_comparison(self):
         """Compare performance of different factory functions."""
         # Create test data using qrofn type
-        from axisfuzzy.core.fuzznums import fuzznum
+        from axisfuzzy import fuzzynum
         
         test_arrays = []
         for i in range(50):  # Reduced for performance
-            fuzz = fuzznum(mtype='qrofn', q=2).create(md=0.1 + i*0.01, nmd=0.1)
+            fuzz = fuzzynum(mtype='qrofn', q=2).create(md=0.1 + i*0.01, nmd=0.1)
             test_arrays.append(Fuzzarray([fuzz] * 50))
         
         # Measure concat performance

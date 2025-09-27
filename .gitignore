@@ -28,3 +28,5 @@ docs/build/
 /doc/.smtcmp_vector_db.tar.gz
 /doc/copilot-custom-prompts/
 /.cursor/
+/.qoder/
+/discussion/

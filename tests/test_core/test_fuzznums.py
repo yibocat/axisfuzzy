@@ -3,7 +3,8 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 import json
 
-from axisfuzzy.core.fuzznums import Fuzznum, fuzznum
+from axisfuzzy.core.fuzznums import Fuzznum
+from axisfuzzy import fuzzynum
 from axisfuzzy.core.base import FuzznumStrategy
 from axisfuzzy.core.registry import get_registry_fuzztype
 from axisfuzzy.config import get_config
@@ -433,13 +434,13 @@ class TestFuzznum:
 
 
 class TestFuzznumFactory:
-    """Test fuzznum factory function"""
+    """Test fuzzynum factory function"""
 
     def test_fuzznum_factory_with_tuple(self):
-        """Test fuzznum factory with tuple values"""
+        """Test fuzzynum factory with tuple values"""
         try:
             # Create using tuple
-            fnum = fuzznum((0.8, 0.2), mtype='qrofn', q=2)
+            fnum = fuzzynum((0.8, 0.2), mtype='qrofn', q=2)
             
             assert fnum.mtype == 'qrofn'
             assert fnum.q == 2
@@ -453,10 +454,10 @@ class TestFuzznumFactory:
                 raise
 
     def test_fuzznum_factory_with_kwargs(self):
-        """Test fuzznum factory with keyword arguments"""
+        """Test fuzzynum factory with keyword arguments"""
         try:
             # Create using kwargs
-            fnum = fuzznum(mtype='qrofn', md=0.6, nmd=0.4, q=3)
+            fnum = fuzzynum(mtype='qrofn', md=0.6, nmd=0.4, q=3)
             
             assert fnum.mtype == 'qrofn'
             assert fnum.q == 3
@@ -470,22 +471,22 @@ class TestFuzznumFactory:
                 raise
 
     def test_fuzznum_factory_with_defaults(self):
-        """Test fuzznum factory with default values"""
+        """Test fuzzynum factory with default values"""
         config = get_config()
         default_mtype = config.DEFAULT_MTYPE
         default_q = config.DEFAULT_Q
         
         # Create with defaults
-        fnum = fuzznum()
+        fnum = fuzzynum()
         
         assert fnum.mtype == default_mtype
         assert fnum.q == default_q
 
     def test_fuzznum_factory_error_handling(self):
-        """Test fuzznum factory error handling"""
+        """Test fuzzynum factory error handling"""
         # Test with unsupported mtype - 修正错误消息匹配
         with pytest.raises(ValueError, match="Unsupported strategy mtype"):
-            fuzznum(mtype='nonexistent_type')
+            fuzzynum(mtype='nonexistent_type')
 
 
 class TestFuzznumIntegration:
@@ -495,7 +496,7 @@ class TestFuzznumIntegration:
         """Test Fuzznum with qrofn type (if available)"""
         try:
             # Test creation
-            fnum = fuzznum((0.8, 0.2), mtype='qrofn', q=2)
+            fnum = fuzzynum((0.8, 0.2), mtype='qrofn', q=2)
             
             # Test attribute access
             assert fnum.md == 0.8
@@ -531,8 +532,8 @@ class TestFuzznumIntegration:
     def test_fuzznum_operations(self):
         """Test Fuzznum with basic operations (if available)"""
         try:
-            fnum1 = fuzznum((0.8, 0.2), mtype='qrofn', q=2)
-            fnum2 = fuzznum((0.6, 0.4), mtype='qrofn', q=2)
+            fnum1 = fuzzynum((0.8, 0.2), mtype='qrofn', q=2)
+            fnum2 = fuzzynum((0.6, 0.4), mtype='qrofn', q=2)
             
             # Test basic operations (these may not be implemented yet)
             # For now, just test that the objects can be created and accessed

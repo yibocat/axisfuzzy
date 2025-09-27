@@ -1105,12 +1105,12 @@ lightning-fast vectorized computations, powered by NumPy.
 Creating ``Fuzzarray`` Objects
 ++++++++++++++++++++++++++++++
 
-The :py:func:`axisfuzzy.core.fuzzyset` factory is the recommended entry point for creating ``Fuzzarray`` instances.
+The :py:func:`axisfuzzy.core.fuzzyarray` factory is the recommended entry point for creating ``Fuzzarray`` instances.
 
 .. code-block:: python
 
     import numpy as np
-    from axisfuzzy.core import fuzzyset, fuzzynum
+    from axisfuzzy.core import fuzzyarray, fuzzynum
 
     # Path 1: From a list of Fuzznum objects (user-friendly)
     fuzznums_list = [
@@ -1118,7 +1118,7 @@ The :py:func:`axisfuzzy.core.fuzzyset` factory is the recommended entry point fo
         fuzzynum(md=0.7, nmd=0.2, q=3),
         fuzzynum(md=0.9, nmd=0.0, q=3)
     ]
-    arr1 = fuzzyset(fuzznums_list)
+    arr1 = fuzzyarray(fuzznums_list)
     print(f"Array from Fuzznums:\n{arr1}")
 
     # Path 2: From raw NumPy arrays (high-performance)
@@ -1127,7 +1127,7 @@ The :py:func:`axisfuzzy.core.fuzzyset` factory is the recommended entry point fo
     # The shape must be (number_of_components, number_of_elements)
     raw_data = np.array([mds, nmds])
 
-    arr2 = fuzzyset(data=raw_data, mtype='qrofn', q=3)
+    arr2 = fuzzyarray(data=raw_data, mtype='qrofn', q=3)
     print(f"Array from raw data:\n{arr2}")
 
 Vectorized Arithmetic
@@ -1205,7 +1205,7 @@ score and accuracy functions of the fuzzy numbers.
 
 .. code-block:: python
 
-    from axisfuzzy.core import fuzzynum, fuzzyset
+    from axisfuzzy.core import fuzzynum, fuzzyarray
     import numpy as np
 
     # Fuzznum comparison
@@ -1214,7 +1214,7 @@ score and accuracy functions of the fuzzy numbers.
     print(f"a > b: {a > b}")  # True
 
     # Fuzzarray vectorized comparison
-    arr = fuzzyset([a, b])
+    arr = fuzzyarray([a, b])
     other_fn = fuzzynum(md=0.75, nmd=0.15, q=3) # score = 0.75**3 - 0.15**3 = 0.418...
     result = arr > other_fn
     print(f"Array > Fuzznum: {result}") # [ True False]

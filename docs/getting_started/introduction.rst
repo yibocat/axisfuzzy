@@ -34,7 +34,7 @@ powerful but also adaptable and easy to integrate into modern scientific computi
 
 - **Elegant User Experience**: The library's API is designed to be intuitive and 
   familiar to users of established scientific computing packages like NumPy. Through 
-  operator overloading, unified factory functions (e.g., ``fuzzynum()``, ``fuzzyset()``), 
+  operator overloading, unified factory functions (e.g., ``fuzzynum()``, ``fuzzyarray()``),
   and a consistent interface, AxisFuzzy provides a programming experience that feels native 
   to Python. This focus on usability allows users to concentrate on solving problems rather 
   than grappling with complex library mechanics.

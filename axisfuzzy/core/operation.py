@@ -776,6 +776,27 @@ class OperationScheduler:
         """
         Change the scheduler's default t-norm configuration.
 
+        Available t-norm types include:
+        
+        **Archimedean T-Norms:**
+
+        - 'algebraic': Algebraic product t-norm, T(a,b) = a × b
+        - 'lukasiewicz': Łukasiewicz t-norm, T(a,b) = max(0, a + b - 1)
+        - 'einstein': Einstein t-norm, T(a,b) = (a × b) / (1 + (1-a) × (1-b))
+        - 'hamacher': Hamacher t-norm family, requires parameter `hamacher_param` (gamma)
+        - 'yager': Yager t-norm family, requires parameter `yager_param` (p)
+        - 'schweizer_sklar': Schweizer-Sklar t-norm family, requires parameter `sklar_param` (p)
+        - 'dombi': Dombi t-norm family, requires parameter `dombi_param` (p)
+        - 'aczel_alsina': Aczel-Alsina t-norm family, requires parameter `aa_param` (p)
+        - 'frank': Frank t-norm family, requires parameter `frank_param` (s)
+        
+        **Non-Archimedean T-Norms:**
+
+        - 'minimum': Minimum t-norm, T(a,b) = min(a,b), the most commonly used standard t-norm
+        - 'drastic': Drastic product t-norm, extreme operation under boundary conditions
+        - 'nilpotent': Nilpotent t-norm, T(a,b) = min(a,b) when a+b > 1, otherwise 0
+        
+
         Parameters
         ----------
         t_norm_type : str

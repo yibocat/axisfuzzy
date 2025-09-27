@@ -261,16 +261,16 @@ Fuzznum objects for convenience.
 Path 1: The User-Friendly Path - Creating from Fuzznum Objects
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-This is the most common way for a user to create a ``Fuzzarray``. The ``axisfuzzy.fuzzyset`` 
+This is the most common way for a user to create a ``Fuzzarray``. The ``axisfuzzy.fuzzyarray``
 factory function (which is an alias for the ``Fuzzarray`` class) is the primary entry point 
 for this path. You pass it an array-like object, such as a list of ``Fuzznum`` objects.
 
 .. code-block:: python
 
-   from axisfuzzy import fuzzyset, fuzzynum
+   from axisfuzzy import fuzzyarray, fuzzynum
 
    # Create a Fuzzarray from a list of Fuzznum objects
-   arr = fuzzyset([
+   arr = fuzzyarray([
        fuzzynum((0.8, 0.1), q=2),
        fuzzynum((0.6, 0.3), q=2)
    ])
@@ -279,7 +279,7 @@ for this path. You pass it an array-like object, such as a list of ``Fuzznum`` o
    # >>> Fuzzarray([<0.8,0.1> <0.6,0.3>], mtype='qrofn', q=2, shape=(2,))
 
    # You can also create an empty array and fill it
-   arr = fuzzyset(fuzzynum((0.6, 0.3), q=2), shape=(1000,))
+   arr = fuzzyarray(fuzzynum((0.6, 0.3), q=2), shape=(1000,))
 
 When you use this path, the constructor performs several steps:
 
@@ -295,7 +295,7 @@ It is ideal for initial array creation from user data.
 Path 2: High-Performance Raw Array Creation
 ++++++++++++++++++++++++++++++++++++++++++++
 
-The ``fuzzyset`` factory function provides a highly optimized path for creating 
+The ``fuzzyarray`` factory function provides a highly optimized path for creating
 ``Fuzzarray`` objects directly from raw NumPy arrays or nested lists. This path 
 is designed for scenarios where you have structured component data (e.g., membership 
 and non-membership degrees) and want to bypass the overhead of individual ``Fuzznum`` 
@@ -304,7 +304,7 @@ object creation.
 .. code-block:: python
 
    import numpy as np
-   from axisfuzzy import fuzzyset
+   from axisfuzzy import fuzzyarray
 
    # Create QROFN array from raw component arrays
    # First array: membership degrees, Second array: non-membership degrees
@@ -313,7 +313,7 @@ object creation.
    raw_data = np.array([md_values, nmd_values])  # Shape: (2, 3)
    
    # High-performance creation (Path 2)
-   arr = fuzzyset(data=raw_data, mtype='qrofn', q=2)
+   arr = fuzzyarray(data=raw_data, mtype='qrofn', q=2)
    print(arr)
    # >>> Fuzzarray([<0.8,0.1> <0.6,0.3> <0.7,0.2>], mtype='qrofn', q=2, shape=(3,))
 
@@ -322,7 +322,7 @@ object creation.
    nmd_hesitant = np.array([[0.1], [0.1,0.2], [0.1, 0.05]], dtype=object)
    hesitant_data = np.array([md_hesitant, nmd_hesitant]) # Shape: (2, 3)
    
-   arr_hesitant = fuzzyset(data=hesitant_data, mtype='qrohfn', q=2)
+   arr_hesitant = fuzzyarray(data=hesitant_data, mtype='qrohfn', q=2)
    print(arr_hesitant)
    # >>> Fuzzarray([<[0.2, 0.4],[0.1]> <[0.2, 0.5],[0.1, 0.2]> <[0.7, 0.8, 0.9],[0.05, 0.1]>], 
    #                mtype='qrohfn', q=2, shape=(3,))
@@ -335,13 +335,13 @@ This path offers several advantages:
 - **Batch Processing**: Ideal for processing large datasets or results from vectorized operations.
 - **Type Safety**: Automatic validation ensures the raw data conforms to the fuzzy type constraints.
 
-The ``fuzzyset`` function intelligently detects when the input data represents raw 
+The ``fuzzyarray`` function intelligently detects when the input data represents raw
 component arrays versus a collection of ``Fuzznum`` objects, automatically selecting 
 the appropriate creation path for optimal performance.
 
 .. note::
     When creating a ``Fuzzarray`` using Path 2, the array construction is critical. 
-    The shape of the numpy.ndarray passed to ``fuzzyset`` must comply with the backend 
+    The shape of the numpy.ndarray passed to ``fuzzyarray`` must comply with the backend
     contracts ``cmpnum``, ``cmpnames``, and ``dtype``. This means that ``data.shape[0]`` 
     must equal ``cmpnum``, representing the names of membership degrees defined in ``cmpnames``.
     The ``dtype`` specifies the array's data type - for special fuzzy sets like ``qrohfn``, 
@@ -489,7 +489,7 @@ The backend is central to all three ``Fuzzarray`` creation paths:
 
 - **Path 1** (Fuzznum Creation): Traditional creation from ``Fuzznum`` objects, where the backend 
   is populated through repeated calls to ``set_fuzznum_data``.
-- **Path 2** (Raw Array Creation): The factory function ``fuzzyset`` provides a highly optimized path for creating 
+- **Path 2** (Raw Array Creation): The factory function ``fuzzyarray`` provides a highly optimized path for creating
   ``Fuzzarray`` objects directly from raw NumPy arrays, bypassing individual ``Fuzznum`` object creation for maximum efficiency.
 - **Path 3** (Backend Creation): Directly instantiates a ``Fuzzarray`` from a pre-constructed backend, 
   offering O(1) performance for internal operations.
@@ -598,7 +598,7 @@ Each backend must implement essential contract properties and methods for proper
 
 The contract properties (``cmpnum``, ``cmpnames``, ``dtype``) are essential for:
 
-- **Path 2 Integration**: The ``fuzzyset`` factory function uses these properties to validate 
+- **Path 2 Integration**: The ``fuzzyarray`` factory function uses these properties to validate
   raw array shapes and automatically select the appropriate backend type.
 - **Type Safety**: ``dtype`` ensures proper array allocation and prevents type mismatches 
   during high-performance operations.

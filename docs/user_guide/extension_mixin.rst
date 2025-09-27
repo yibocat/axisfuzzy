@@ -501,7 +501,7 @@ All fuzzy objects automatically inherit mixin functionalities, enabling direct a
     md = np.array([0.8, 0.6, 0.9])
     nmd = np.array([0.1, 0.3, 0.05])
 
-    fuzzy_array = af.fuzzyset(np.array([md,nmd]), mtype='qrofn')
+    fuzzy_array = af.fuzzyarray(np.array([md,nmd]), mtype='qrofn')
 
     # Mixin operations work regardless of type
     shape = fuzzy_array.shape          # Shape information
@@ -519,7 +519,7 @@ Key Functionality Groups
     import axisfuzzy as af
     import numpy as np
 
-    arr = af.fuzzyset(np.array([[[0.8, 0.6], [0.7, 0.9]],
+    arr = af.fuzzyarray(np.array([[[0.8, 0.6], [0.7, 0.9]],
                                 [[0.1, 0.3], [0.2, 0.1]]]), mtype='qrofn')
 
     # Reshape array
@@ -549,8 +549,8 @@ Key Functionality Groups
 
 .. code-block:: python
 
-    arr1 = af.fuzzyset(np.array([[0.8, 0.6], [0.1, 0.3]]), mtype='qrofn')
-    arr2 = af.fuzzyset(np.array([[0.7, 0.9], [0.2, 0.1]]), mtype='qrofn')
+    arr1 = af.fuzzyarray(np.array([[0.8, 0.6], [0.1, 0.3]]), mtype='qrofn')
+    arr2 = af.fuzzyarray(np.array([[0.7, 0.9], [0.2, 0.1]]), mtype='qrofn')
 
     # Concatenate arrays
     combined = arr1.concat(arr2)  # or af.concat(arr1, arr2)
@@ -586,7 +586,7 @@ Advanced Structural Operations
 .. code-block:: python
 
     # Shape operations work on any fuzzy type
-    data = af.fuzzyset(np.array([[[0.8, 0.6], [0.7, 0.9]], [[0.1, 0.3], [0.2, 0.1]]]), mtype='qrofn')
+    data = af.fuzzyarray(np.array([[[0.8, 0.6], [0.7, 0.9]], [[0.1, 0.3], [0.2, 0.1]]]), mtype='qrofn')
 
     print(data.shape)           # (2, 2)
     print(data.size)            # 4
@@ -601,7 +601,7 @@ Advanced Structural Operations
 .. code-block:: python
 
     # Advanced indexing works uniformly
-    data = af.fuzzyset(np.array([[0.1, 0.5, 0.8, 0.3, 0.9], [0.8, 0.4, 0.1, 0.6, 0.05]]), mtype='qrohfn')
+    data = af.fuzzyarray(np.array([[0.1, 0.5, 0.8, 0.3, 0.9], [0.8, 0.4, 0.1, 0.6, 0.05]]), mtype='qrohfn')
     
     # Boolean indexing
     high_values = data[data > 0.5]  # Elements > 0.5
@@ -640,7 +640,7 @@ into the core classes during framework initialization.
 .. code-block:: python
 
     # Example of using built-in mixin operations
-    data = af.fuzzyset(np.array([[0.8, 0.6, 0.9], [0.1, 0.3, 0.05]]), mtype='qrofn')
+    data = af.fuzzyarray(np.array([[0.8, 0.6, 0.9], [0.1, 0.3, 0.05]]), mtype='qrofn')
 
     # Structural operations (available via mixin system)
     reshaped = data.reshape(3, 1)  # Shape manipulation
@@ -663,7 +663,7 @@ base classes, making them feel like native methods.
 
     # All these work regardless of mtype
     num = af.fuzzynum(md=0.8, nmd=0.2, mtype='qrofn')
-    arr = af.fuzzyset(np.array([[0.7, 0.6], [0.2, 0.3]]), mtype='qrofn')
+    arr = af.fuzzyarray(np.array([[0.7, 0.6], [0.2, 0.3]]), mtype='qrofn')
 
     # Shape operations work on both
     num_reshaped = num.reshape(1, 1)
