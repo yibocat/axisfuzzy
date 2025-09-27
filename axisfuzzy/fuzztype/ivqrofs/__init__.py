@@ -10,3 +10,4 @@ from . import backend
 from . import op
 from . import fuzzification
 from . import random
+from . import extension
