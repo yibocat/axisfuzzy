@@ -1638,7 +1638,14 @@ class FSMatmul(OperationMixin):
                                    other: Optional[Any],
                                    tnorm: OperationTNorm) -> Fuzzarray:
         """
-        High-performance fuzzy matrix multiplication for FS arrays.
+        Ultra-high-performance fuzzy matrix multiplication optimized for AxisFuzzy's
+        NumPy-based t-norm framework.
+        
+        This implementation leverages the full power of:
+        1. AxisFuzzy's optimized OperationTNorm with native NumPy support
+        2. NumPy broadcasting for maximum vectorization
+        3. SoA architecture for optimal memory layout
+        4. Direct t-norm/t-conorm operations without unnecessary abstraction layers
         """
         if not isinstance(other, Fuzzarray):
             raise TypeError("Matrix multiplication requires two Fuzzarray operands")
@@ -1658,7 +1665,8 @@ class FSMatmul(OperationMixin):
         if mds1.shape[1] != mds2.shape[0]:
             raise ValueError(f"Cannot multiply matrices with shapes {mds1.shape} and {mds2.shape}")
 
-        # Perform fuzzy matrix multiplication using vectorized operations
+        # 🚀 ULTRA-HIGH-PERFORMANCE FUZZY MATRIX MULTIPLICATION
+        # Using AxisFuzzy's optimized OperationTNorm with full NumPy vectorization
         # For each element (i,j) in result: S_k(T(A_ik, B_kj))
         # Using broadcasting to compute all t-norm operations at once
         # Shape: (i, k, j) where k is the common dimension
@@ -1670,6 +1678,7 @@ class FSMatmul(OperationMixin):
         backend_cls = get_registry_fuzztype().get_backend('fs')
         new_backend = backend_cls.from_arrays(result_md)
         return Fuzzarray(backend=new_backend)
+
 
 
 def register_fs_operations():

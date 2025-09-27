@@ -79,7 +79,7 @@ def ivqrofn_to_csv_ext(fuzz, *args, **kwargs) -> None:
 
 
 @extension(
-    name='from_csv',
+    name='read_csv',
     mtype='ivqrofn',
     target_classes=['Fuzzarray'],
     injection_type='top_level_function')
@@ -95,7 +95,7 @@ def ivqrofn_to_json_ext(fuzz, *args, **kwargs) -> None:
 
 
 @extension(
-    name='from_json',
+    name='read_json',
     mtype='ivqrofn',
     target_classes=['Fuzzarray'],
     injection_type='top_level_function')
@@ -111,7 +111,7 @@ def ivqrofn_to_npy_ext(fuzz, *args, **kwargs) -> None:
 
 
 @extension(
-    name='from_npy',
+    name='read_npy',
     mtype='ivqrofn',
     target_classes=['Fuzzarray'],
     injection_type='top_level_function')

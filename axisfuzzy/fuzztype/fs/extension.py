@@ -93,7 +93,11 @@ def fs_to_csv_ext(fuzz, *args, **kwargs):
     target_classes=['Fuzzarray'],
     injection_type='top_level_function')
 def fs_from_csv_ext(*args, **kwargs) -> Fuzzarray:
-    """Load a FS Fuzzarray from a CSV file."""
+    """Load a FS Fuzzarray from a CSV file.
+    
+    This serves as the default implementation for reading CSV files when no mtype
+    is specified, assuming the simplest fuzzy set format (FS).
+    """
     return ext._fs_from_csv(*args, **kwargs)
 
 
@@ -109,7 +113,11 @@ def fs_to_json_ext(fuzz, *args, **kwargs):
     target_classes=['Fuzzarray'],
     injection_type='top_level_function')
 def fs_from_json_ext(*args, **kwargs) -> Fuzzarray:
-    """Load a FS Fuzzarray from a JSON file."""
+    """Load a FS Fuzzarray from a JSON file.
+    
+    This serves as the default implementation for reading JSON files when no mtype
+    is specified, assuming the simplest fuzzy set format (FS).
+    """
     return ext._fs_from_json(*args, **kwargs)
 
 
@@ -125,7 +133,11 @@ def fs_to_npy_ext(fuzz, *args, **kwargs):
     target_classes=['Fuzzarray'],
     injection_type='top_level_function')
 def fs_from_npy_ext(*args, **kwargs) -> Fuzzarray:
-    """Load a FS Fuzzarray from a NumPy binary file."""
+    """Load a FS Fuzzarray from a NumPy binary file.
+    
+    This serves as the default implementation for reading NPY files when no mtype
+    is specified, assuming the simplest fuzzy set format (FS).
+    """
     return ext._fs_from_npy(*args, **kwargs)
 
 
@@ -145,7 +157,11 @@ def fs_distance_ext(fuzz_1, fuzz_2, p_l=2) -> Union[np.ndarray, float]:
     target_classes=['Fuzznum'],
     injection_type='top_level_function')
 def fs_from_str_ext(fuzznum_str: str) -> Fuzznum:
-    """Convert a string representation of a FS Fuzznum to an actual Fuzznum."""
+    """Convert a string representation of a FS Fuzznum to an actual Fuzznum.
+    
+    This serves as the default implementation for string parsing when no mtype
+    is specified, attempting to parse the simplest fuzzy set format (FS).
+    """
     return ext._fs_from_str(fuzznum_str)
 
 

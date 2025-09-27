@@ -80,6 +80,10 @@ def _fs_from_csv(path: str, **kwargs) -> Fuzzarray:
     Reads CSV files containing FS values in '<md>' format and creates
     a Fuzzarray with proper backend initialization for optimal performance.
     
+    This function serves as both the FS-specific implementation and a smart
+    default fallback when no mtype is specified, attempting to parse simple
+    FS format before raising errors.
+    
     Parameters:
         path (str): Input CSV file path
         **kwargs: Additional arguments passed to csv.reader
@@ -111,11 +115,23 @@ def _fs_from_csv(path: str, **kwargs) -> Fuzzarray:
     try:
         mds = clean_data.astype(float)
     except ValueError as e:
-        raise ValueError(f"Invalid FS format in CSV: {e}")
+        # Provide helpful error message for format detection
+        sample_data = str_data.flat[0] if str_data.size > 0 else "(empty)"
+        raise ValueError(
+            f"Failed to parse CSV as FS format. Expected format: '<md>' where md is a number in [0,1]. "
+            f"Sample data: {sample_data}. "
+            f"If this is not an FS CSV file, please specify the correct mtype. "
+            f"Original parsing error: {e}"
+        )
 
     # Validate FS constraints: membership degrees must be in [0, 1]
     if np.any((mds < 0.0) | (mds > 1.0)):
-        raise ValueError("FS membership degrees must be in [0, 1]")
+        invalid_values = mds[(mds < 0.0) | (mds > 1.0)]
+        raise ValueError(
+            f"Invalid FS membership degrees found: {invalid_values[:5]}{'...' if len(invalid_values) > 5 else ''}. "
+            f"Classical Fuzzy Sets (FS) require membership degrees in [0, 1]. "
+            f"If this CSV contains other fuzzy types (e.g., QROFN, QROHFN), please specify the correct mtype."
+        )
 
     # Create backend directly with arrays
     backend_cls = get_registry_fuzztype().get_backend('fs')

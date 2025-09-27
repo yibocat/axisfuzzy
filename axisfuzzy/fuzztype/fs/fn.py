@@ -102,14 +102,16 @@ class FSStrategy(FuzznumStrategy):
         """
         super().__init__(q=q)
         
-        # Register membership degree validator
+        # Register membership degree validator with more specific validation
         # Ensures md is None or a numeric value in [0, 1]
-        self.add_attribute_validator(
-            'md', 
-            lambda x: x is None or (
-                isinstance(x, (int, float, np.floating, np.integer)) and 0 <= x <= 1
-            )
-        )
+        def _validate_md(x):
+            if x is None:
+                return True
+            if not isinstance(x, (int, float, np.floating, np.integer)):
+                return False
+            return 0 <= x <= 1
+        
+        self.add_attribute_validator('md', _validate_md)
         
         # Register change callback for membership degree
         # Triggers validation when md is modified
@@ -138,22 +140,33 @@ class FSStrategy(FuzznumStrategy):
 
     def _validate(self) -> None:
         """
-        Perform comprehensive validation of the fuzzy set.
+        Perform comprehensive validation of the fuzzy set with detailed error messages.
         
-        This method is called to ensure the fuzzy set maintains mathematical
-        validity. For basic FS, it primarily validates the membership degree
-        constraints.
+        This method provides FS-specific error messages that explain the constraints
+        of classical fuzzy sets (Zadeh fuzzy sets).
         
         Raises:
-            ValueError: If membership degree violates constraints
-        
-        Notes:
-            This method calls the parent validation and can be extended
-            for additional constraint checking in derived classes.
+            ValueError: If membership degree violates FS constraints with detailed explanation
         """
         super()._validate()
-        # For basic FS, all validation is handled by attribute validators
-        # No additional cross-attribute constraints needed
+        
+        # Additional FS-specific validation with detailed error messages
+        if self.md is not None:
+            if not isinstance(self.md, (int, float, np.floating, np.integer)):
+                raise ValueError(
+                    f"FS membership degree must be a numeric value. "
+                    f"Got {type(self.md).__name__}: {self.md}. "
+                    f"Classical Fuzzy Sets (FS) represent Zadeh fuzzy sets with a single "
+                    f"membership degree component μ ∈ [0, 1]."
+                )
+            
+            if not (0 <= self.md <= 1):
+                raise ValueError(
+                    f"FS membership degree constraint violation: md = {self.md} ∉ [0, 1]. "
+                    f"Classical Fuzzy Sets (FS) require membership degrees to be in the range [0, 1], "
+                    f"where 0 indicates no membership and 1 indicates full membership in the fuzzy set. "
+                    f"This is the fundamental constraint of Zadeh's fuzzy set theory."
+                )
 
     def format_from_components(self, md: float, format_spec: str = "") -> str:
         """

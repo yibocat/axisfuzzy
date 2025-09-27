@@ -327,16 +327,16 @@ class FSBackend(FuzzarrayBackend):
     @staticmethod
     def _validate_fuzzy_constraints_static(mds: np.ndarray) -> None:
         """
-        Static method for validating FS fuzzy constraints without creating backend instance.
+        Static method for validating FS fuzzy constraints with enhanced error messages.
         
         For FS, the only constraint is that membership degrees must be in [0, 1].
-        This is much simpler than QROFN constraints and enables high-performance validation.
+        This provides detailed error messages that explain FS mathematical foundations.
         
         Parameters:
             mds (np.ndarray): Membership degrees array to validate
             
         Raises:
-            ValueError: If any membership degrees are outside [0, 1] range
+            ValueError: If any membership degrees are outside [0, 1] range with detailed explanation
         """
         # Vectorized constraint check: 0 <= md <= 1
         violations_low = mds < 0.0
@@ -351,7 +351,9 @@ class FSBackend(FuzzarrayBackend):
                 raise ValueError(
                     f"FS constraint violation at index {first_idx}: "
                     f"membership degree {md_val} < 0.0. "
-                    f"FS membership degrees must be in [0, 1]."
+                    f"Classical Fuzzy Sets (FS) require membership degrees μ ∈ [0, 1], "
+                    f"where 0 indicates no membership and 1 indicates full membership. "
+                    f"This is the fundamental constraint of Zadeh's fuzzy set theory."
                 )
             else:
                 violation_indices = np.where(violations_high)
@@ -360,7 +362,9 @@ class FSBackend(FuzzarrayBackend):
                 raise ValueError(
                     f"FS constraint violation at index {first_idx}: "
                     f"membership degree {md_val} > 1.0. "
-                    f"FS membership degrees must be in [0, 1]."
+                    f"Classical Fuzzy Sets (FS) require membership degrees μ ∈ [0, 1], "
+                    f"where 0 indicates no membership and 1 indicates full membership. "
+                    f"This is the fundamental constraint of Zadeh's fuzzy set theory."
                 )
 
     def fill_from_values(self, md_value: float):
@@ -384,9 +388,14 @@ class FSBackend(FuzzarrayBackend):
                 
                 print(np.all(backend.mds == 0.7))  # True
         """
-        # Validate input value
+        # Validate input value with enhanced error message
         if not (0.0 <= md_value <= 1.0):
-            raise ValueError(f"Membership degree {md_value} must be in [0, 1]")
+            raise ValueError(
+                f"FS membership degree constraint violation: {md_value} ∉ [0, 1]. "
+                f"Classical Fuzzy Sets (FS) require membership degrees in range [0, 1], "
+                f"where 0 indicates no membership and 1 indicates full membership in the fuzzy set. "
+                f"This is the fundamental constraint of Zadeh's fuzzy set theory."
+            )
         
         # Fill array efficiently
         self.mds.fill(md_value)
